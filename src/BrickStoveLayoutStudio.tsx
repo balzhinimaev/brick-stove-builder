@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera, Text } from "@react-three/drei";
 
@@ -244,7 +244,7 @@ export default function BrickStoveLayoutStudio() {
 
   return (
     <div>
-      <h1 style={{ color: COLORS.charcoal }}>{t("appTitle")}</h1>
+      <h1>{t("appTitle")}</h1>
       <p>{t("projectName")}</p>
       <Canvas>
         <OrthographicCamera makeDefault position={[6.8, 6.2, 7.2]} zoom={52} />

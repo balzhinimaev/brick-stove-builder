@@ -52,6 +52,7 @@ const translations = {
     copyPrev: "Копия",
     clearRow: "Очистить",
     completeRow: "Зафиксировать",
+    unlockRow: "Разблокировать",
     rowCompleted: "Готово",
     tools: "Инструменты",
     orientation: "Ориентация",
@@ -123,6 +124,7 @@ const translations = {
     copyPrev: "Copy",
     clearRow: "Clear",
     completeRow: "Lock",
+    unlockRow: "Unlock",
     rowCompleted: "Done",
     tools: "Tools",
     orientation: "Orientation",
@@ -194,6 +196,7 @@ const translations = {
     copyPrev: "Kopija",
     clearRow: "Valyti",
     completeRow: "Užrakinti",
+    unlockRow: "Atrakinti",
     rowCompleted: "Baigta",
     tools: "Įrankiai",
     orientation: "Kryptis",
@@ -482,6 +485,10 @@ export default function BrickStoveLayoutStudio() {
     setCurrentRow((row) => Math.min(row + 1, rowCount));
   };
 
+  const unlockRow = () => {
+    setLockedRows((current) => current.filter((row) => row !== currentRow));
+  };
+
   return (
     <div className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4" style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}>
       <div className="mx-auto w-full max-w-[430px]">
@@ -490,7 +497,7 @@ export default function BrickStoveLayoutStudio() {
         {screen === "parameters" ? (
           <ParametersScreen parameters={parameters} updateParameter={updateParameter} t={t} onContinue={() => setScreen("builder")} lockedRows={lockedRows} />
         ) : (
-          <BuilderScreen t={t} rows={rows} rowCount={rowCount} currentRow={currentRow} setCurrentRow={setCurrentRow} lockedRows={lockedRows} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} placeAt={placeAt} addRow={addRow} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} parameters={parameters} materials={materials} camera={camera} setCamera={setCamera} />
+          <BuilderScreen t={t} rows={rows} rowCount={rowCount} currentRow={currentRow} setCurrentRow={setCurrentRow} lockedRows={lockedRows} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} placeAt={placeAt} addRow={addRow} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} parameters={parameters} materials={materials} camera={camera} setCamera={setCamera} />
         )}
       </div>
     </div>
@@ -601,8 +608,8 @@ function BrickMascot({ valid }: { valid: boolean }) {
   return <div className="relative h-[62px] w-[72px] shrink-0"><div className="relative mt-3 h-[40px] w-16 rounded-[14px] border-2 border-[#3D2B1F] bg-[#E9854A]"><div className="absolute left-0 right-0 top-[18px] h-[3px] bg-[#F4D9B7]" /><div className="absolute left-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" /><div className="absolute right-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" /><div className={`absolute left-[25px] top-[26px] h-2 w-3.5 rounded-full border-[#3D2B1F] ${valid ? "border-b-2" : "border-t-2"}`} /></div><div className={`absolute right-0 top-4 text-2xl font-black ${valid ? "-rotate-12" : "rotate-12"}`}>{valid ? "👍" : "!"}</div></div>;
 }
 
-function BuilderScreen(props: { t: (key: TranslationKey) => string; rows: Record<number, PlacedBrick[]>; rowCount: number; currentRow: number; setCurrentRow: (row: number) => void; lockedRows: number[]; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; placeAt: (x: number, y: number) => void; addRow: () => void; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void; parameters: Parameters; materials: MaterialsEstimate; camera: CameraState; setCamera: React.Dispatch<React.SetStateAction<CameraState>> }) {
-  const { t, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool, orientation, setOrientation, viewMode, setViewMode, placeAt, addRow, copyPreviousRow, clearCurrentRow, lockRow, parameters, materials, camera, setCamera } = props;
+function BuilderScreen(props: { t: (key: TranslationKey) => string; rows: Record<number, PlacedBrick[]>; rowCount: number; currentRow: number; setCurrentRow: (row: number) => void; lockedRows: number[]; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; placeAt: (x: number, y: number) => void; addRow: () => void; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void; unlockRow: () => void; parameters: Parameters; materials: MaterialsEstimate; camera: CameraState; setCamera: React.Dispatch<React.SetStateAction<CameraState>> }) {
+  const { t, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool, orientation, setOrientation, viewMode, setViewMode, placeAt, addRow, copyPreviousRow, clearCurrentRow, lockRow, unlockRow, parameters, materials, camera, setCamera } = props;
   const currentBricks = rows[currentRow] ?? [];
   const visibleBricks = Object.values(rows).flat().filter((brick) => brick.row <= currentRow);
   return (
@@ -615,7 +622,7 @@ function BuilderScreen(props: { t: (key: TranslationKey) => string; rows: Record
       <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10">
         {viewMode === "2d" ? <PlanGrid bricks={currentBricks} activeTool={activeTool} orientation={orientation} placeAt={placeAt} t={t} /> : <ThreeStack bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} />}
       </div>
-      <MobileActionBar t={t} currentRow={currentRow} lockedRows={lockedRows} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} />
+      <MobileActionBar t={t} currentRow={currentRow} lockedRows={lockedRows} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} />
       <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-3"><div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div><SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} /><MaterialsSummary materials={materials} t={t} /></div>
     </main>
   );
@@ -779,8 +786,10 @@ function PlacementCells({ currentRow, placeAt }: { currentRow: number; placeAt: 
   );
 }
 
-function MobileActionBar({ t, currentRow, lockedRows, copyPreviousRow, clearCurrentRow, lockRow }: { t: (key: TranslationKey) => string; currentRow: number; lockedRows: number[]; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void }) {
-  return <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#3D2B1F]/10 bg-[#FFF7E8]/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur"><div className="mx-auto grid max-w-[430px] grid-cols-3 gap-2"><button onClick={copyPreviousRow} className="min-h-12 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] px-2 text-xs font-black">{t("copyPrev")}</button><button onClick={clearCurrentRow} className="min-h-12 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] px-2 text-xs font-black">{t("clearRow")}</button><button onClick={lockRow} className={`min-h-12 rounded-[18px] px-2 text-xs font-black text-[#F5E6C8] ${lockedRows.includes(currentRow) ? "bg-[#5F7E4D]" : "bg-[#C1440E]"}`}>{lockedRows.includes(currentRow) ? t("rowCompleted") : t("completeRow")}</button></div></div>;
+function MobileActionBar({ t, currentRow, lockedRows, copyPreviousRow, clearCurrentRow, lockRow, unlockRow }: { t: (key: TranslationKey) => string; currentRow: number; lockedRows: number[]; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void; unlockRow: () => void }) {
+  const isLocked = lockedRows.includes(currentRow);
+
+  return <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#3D2B1F]/10 bg-[#FFF7E8]/95 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 backdrop-blur"><div className="mx-auto grid max-w-[430px] grid-cols-3 gap-2"><button onClick={copyPreviousRow} disabled={isLocked} className="min-h-12 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] px-2 text-xs font-black disabled:opacity-45">{t("copyPrev")}</button><button onClick={clearCurrentRow} disabled={isLocked} className="min-h-12 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] px-2 text-xs font-black disabled:opacity-45">{t("clearRow")}</button><button onClick={isLocked ? unlockRow : lockRow} className={`min-h-12 rounded-[18px] px-2 text-xs font-black text-[#F5E6C8] ${isLocked ? "bg-[#5F7E4D]" : "bg-[#C1440E]"}`}>{isLocked ? t("unlockRow") : t("completeRow")}</button></div></div>;
 }
 
 function SideSilhouette({ parameters, lockedRows, t }: { parameters: Parameters; lockedRows: number[]; t: (key: TranslationKey) => string }) {

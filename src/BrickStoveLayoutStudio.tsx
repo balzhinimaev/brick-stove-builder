@@ -247,20 +247,27 @@ type BrickKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout";
 type ToolKind = BrickKind | "eraser";
 type Orientation = "h" | "v";
 type Parameters = { foundationWidth: number; foundationLength: number; foundationThickness: number; roomHeight: number };
+type GridSpec = { cols: number; rows: number; widthCm: number; lengthCm: number };
 type PlacedBrick = { id: string; x: number; y: number; row: number; kind: BrickKind; orientation: Orientation };
 type MaterialsEstimate = { regularBricks: number; cutBricks: number; firebricks: number; mortarM3: number; concreteVolumeM3: number; total: number };
 type CameraState = { zoom: number; angle: number; offsetX: number; offsetY: number };
 
 const LOCALES: Locale[] = ["ru", "en", "lt"];
-const GRID_COLS = 8;
-const GRID_ROWS = 6;
 const INITIAL_ROWS = 8;
 const CELL_CM = 12.5;
+const MIN_GRID_COLS = 4;
+const MIN_GRID_ROWS = 4;
 const BRICK_LAYER_HEIGHT = 0.34;
 const BRICK_GAP = 0.035;
 const TOOLS: ToolKind[] = ["standard", "cut", "firebrick", "vent", "cleanout", "eraser"];
 const DEFAULT_PARAMETERS: Parameters = { foundationWidth: 120, foundationLength: 160, foundationThickness: 25, roomHeight: 260 };
 const DEFAULT_CAMERA: CameraState = { zoom: 1, angle: 0, offsetX: 0, offsetY: 0 };
+
+function gridFromParameters(parameters: Parameters): GridSpec {
+  const cols = Math.max(MIN_GRID_COLS, Math.round(parameters.foundationWidth / CELL_CM));
+  const rows = Math.max(MIN_GRID_ROWS, Math.round(parameters.foundationLength / CELL_CM));
+  return { cols, rows, widthCm: parameters.foundationWidth, lengthCm: parameters.foundationLength };
+}
 
 function useI18n(locale: Locale) {
   return (key: TranslationKey): string => translations[locale][key] ?? translations.ru[key];
@@ -325,8 +332,8 @@ function getFootprint(brick: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation
   return cells;
 }
 
-function isInsideGrid(brick: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">) {
-  return getFootprint(brick).every((cell) => cell.x >= 0 && cell.x < GRID_COLS && cell.y >= 0 && cell.y < GRID_ROWS);
+function isInsideGrid(brick: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">, grid: GridSpec) {
+  return getFootprint(brick).every((cell) => cell.x >= 0 && cell.x < grid.cols && cell.y >= 0 && cell.y < grid.rows);
 }
 
 function overlaps(a: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">, b: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">) {
@@ -335,9 +342,15 @@ function overlaps(a: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">, b: P
   return aCells.some((aCell) => bCells.some((bCell) => aCell.x === bCell.x && aCell.y === bCell.y));
 }
 
-function placeBrickInRow(rowBricks: PlacedBrick[], draft: PlacedBrick) {
-  if (!isInsideGrid(draft)) return rowBricks;
+function placeBrickInRow(rowBricks: PlacedBrick[], draft: PlacedBrick, grid: GridSpec) {
+  if (!isInsideGrid(draft, grid)) return rowBricks;
   return [...rowBricks.filter((brick) => !overlaps(brick, draft)), draft];
+}
+
+function pruneRowsToGrid(rows: Record<number, PlacedBrick[]>, grid: GridSpec) {
+  return Object.fromEntries(
+    Object.entries(rows).map(([row, bricks]) => [row, bricks.filter((brick) => isInsideGrid(brick, grid))])
+  ) as Record<number, PlacedBrick[]>;
 }
 
 function removeBrickAt(rowBricks: PlacedBrick[], x: number, y: number) {
@@ -387,13 +400,13 @@ function makeDemoRows(): Record<number, PlacedBrick[]> {
   };
 }
 
-function cellToWorld(x: number, z: number) {
-  return { x: x - GRID_COLS / 2, z: z - GRID_ROWS / 2 };
+function cellToWorld(x: number, z: number, grid: GridSpec) {
+  return { x: x - grid.cols / 2, z: z - grid.rows / 2 };
 }
 
-function brickWorldGeometry(brick: Pick<PlacedBrick, "x" | "y" | "row" | "kind" | "orientation">) {
+function brickWorldGeometry(brick: Pick<PlacedBrick, "x" | "y" | "row" | "kind" | "orientation">, grid: GridSpec) {
   const size = brickSizeFor(brick.kind, brick.orientation);
-  const center = cellToWorld(brick.x + size.w / 2, brick.y + size.h / 2);
+  const center = cellToWorld(brick.x + size.w / 2, brick.y + size.h / 2, grid);
   const y = (brick.row - 0.5) * BRICK_LAYER_HEIGHT;
   return {
     position: [center.x, y, center.z] as [number, number, number],
@@ -402,18 +415,19 @@ function brickWorldGeometry(brick: Pick<PlacedBrick, "x" | "y" | "row" | "kind" 
 }
 
 function runSelfTests() {
+  const grid = gridFromParameters(DEFAULT_PARAMETERS);
   console.assert(brickSizeFor("standard", "h").w === 2, "horizontal standard brick should occupy two cells");
   console.assert(brickSizeFor("standard", "v").h === 2, "vertical standard brick should occupy two cells");
-  console.assert(isInsideGrid({ x: 6, y: 5, kind: "standard", orientation: "h" }) === true, "x=6 horizontal fits grid");
-  console.assert(isInsideGrid({ x: 7, y: 5, kind: "standard", orientation: "h" }) === false, "x=7 horizontal overflows grid");
+  console.assert(grid.cols === 10 && grid.rows === 13, "default parameters should create a 120×160 cm working grid");
+  console.assert(isInsideGrid({ x: grid.cols - 2, y: grid.rows - 1, kind: "standard", orientation: "h" }, grid) === true, "last horizontal brick should fit grid");
+  console.assert(isInsideGrid({ x: grid.cols - 1, y: grid.rows - 1, kind: "standard", orientation: "h" }, grid) === false, "overflowing horizontal brick should not fit grid");
   console.assert(overlaps({ x: 1, y: 1, kind: "standard", orientation: "h" }, { x: 2, y: 1, kind: "standard", orientation: "v" }) === true, "overlap detection should catch shared cells");
   console.assert(overlaps({ x: 0, y: 0, kind: "cut", orientation: "h" }, { x: 1, y: 0, kind: "standard", orientation: "h" }) === false, "adjacent bricks should not overlap");
-  console.assert(placeBrickInRow([], { id: "a", row: 1, x: 1, y: 1, kind: "standard", orientation: "h" }).length === 1, "valid placement should add a brick");
+  console.assert(placeBrickInRow([], { id: "a", row: 1, x: 1, y: 1, kind: "standard", orientation: "h" }, grid).length === 1, "valid placement should add a brick");
   console.assert(removeBrickAt([{ id: "a", row: 1, x: 1, y: 1, kind: "standard", orientation: "h" }], 2, 1).length === 0, "eraser should remove brick covering tapped cell");
-  console.assert(CELL_CM * GRID_COLS === 100, "8 grid cells should equal 100 cm at 12.5 cm scale");
   console.assert(/^#[0-9a-f]{6}$/i.test(shadeColor("#C1440E", -10)), "shadeColor should return a valid hex color");
-  const g = brickWorldGeometry({ x: 1, y: 1, row: 2, kind: "standard", orientation: "h" });
-  console.assert(g.position[0] === -2 && g.position[2] === -1.5, "3D brick center should align to the same grid coordinates as its footprint");
+  const g = brickWorldGeometry({ x: 1, y: 1, row: 2, kind: "standard", orientation: "h" }, grid);
+  console.assert(g.position[0] === -3 && g.position[2] === -4.5, "3D brick center should align to the same grid coordinates as its footprint");
   console.assert(g.scale[0] > 1.9 && g.scale[2] > 0.9, "3D standard brick should be rendered as a 2x1 cell box with a small mortar gap");
 }
 runSelfTests();
@@ -432,12 +446,18 @@ export default function BrickStoveLayoutStudio() {
   const [camera, setCamera] = useState<CameraState>(DEFAULT_CAMERA);
   const idCounter = useRef(0);
   const t = useI18n(locale);
+  const grid = useMemo(() => gridFromParameters(parameters), [parameters]);
   const allBricks = useMemo(() => Object.values(rows).flat(), [rows]);
   const materials = useMemo(() => estimateMaterials(allBricks, parameters), [allBricks, parameters]);
 
   const updateParameter = (key: keyof Parameters, value: number) => {
     const bounds = parameterBounds(key);
-    setParameters((current) => ({ ...current, [key]: clamp(Math.round(value), bounds.min, bounds.max) }));
+    const nextValue = clamp(Math.round(value), bounds.min, bounds.max);
+    setParameters((current) => {
+      const next = { ...current, [key]: nextValue };
+      setRows((currentRows) => pruneRowsToGrid(currentRows, gridFromParameters(next)));
+      return next;
+    });
   };
 
   const reset = () => {
@@ -459,7 +479,7 @@ export default function BrickStoveLayoutStudio() {
       const rowBricks = current[currentRow] ?? [];
       if (activeTool === "eraser") return { ...current, [currentRow]: removeBrickAt(rowBricks, x, y) };
       const draft: PlacedBrick = { id: `r${currentRow}-${idCounter.current++}-${x}-${y}`, row: currentRow, x, y, kind: activeTool, orientation };
-      return { ...current, [currentRow]: placeBrickInRow(rowBricks, draft) };
+      return { ...current, [currentRow]: placeBrickInRow(rowBricks, draft, grid) };
     });
   };
 
@@ -497,7 +517,7 @@ export default function BrickStoveLayoutStudio() {
         {screen === "parameters" ? (
           <ParametersScreen parameters={parameters} updateParameter={updateParameter} t={t} onContinue={() => setScreen("builder")} lockedRows={lockedRows} />
         ) : (
-          <BuilderScreen t={t} rows={rows} rowCount={rowCount} currentRow={currentRow} setCurrentRow={setCurrentRow} lockedRows={lockedRows} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} placeAt={placeAt} addRow={addRow} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} parameters={parameters} materials={materials} camera={camera} setCamera={setCamera} />
+          <BuilderScreen t={t} grid={grid} rows={rows} rowCount={rowCount} currentRow={currentRow} setCurrentRow={setCurrentRow} lockedRows={lockedRows} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} placeAt={placeAt} addRow={addRow} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} parameters={parameters} materials={materials} camera={camera} setCamera={setCamera} />
         )}
       </div>
     </div>
@@ -608,19 +628,19 @@ function BrickMascot({ valid }: { valid: boolean }) {
   return <div className="relative h-[62px] w-[72px] shrink-0"><div className="relative mt-3 h-[40px] w-16 rounded-[14px] border-2 border-[#3D2B1F] bg-[#E9854A]"><div className="absolute left-0 right-0 top-[18px] h-[3px] bg-[#F4D9B7]" /><div className="absolute left-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" /><div className="absolute right-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" /><div className={`absolute left-[25px] top-[26px] h-2 w-3.5 rounded-full border-[#3D2B1F] ${valid ? "border-b-2" : "border-t-2"}`} /></div><div className={`absolute right-0 top-4 text-2xl font-black ${valid ? "-rotate-12" : "rotate-12"}`}>{valid ? "👍" : "!"}</div></div>;
 }
 
-function BuilderScreen(props: { t: (key: TranslationKey) => string; rows: Record<number, PlacedBrick[]>; rowCount: number; currentRow: number; setCurrentRow: (row: number) => void; lockedRows: number[]; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; placeAt: (x: number, y: number) => void; addRow: () => void; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void; unlockRow: () => void; parameters: Parameters; materials: MaterialsEstimate; camera: CameraState; setCamera: React.Dispatch<React.SetStateAction<CameraState>> }) {
-  const { t, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool, orientation, setOrientation, viewMode, setViewMode, placeAt, addRow, copyPreviousRow, clearCurrentRow, lockRow, unlockRow, parameters, materials, camera, setCamera } = props;
+function BuilderScreen(props: { t: (key: TranslationKey) => string; grid: GridSpec; rows: Record<number, PlacedBrick[]>; rowCount: number; currentRow: number; setCurrentRow: (row: number) => void; lockedRows: number[]; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; placeAt: (x: number, y: number) => void; addRow: () => void; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void; unlockRow: () => void; parameters: Parameters; materials: MaterialsEstimate; camera: CameraState; setCamera: React.Dispatch<React.SetStateAction<CameraState>> }) {
+  const { t, grid, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool, orientation, setOrientation, viewMode, setViewMode, placeAt, addRow, copyPreviousRow, clearCurrentRow, lockRow, unlockRow, parameters, materials, camera, setCamera } = props;
   const currentBricks = rows[currentRow] ?? [];
-  const visibleBricks = Object.values(rows).flat().filter((brick) => brick.row <= currentRow);
+  const visibleBricks = Object.values(rows).flat().filter((brick) => brick.row <= currentRow && isInsideGrid(brick, grid));
   return (
     <main className="mt-4 space-y-3">
       <SectionTitle title={t("editorTitle")} subtitle={t("editorSubtitle")} />
-      <div className="flex flex-wrap gap-2"><Pill>{t("currentRow")}: {currentRow}</Pill><Pill>{t("totalPlaced")}: {currentBricks.length}</Pill><Pill>{t("true3d")}</Pill><Pill>{t("alignedGrid")}</Pill></div>
+      <div className="flex flex-wrap gap-2"><Pill>{t("currentRow")}: {currentRow}</Pill><Pill>{t("totalPlaced")}: {currentBricks.length}</Pill><Pill>{t("true3d")}</Pill><Pill>{grid.widthCm}×{grid.lengthCm} см</Pill></div>
       <MobileRowRail rowCount={rowCount} currentRow={currentRow} lockedRows={lockedRows} setCurrentRow={setCurrentRow} t={t} addRow={addRow} />
       <Toolbox t={t} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} />
       {viewMode === "3d" && <CameraControls t={t} camera={camera} setCamera={setCamera} />}
       <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10">
-        {viewMode === "2d" ? <PlanGrid bricks={currentBricks} activeTool={activeTool} orientation={orientation} placeAt={placeAt} t={t} /> : <ThreeStack bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} />}
+        {viewMode === "2d" ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} placeAt={placeAt} t={t} /> : <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} />}
       </div>
       <MobileActionBar t={t} currentRow={currentRow} lockedRows={lockedRows} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} />
       <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-3"><div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div><SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} /><MaterialsSummary materials={materials} t={t} /></div>
@@ -681,24 +701,24 @@ function CameraButton({ children, onClick }: { children: React.ReactNode; onClic
   return <button onClick={onClick} className="min-h-11 rounded-[16px] border border-[#3D2B1F]/10 bg-[#F5E6C8] px-2 text-sm font-black text-[#3D2B1F]">{children}</button>;
 }
 
-function PlanGrid({ bricks, activeTool, orientation, placeAt, t }: { bricks: PlacedBrick[]; activeTool: ToolKind; orientation: Orientation; placeAt: (x: number, y: number) => void; t: (key: TranslationKey) => string }) {
+function PlanGrid({ grid, bricks, activeTool, orientation, placeAt, t }: { grid: GridSpec; bricks: PlacedBrick[]; activeTool: ToolKind; orientation: Orientation; placeAt: (x: number, y: number) => void; t: (key: TranslationKey) => string }) {
   const cell = 34;
   const pad = 28;
-  const width = GRID_COLS * cell + pad * 2;
-  const height = GRID_ROWS * cell + pad * 2 + 26;
+  const width = grid.cols * cell + pad * 2;
+  const height = grid.rows * cell + pad * 2 + 26;
   const ghost = activeTool === "eraser" ? null : brickSizeFor(activeTool, orientation);
   return (
     <div className="w-full overflow-x-auto rounded-[22px] bg-[#FFF7E8]">
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label={t("ariaPlan")}>
         <rect x="1" y="1" width={width - 2} height={height - 2} rx="22" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="2" opacity="0.28" />
         <text x="16" y="22" fontSize="12" fontWeight="900" fill={COLORS.charcoal}>{t("gridLabel")}</text>
-        {Array.from({ length: GRID_COLS + 1 }).map((_, x) => <line key={`vx-${x}`} x1={pad + x * cell} y1={pad + 26} x2={pad + x * cell} y2={pad + 26 + GRID_ROWS * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
-        {Array.from({ length: GRID_ROWS + 1 }).map((_, y) => <line key={`hy-${y}`} x1={pad} y1={pad + 26 + y * cell} x2={pad + GRID_COLS * cell} y2={pad + 26 + y * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
-        {Array.from({ length: GRID_COLS + 1 }).map((_, x) => <text key={`xl-${x}`} x={pad + x * cell - 7} y={pad + 18} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{x * CELL_CM}</text>)}
-        {Array.from({ length: GRID_ROWS + 1 }).map((_, y) => <text key={`yl-${y}`} x={5} y={pad + 30 + y * cell} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{y * CELL_CM}см</text>)}
+        {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={`vx-${x}`} x1={pad + x * cell} y1={pad + 26} x2={pad + x * cell} y2={pad + 26 + grid.rows * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
+        {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={`hy-${y}`} x1={pad} y1={pad + 26 + y * cell} x2={pad + grid.cols * cell} y2={pad + 26 + y * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
+        {Array.from({ length: grid.cols + 1 }).map((_, x) => <text key={`xl-${x}`} x={pad + x * cell - 7} y={pad + 18} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{Math.round((x * grid.widthCm) / grid.cols)}</text>)}
+        {Array.from({ length: grid.rows + 1 }).map((_, y) => <text key={`yl-${y}`} x={5} y={pad + 30 + y * cell} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{Math.round((y * grid.lengthCm) / grid.rows)}см</text>)}
         {bricks.map((brick) => <Brick2D key={brick.id} brick={brick} cell={cell} pad={pad} />)}
         {ghost && <rect x={pad + 0.2 * cell} y={pad + 26 + 0.2 * cell} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.28" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
-        {Array.from({ length: GRID_ROWS }).flatMap((_, y) => Array.from({ length: GRID_COLS }).map((__, x) => <rect key={`tap-${x}-${y}`} x={pad + x * cell} y={pad + 26 + y * cell} width={cell} height={cell} fill="transparent" className="cursor-pointer" onClick={() => placeAt(x, y)} />))}
+        {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => <rect key={`tap-${x}-${y}`} x={pad + x * cell} y={pad + 26 + y * cell} width={cell} height={cell} fill="transparent" className="cursor-pointer" onClick={() => placeAt(x, y)} />))}
       </svg>
     </div>
   );
@@ -714,56 +734,56 @@ function Brick2D({ brick, cell, pad }: { brick: PlacedBrick; cell: number; pad: 
   return <g><rect x={x + 3} y={y + 4} width={w} height={h} rx="10" fill="rgba(61,43,31,0.14)" /><rect x={x} y={y} width={w} height={h} rx="10" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" /><path d={`M${x + 7} ${y + h * 0.45} C${x + w * 0.35} ${y + h * 0.54}, ${x + w * 0.7} ${y + h * 0.35}, ${x + w - 7} ${y + h * 0.48}`} stroke={COLORS.mortar} strokeWidth="2" fill="none" opacity="0.7" />{brick.kind === "vent" && <text x={x + w / 2} y={y + h / 2 + 5} textAnchor="middle" fontSize="16" fontWeight="900" fill={COLORS.cream}>V</text>}{brick.kind === "cleanout" && <text x={x + w / 2} y={y + h / 2 + 5} textAnchor="middle" fontSize="16" fontWeight="900" fill={COLORS.cream}>D</text>}</g>;
 }
 
-function ThreeStack({ bricks, currentRow, placeAt, t, camera }: { bricks: PlacedBrick[]; currentRow: number; placeAt: (x: number, y: number) => void; t: (key: TranslationKey) => string; camera: CameraState }) {
+function ThreeStack({ grid, bricks, currentRow, placeAt, t, camera }: { grid: GridSpec; bricks: PlacedBrick[]; currentRow: number; placeAt: (x: number, y: number) => void; t: (key: TranslationKey) => string; camera: CameraState }) {
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.006;
   return (
     <div className="relative h-[390px] overflow-hidden rounded-[22px] bg-[#FFF7E8]" aria-label={t("aria3d")}>
-      <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-2xl border border-[#3D2B1F]/10 bg-[#F5E6C8]/90 px-3 py-2 text-xs font-black shadow-sm">{t("view3d")} · {GRID_COLS * CELL_CM}×{GRID_ROWS * CELL_CM} см</div>
+      <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-2xl border border-[#3D2B1F]/10 bg-[#F5E6C8]/90 px-3 py-2 text-xs font-black shadow-sm">{t("view3d")} · {grid.widthCm}×{grid.lengthCm} см</div>
       <Canvas shadows dpr={[1, 2]} gl={{ antialias: true }}>
         <color attach="background" args={[COLORS.skyCream]} />
         <ambientLight intensity={1.15} />
         <directionalLight position={[4, 8, 5]} intensity={1.2} castShadow />
-        <OrthographicCamera makeDefault position={[6.8, 6.2, 7.2]} zoom={52 * camera.zoom} />
+        <OrthographicCamera makeDefault position={[Math.max(grid.cols, 6.8), 6.2, Math.max(grid.rows, 7.2)]} zoom={(520 / Math.max(grid.cols, grid.rows, 10)) * camera.zoom} />
         <OrbitControls enableDamping dampingFactor={0.12} enableRotate enableZoom enablePan minZoom={25} maxZoom={120} target={[camera.offsetX, BRICK_LAYER_HEIGHT * currentRow * 0.45, camera.offsetY]} />
         <group rotation={[0, (camera.angle * Math.PI) / 180, 0]} position={[camera.offsetX, 0, camera.offsetY]}>
-          <FoundationSlab />
-          <ThreeGrid gridY={gridY} />
-          <DimensionLabels gridY={gridY} />
-          {sorted.map((brick) => <ThreeBrick key={brick.id} brick={brick} currentRow={currentRow} />)}
-          <PlacementCells currentRow={currentRow} placeAt={placeAt} />
+          <FoundationSlab grid={grid} />
+          <ThreeGrid grid={grid} gridY={gridY} />
+          <DimensionLabels grid={grid} gridY={gridY} />
+          {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} />)}
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} />
         </group>
       </Canvas>
     </div>
   );
 }
 
-function FoundationSlab() {
-  return <mesh position={[0, -0.08, 0]} receiveShadow><boxGeometry args={[GRID_COLS + 0.4, 0.12, GRID_ROWS + 0.4]} /><meshStandardMaterial color={COLORS.foundation} roughness={0.88} /></mesh>;
+function FoundationSlab({ grid }: { grid: GridSpec }) {
+  return <mesh position={[0, -0.08, 0]} receiveShadow><boxGeometry args={[grid.cols + 0.4, 0.12, grid.rows + 0.4]} /><meshStandardMaterial color={COLORS.foundation} roughness={0.88} /></mesh>;
 }
 
-function ThreeGrid({ gridY }: { gridY: number }) {
+function ThreeGrid({ grid, gridY }: { grid: GridSpec; gridY: number }) {
   return (
     <group>
-      {Array.from({ length: GRID_COLS + 1 }).map((_, x) => { const world = cellToWorld(x, 0); return <mesh key={`grid-x-${x}`} position={[world.x, gridY, 0]}><boxGeometry args={[0.012, 0.012, GRID_ROWS]} /><meshBasicMaterial color={COLORS.sageDark} transparent opacity={0.45} /></mesh>; })}
-      {Array.from({ length: GRID_ROWS + 1 }).map((_, z) => { const world = cellToWorld(0, z); return <mesh key={`grid-z-${z}`} position={[0, gridY, world.z]}><boxGeometry args={[GRID_COLS, 0.012, 0.012]} /><meshBasicMaterial color={COLORS.sageDark} transparent opacity={0.45} /></mesh>; })}
+      {Array.from({ length: grid.cols + 1 }).map((_, x) => { const world = cellToWorld(x, 0, grid); return <mesh key={`grid-x-${x}`} position={[world.x, gridY, 0]}><boxGeometry args={[0.012, 0.012, grid.rows]} /><meshBasicMaterial color={COLORS.sageDark} transparent opacity={0.45} /></mesh>; })}
+      {Array.from({ length: grid.rows + 1 }).map((_, z) => { const world = cellToWorld(0, z, grid); return <mesh key={`grid-z-${z}`} position={[0, gridY, world.z]}><boxGeometry args={[grid.cols, 0.012, 0.012]} /><meshBasicMaterial color={COLORS.sageDark} transparent opacity={0.45} /></mesh>; })}
     </group>
   );
 }
 
-function DimensionLabels({ gridY }: { gridY: number }) {
+function DimensionLabels({ grid, gridY }: { grid: GridSpec; gridY: number }) {
   return (
     <group>
-      <Text position={[0, gridY + 0.04, GRID_ROWS / 2 + 0.48]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.22} color={COLORS.charcoal} anchorX="center" anchorY="middle">{GRID_COLS * CELL_CM} см</Text>
-      <Text position={[-GRID_COLS / 2 - 0.5, gridY + 0.04, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.22} color={COLORS.charcoal} anchorX="center" anchorY="middle">{GRID_ROWS * CELL_CM} см</Text>
-      {Array.from({ length: GRID_COLS + 1 }).map((_, x) => { const world = cellToWorld(x, GRID_ROWS); return <Text key={`x-label-${x}`} position={[world.x, gridY + 0.04, world.z + 0.18]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.14} color={COLORS.sageDark}>{x * CELL_CM}</Text>; })}
-      {Array.from({ length: GRID_ROWS + 1 }).map((_, z) => { const world = cellToWorld(0, z); return <Text key={`z-label-${z}`} position={[-GRID_COLS / 2 - 0.22, gridY + 0.04, world.z]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.14} color={COLORS.sageDark}>{z * CELL_CM}</Text>; })}
+      <Text position={[0, gridY + 0.04, grid.rows / 2 + 0.48]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.22} color={COLORS.charcoal} anchorX="center" anchorY="middle">{grid.widthCm} см</Text>
+      <Text position={[-grid.cols / 2 - 0.5, gridY + 0.04, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.22} color={COLORS.charcoal} anchorX="center" anchorY="middle">{grid.lengthCm} см</Text>
+      {Array.from({ length: grid.cols + 1 }).map((_, x) => { const world = cellToWorld(x, grid.rows, grid); return <Text key={`x-label-${x}`} position={[world.x, gridY + 0.04, world.z + 0.18]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.14} color={COLORS.sageDark}>{Math.round((x * grid.widthCm) / grid.cols)}</Text>; })}
+      {Array.from({ length: grid.rows + 1 }).map((_, z) => { const world = cellToWorld(0, z, grid); return <Text key={`z-label-${z}`} position={[-grid.cols / 2 - 0.22, gridY + 0.04, world.z]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.14} color={COLORS.sageDark}>{Math.round((z * grid.lengthCm) / grid.rows)}</Text>; })}
     </group>
   );
 }
 
-function ThreeBrick({ brick, currentRow }: { brick: PlacedBrick; currentRow: number }) {
-  const geometry = brickWorldGeometry(brick);
+function ThreeBrick({ grid, brick, currentRow }: { grid: GridSpec; brick: PlacedBrick; currentRow: number }) {
+  const geometry = brickWorldGeometry(brick, grid);
   const color = getToolColor(brick.kind);
   const isCurrent = brick.row === currentRow;
   const label = brick.kind === "vent" ? "V" : brick.kind === "cleanout" ? "D" : "";
@@ -777,11 +797,11 @@ function ThreeBrick({ brick, currentRow }: { brick: PlacedBrick; currentRow: num
   );
 }
 
-function PlacementCells({ currentRow, placeAt }: { currentRow: number; placeAt: (x: number, y: number) => void }) {
+function PlacementCells({ grid, currentRow, placeAt }: { grid: GridSpec; currentRow: number; placeAt: (x: number, y: number) => void }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
   return (
     <group>
-      {Array.from({ length: GRID_ROWS }).flatMap((_, y) => Array.from({ length: GRID_COLS }).map((__, x) => { const world = cellToWorld(x + 0.5, y + 0.5); return <mesh key={`cell-${x}-${y}`} position={[world.x, gridY, world.z]} rotation={[-Math.PI / 2, 0, 0]} onClick={(event) => { event.stopPropagation(); placeAt(x, y); }}><planeGeometry args={[0.96, 0.96]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>; }))}
+      {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => { const world = cellToWorld(x + 0.5, y + 0.5, grid); return <mesh key={`cell-${x}-${y}`} position={[world.x, gridY, world.z]} rotation={[-Math.PI / 2, 0, 0]} onClick={(event) => { event.stopPropagation(); placeAt(x, y); }}><planeGeometry args={[0.96, 0.96]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>; }))}
     </group>
   );
 }

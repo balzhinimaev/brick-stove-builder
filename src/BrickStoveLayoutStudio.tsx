@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera, Text } from "@react-three/drei";
 
@@ -96,6 +96,9 @@ const translations = {
     projectsTitle: "Готовые проекты",
     projectsSubtitle: "Выберите стартовую порядовку. Это демонстрационные схемы для редактора — перед реальной кладкой нужна проверка печником.",
     loadProject: "Открыть проект",
+    saveProject: "Сохранить проект",
+    saveProjectPrompt: "Название проекта",
+    savedProjectSubtitle: "Сохранённая пользовательская порядовка",
     projectRows: "рядов",
     projectFootprint: "основание",
     projectDemoNotice: "Демо-схема: геометрия и каналы согласованы для теста интерфейса, но не являются строительной инструкцией."
@@ -175,6 +178,9 @@ const translations = {
     projectsTitle: "Ready projects",
     projectsSubtitle: "Pick a starter stove order. These are demo layouts for the editor — real masonry needs professional validation.",
     loadProject: "Open project",
+    saveProject: "Save project",
+    saveProjectPrompt: "Project name",
+    savedProjectSubtitle: "Saved custom stove order",
     projectRows: "rows",
     projectFootprint: "footprint",
     projectDemoNotice: "Demo layout: geometry and channels are arranged for UI testing, not as construction instructions."
@@ -254,6 +260,9 @@ const translations = {
     projectsTitle: "Paruošti projektai",
     projectsSubtitle: "Pasirinkite pradinį krosnies maketą. Tai demonstracinės schemos redaktoriui — realiai statybai būtina meistro patikra.",
     loadProject: "Atidaryti projektą",
+    saveProject: "Išsaugoti projektą",
+    saveProjectPrompt: "Projekto pavadinimas",
+    savedProjectSubtitle: "Išsaugotas vartotojo eiliavimo projektas",
     projectRows: "eilės",
     projectFootprint: "pagrindas",
     projectDemoNotice: "Demo maketas: geometrija ir kanalai sudėti sąsajos testui, ne kaip statybos instrukcija."
@@ -564,6 +573,31 @@ function cloneRows(rows: Record<number, PlacedBrick[]>): Record<number, PlacedBr
   ) as Record<number, PlacedBrick[]>;
 }
 
+function apiBaseUrl() {
+  const configured = import.meta.env.VITE_API_BASE as string | undefined;
+  if (configured) return configured.replace(/\/$/, "");
+  if (window.location.pathname.startsWith("/brick-stove-builder")) return "/brick-stove-builder/api";
+  return "/api";
+}
+
+async function fetchSavedProjects(): Promise<ReadyProject[]> {
+  const response = await fetch(`${apiBaseUrl()}/projects`);
+  if (!response.ok) return [];
+  const data = await response.json();
+  return Array.isArray(data.projects) ? data.projects : [];
+}
+
+async function createSavedProject(project: ReadyProject): Promise<ReadyProject> {
+  const response = await fetch(`${apiBaseUrl()}/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(project)
+  });
+  if (!response.ok) throw new Error("Failed to save project");
+  const data = await response.json();
+  return data.project;
+}
+
 export default function BrickStoveLayoutStudio() {
   const [locale, setLocale] = useState<Locale>("ru");
   const [screen, setScreen] = useState<Screen>("builder");
@@ -574,6 +608,7 @@ export default function BrickStoveLayoutStudio() {
   const [currentRow, setCurrentRow] = useState(2);
   const [lockedRows, setLockedRows] = useState<number[]>([1]);
   const [rows, setRows] = useState<Record<number, PlacedBrick[]>>(makeDemoRows());
+  const [savedProjects, setSavedProjects] = useState<ReadyProject[]>([]);
   const [parameters, setParameters] = useState<Parameters>(DEFAULT_PARAMETERS);
   const [camera, setCamera] = useState<CameraState>(DEFAULT_CAMERA);
   const idCounter = useRef(0);
@@ -581,6 +616,15 @@ export default function BrickStoveLayoutStudio() {
   const grid = useMemo(() => gridFromParameters(parameters), [parameters]);
   const allBricks = useMemo(() => Object.values(rows).flat(), [rows]);
   const materials = useMemo(() => estimateMaterials(allBricks, parameters), [allBricks, parameters]);
+  const allProjects = useMemo(() => [...READY_PROJECTS, ...savedProjects], [savedProjects]);
+
+  useEffect(() => {
+    let active = true;
+    fetchSavedProjects()
+      .then((projects) => { if (active) setSavedProjects(projects); })
+      .catch(() => { if (active) setSavedProjects([]); });
+    return () => { active = false; };
+  }, []);
 
   const updateParameter = (key: keyof Parameters, value: number) => {
     const bounds = parameterBounds(key);
@@ -654,6 +698,30 @@ export default function BrickStoveLayoutStudio() {
     setScreen("builder");
   };
 
+  const saveCurrentProject = async () => {
+    const title = window.prompt(t("saveProjectPrompt"));
+    if (!title?.trim()) return;
+
+    const project: ReadyProject = {
+      id: `custom-${Date.now()}`,
+      title: { ru: title.trim(), en: title.trim(), lt: title.trim() },
+      subtitle: { ru: t("savedProjectSubtitle"), en: t("savedProjectSubtitle"), lt: t("savedProjectSubtitle") },
+      parameters,
+      rowCount,
+      lockedRows,
+      rows: cloneRows(rows),
+      accent: COLORS.brickOrange
+    };
+
+    try {
+      const saved = await createSavedProject(project);
+      setSavedProjects((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
+      setScreen("projects");
+    } catch {
+      window.alert("MongoDB API недоступен: проверь MONGODB_URI и запущенный server.");
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4" style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}>
       <div className="mx-auto w-full max-w-[430px]">
@@ -662,9 +730,9 @@ export default function BrickStoveLayoutStudio() {
         {screen === "parameters" ? (
           <ParametersScreen parameters={parameters} updateParameter={updateParameter} t={t} onContinue={() => setScreen("builder")} lockedRows={lockedRows} />
         ) : screen === "projects" ? (
-          <ProjectsScreen locale={locale} t={t} projects={READY_PROJECTS} onLoad={loadProject} />
+          <ProjectsScreen locale={locale} t={t} projects={allProjects} onLoad={loadProject} />
         ) : (
-          <BuilderScreen t={t} grid={grid} rows={rows} rowCount={rowCount} currentRow={currentRow} setCurrentRow={setCurrentRow} lockedRows={lockedRows} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} placeAt={placeAt} addRow={addRow} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} parameters={parameters} materials={materials} camera={camera} setCamera={setCamera} />
+          <BuilderScreen t={t} grid={grid} rows={rows} rowCount={rowCount} currentRow={currentRow} setCurrentRow={setCurrentRow} lockedRows={lockedRows} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} placeAt={placeAt} addRow={addRow} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} parameters={parameters} materials={materials} camera={camera} setCamera={setCamera} saveCurrentProject={saveCurrentProject} />
         )}
       </div>
     </div>
@@ -857,13 +925,14 @@ function BrickMascot({ valid }: { valid: boolean }) {
   return <div className="relative h-[62px] w-[72px] shrink-0"><div className="relative mt-3 h-[40px] w-16 rounded-[14px] border-2 border-[#3D2B1F] bg-[#E9854A]"><div className="absolute left-0 right-0 top-[18px] h-[3px] bg-[#F4D9B7]" /><div className="absolute left-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" /><div className="absolute right-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" /><div className={`absolute left-[25px] top-[26px] h-2 w-3.5 rounded-full border-[#3D2B1F] ${valid ? "border-b-2" : "border-t-2"}`} /></div><div className={`absolute right-0 top-4 text-2xl font-black ${valid ? "-rotate-12" : "rotate-12"}`}>{valid ? "👍" : "!"}</div></div>;
 }
 
-function BuilderScreen(props: { t: (key: TranslationKey) => string; grid: GridSpec; rows: Record<number, PlacedBrick[]>; rowCount: number; currentRow: number; setCurrentRow: (row: number) => void; lockedRows: number[]; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; placeAt: (x: number, y: number) => void; addRow: () => void; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void; unlockRow: () => void; parameters: Parameters; materials: MaterialsEstimate; camera: CameraState; setCamera: React.Dispatch<React.SetStateAction<CameraState>> }) {
-  const { t, grid, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool, orientation, setOrientation, viewMode, setViewMode, placeAt, addRow, copyPreviousRow, clearCurrentRow, lockRow, unlockRow, parameters, materials, camera, setCamera } = props;
+function BuilderScreen(props: { t: (key: TranslationKey) => string; grid: GridSpec; rows: Record<number, PlacedBrick[]>; rowCount: number; currentRow: number; setCurrentRow: (row: number) => void; lockedRows: number[]; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; placeAt: (x: number, y: number) => void; addRow: () => void; copyPreviousRow: () => void; clearCurrentRow: () => void; lockRow: () => void; unlockRow: () => void; parameters: Parameters; materials: MaterialsEstimate; camera: CameraState; setCamera: React.Dispatch<React.SetStateAction<CameraState>>; saveCurrentProject: () => void }) {
+  const { t, grid, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool, orientation, setOrientation, viewMode, setViewMode, placeAt, addRow, copyPreviousRow, clearCurrentRow, lockRow, unlockRow, parameters, materials, camera, setCamera, saveCurrentProject } = props;
   const currentBricks = rows[currentRow] ?? [];
   const visibleBricks = Object.values(rows).flat().filter((brick) => brick.row <= currentRow && isInsideGrid(brick, grid));
   return (
     <main className="mt-4 space-y-3">
       <SectionTitle title={t("editorTitle")} subtitle={t("editorSubtitle")} />
+      <button onClick={saveCurrentProject} className="min-h-12 w-full rounded-[20px] border-2 border-[#3D2B1F]/10 bg-[#8FAF76] px-4 text-sm font-black text-[#3D2B1F]">{t("saveProject")}</button>
       <div className="flex flex-wrap gap-2"><Pill>{t("currentRow")}: {currentRow}</Pill><Pill>{t("totalPlaced")}: {currentBricks.length}</Pill><Pill>{t("true3d")}</Pill><Pill>{grid.widthCm}×{grid.lengthCm} см</Pill></div>
       <MobileRowRail rowCount={rowCount} currentRow={currentRow} lockedRows={lockedRows} setCurrentRow={setCurrentRow} t={t} addRow={addRow} />
       <Toolbox t={t} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} />

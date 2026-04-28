@@ -9,6 +9,7 @@ Mobile-first React prototype for manually building brick stove row layouts («п
 - Vite
 - Three.js / React Three Fiber / Drei
 - Tailwind CSS
+- Express + Mongoose API for saved projects
 
 ## Run locally
 
@@ -16,6 +17,17 @@ Mobile-first React prototype for manually building brick stove row layouts («п
 npm ci
 npm run dev
 ```
+
+Run the API/server with MongoDB:
+
+```bash
+cp .env.example .env
+# edit MONGODB_URI if needed
+npm run build
+npm run server
+```
+
+The frontend uses `/api` by default locally and `/brick-stove-builder/api` when deployed under `/brick-stove-builder/`.
 
 ## Build
 
@@ -29,6 +41,7 @@ npm run build
 - Parameter screen for foundation and room dimensions
 - Ready project gallery with two demo stove layouts
 - Row-by-row project previews for stove order layouts («порядовки»)
+- MongoDB-backed saved custom projects
 - Manual row-by-row brick placement
 - Tools: standard brick, half brick, firebrick, vent, cleanout door, eraser
 - Horizontal/vertical brick orientation

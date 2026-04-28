@@ -27,6 +27,7 @@ const translations = {
     reset: "Сброс",
     language: "Язык",
     parametersTab: "Параметры",
+    projectsTab: "Проекты",
     builderTab: "Кладка",
     parametersTitle: "Параметры мастерской",
     parametersSubtitle: "Задайте габариты. Они влияют на сетку, высоту и расчёт материалов.",
@@ -91,7 +92,13 @@ const translations = {
     true3d: "Three.js",
     alignedGrid: "ячейка 12.5 см",
     ariaPlan: "План ряда печной кладки",
-    aria3d: "3D порядовка с размерной сеткой"
+    aria3d: "3D порядовка с размерной сеткой",
+    projectsTitle: "Готовые проекты",
+    projectsSubtitle: "Выберите стартовую порядовку. Это демонстрационные схемы для редактора — перед реальной кладкой нужна проверка печником.",
+    loadProject: "Открыть проект",
+    projectRows: "рядов",
+    projectFootprint: "основание",
+    projectDemoNotice: "Демо-схема: геометрия и каналы согласованы для теста интерфейса, но не являются строительной инструкцией."
   },
   en: {
     appTitle: "Brick Stove Order Builder",
@@ -99,6 +106,7 @@ const translations = {
     reset: "Reset",
     language: "Language",
     parametersTab: "Parameters",
+    projectsTab: "Projects",
     builderTab: "Masonry",
     parametersTitle: "Workshop parameters",
     parametersSubtitle: "Set base and room dimensions. They drive grid size, height and material estimates.",
@@ -163,7 +171,13 @@ const translations = {
     true3d: "Three.js",
     alignedGrid: "12.5 cm cell",
     ariaPlan: "Top-down stove masonry row plan",
-    aria3d: "3D brick order layout with centimeter grid"
+    aria3d: "3D brick order layout with centimeter grid",
+    projectsTitle: "Ready projects",
+    projectsSubtitle: "Pick a starter stove order. These are demo layouts for the editor — real masonry needs professional validation.",
+    loadProject: "Open project",
+    projectRows: "rows",
+    projectFootprint: "footprint",
+    projectDemoNotice: "Demo layout: geometry and channels are arranged for UI testing, not as construction instructions."
   },
   lt: {
     appTitle: "Krosnies eiliavimo kūrimas",
@@ -171,6 +185,7 @@ const translations = {
     reset: "Atkurti",
     language: "Kalba",
     parametersTab: "Parametrai",
+    projectsTab: "Projektai",
     builderTab: "Mūras",
     parametersTitle: "Dirbtuvės parametrai",
     parametersSubtitle: "Nustatykite pagrindo ir patalpos matmenis.",
@@ -235,13 +250,19 @@ const translations = {
     true3d: "Three.js",
     alignedGrid: "12.5 cm langelis",
     ariaPlan: "Viršutinis mūro eilės planas",
-    aria3d: "3D eiliavimo maketas su cm tinkleliu"
+    aria3d: "3D eiliavimo maketas su cm tinkleliu",
+    projectsTitle: "Paruošti projektai",
+    projectsSubtitle: "Pasirinkite pradinį krosnies maketą. Tai demonstracinės schemos redaktoriui — realiai statybai būtina meistro patikra.",
+    loadProject: "Atidaryti projektą",
+    projectRows: "eilės",
+    projectFootprint: "pagrindas",
+    projectDemoNotice: "Demo maketas: geometrija ir kanalai sudėti sąsajos testui, ne kaip statybos instrukcija."
   }
 } as const;
 
 type Locale = keyof typeof translations;
 type TranslationKey = keyof typeof translations.ru;
-type Screen = "parameters" | "builder";
+type Screen = "parameters" | "projects" | "builder";
 type ViewMode = "2d" | "3d";
 type BrickKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout";
 type ToolKind = BrickKind | "eraser";
@@ -251,6 +272,7 @@ type GridSpec = { cols: number; rows: number; widthCm: number; lengthCm: number 
 type PlacedBrick = { id: string; x: number; y: number; row: number; kind: BrickKind; orientation: Orientation };
 type MaterialsEstimate = { regularBricks: number; cutBricks: number; firebricks: number; mortarM3: number; concreteVolumeM3: number; total: number };
 type CameraState = { zoom: number; angle: number; offsetX: number; offsetY: number };
+type ReadyProject = { id: string; title: Record<Locale, string>; subtitle: Record<Locale, string>; parameters: Parameters; rowCount: number; lockedRows: number[]; rows: Record<number, PlacedBrick[]>; accent: string };
 
 const LOCALES: Locale[] = ["ru", "en", "lt"];
 const INITIAL_ROWS = 8;
@@ -400,6 +422,60 @@ function makeDemoRows(): Record<number, PlacedBrick[]> {
   };
 }
 
+
+function brick(id: string, row: number, x: number, y: number, kind: BrickKind = "standard", orientation: Orientation = "h"): PlacedBrick {
+  return { id, row, x, y, kind, orientation };
+}
+
+function makeCompactHeaterRows(): Record<number, PlacedBrick[]> {
+  return {
+    1: [brick("h1-0", 1, 1, 1), brick("h1-1", 1, 3, 1), brick("h1-2", 1, 5, 1), brick("h1-3", 1, 7, 1), brick("h1-4", 1, 1, 10), brick("h1-5", 1, 3, 10), brick("h1-6", 1, 5, 10), brick("h1-7", 1, 7, 10), brick("h1-8", 1, 1, 3, "standard", "v"), brick("h1-9", 1, 8, 3, "standard", "v"), brick("h1-10", 1, 1, 6, "standard", "v"), brick("h1-11", 1, 8, 6, "standard", "v"), brick("h1-12", 1, 4, 5, "vent"), brick("h1-13", 1, 3, 3, "firebrick"), brick("h1-14", 1, 5, 3, "firebrick")],
+    2: [brick("h2-0", 2, 2, 1), brick("h2-1", 2, 4, 1), brick("h2-2", 2, 6, 1), brick("h2-3", 2, 2, 10), brick("h2-4", 2, 4, 10), brick("h2-5", 2, 6, 10), brick("h2-6", 2, 1, 2, "standard", "v"), brick("h2-7", 2, 8, 2, "standard", "v"), brick("h2-8", 2, 1, 6, "standard", "v"), brick("h2-9", 2, 8, 6, "standard", "v"), brick("h2-10", 2, 3, 4, "firebrick"), brick("h2-11", 2, 5, 4, "firebrick"), brick("h2-12", 2, 4, 7, "vent")],
+    3: [brick("h3-0", 3, 1, 1), brick("h3-1", 3, 3, 1), brick("h3-2", 3, 5, 1), brick("h3-3", 3, 7, 1), brick("h3-4", 3, 1, 10), brick("h3-5", 3, 3, 10), brick("h3-6", 3, 5, 10), brick("h3-7", 3, 7, 10), brick("h3-8", 3, 2, 3, "firebrick"), brick("h3-9", 3, 4, 3, "firebrick"), brick("h3-10", 3, 6, 3, "cleanout"), brick("h3-11", 3, 3, 6, "vent"), brick("h3-12", 3, 6, 7, "vent")],
+    4: [brick("h4-0", 4, 1, 2, "standard", "v"), brick("h4-1", 4, 8, 2, "standard", "v"), brick("h4-2", 4, 1, 6, "standard", "v"), brick("h4-3", 4, 8, 6, "standard", "v"), brick("h4-4", 4, 2, 1), brick("h4-5", 4, 4, 1), brick("h4-6", 4, 6, 1), brick("h4-7", 4, 2, 10), brick("h4-8", 4, 4, 10), brick("h4-9", 4, 6, 10), brick("h4-10", 4, 3, 4, "firebrick"), brick("h4-11", 4, 5, 5, "vent"), brick("h4-12", 4, 3, 8, "vent")],
+    5: [brick("h5-0", 5, 1, 1), brick("h5-1", 5, 3, 1), brick("h5-2", 5, 5, 1), brick("h5-3", 5, 7, 1), brick("h5-4", 5, 1, 10), brick("h5-5", 5, 3, 10), brick("h5-6", 5, 5, 10), brick("h5-7", 5, 7, 10), brick("h5-8", 5, 2, 4, "vent"), brick("h5-9", 5, 5, 4, "firebrick"), brick("h5-10", 5, 6, 6, "vent"), brick("h5-11", 5, 3, 8, "standard")],
+    6: [brick("h6-0", 6, 2, 1), brick("h6-1", 6, 4, 1), brick("h6-2", 6, 6, 1), brick("h6-3", 6, 2, 10), brick("h6-4", 6, 4, 10), brick("h6-5", 6, 6, 10), brick("h6-6", 6, 1, 3, "standard", "v"), brick("h6-7", 6, 8, 3, "standard", "v"), brick("h6-8", 6, 3, 4, "vent"), brick("h6-9", 6, 5, 7, "vent"), brick("h6-10", 6, 4, 5, "standard")],
+    7: [brick("h7-0", 7, 1, 1), brick("h7-1", 7, 3, 1), brick("h7-2", 7, 5, 1), brick("h7-3", 7, 7, 1), brick("h7-4", 7, 1, 10), brick("h7-5", 7, 3, 10), brick("h7-6", 7, 5, 10), brick("h7-7", 7, 7, 10), brick("h7-8", 7, 4, 4, "vent"), brick("h7-9", 7, 4, 7, "vent"), brick("h7-10", 7, 2, 5, "standard")],
+    8: [brick("h8-0", 8, 2, 1), brick("h8-1", 8, 4, 1), brick("h8-2", 8, 6, 1), brick("h8-3", 8, 2, 10), brick("h8-4", 8, 4, 10), brick("h8-5", 8, 6, 10), brick("h8-6", 8, 1, 4, "standard", "v"), brick("h8-7", 8, 8, 4, "standard", "v"), brick("h8-8", 8, 4, 5, "vent"), brick("h8-9", 8, 4, 8, "vent")]
+  };
+}
+
+function makeCookStoveRows(): Record<number, PlacedBrick[]> {
+  return {
+    1: [brick("c1-0", 1, 1, 1), brick("c1-1", 1, 3, 1), brick("c1-2", 1, 5, 1), brick("c1-3", 1, 7, 1), brick("c1-4", 1, 9, 1), brick("c1-5", 1, 1, 11), brick("c1-6", 1, 3, 11), brick("c1-7", 1, 5, 11), brick("c1-8", 1, 7, 11), brick("c1-9", 1, 9, 11), brick("c1-10", 1, 1, 4, "standard", "v"), brick("c1-11", 1, 9, 4, "standard", "v"), brick("c1-12", 1, 1, 7, "standard", "v"), brick("c1-13", 1, 9, 7, "standard", "v"), brick("c1-14", 1, 4, 4, "firebrick"), brick("c1-15", 1, 6, 4, "firebrick"), brick("c1-16", 1, 5, 8, "vent")],
+    2: [brick("c2-0", 2, 2, 1), brick("c2-1", 2, 4, 1), brick("c2-2", 2, 6, 1), brick("c2-3", 2, 8, 1), brick("c2-4", 2, 2, 11), brick("c2-5", 2, 4, 11), brick("c2-6", 2, 6, 11), brick("c2-7", 2, 8, 11), brick("c2-8", 2, 1, 3, "standard", "v"), brick("c2-9", 2, 9, 3, "standard", "v"), brick("c2-10", 2, 1, 7, "standard", "v"), brick("c2-11", 2, 9, 7, "standard", "v"), brick("c2-12", 2, 3, 4, "firebrick"), brick("c2-13", 2, 5, 4, "firebrick"), brick("c2-14", 2, 7, 4, "cleanout"), brick("c2-15", 2, 4, 8, "vent"), brick("c2-16", 2, 7, 8, "vent")],
+    3: [brick("c3-0", 3, 1, 1), brick("c3-1", 3, 3, 1), brick("c3-2", 3, 5, 1), brick("c3-3", 3, 7, 1), brick("c3-4", 3, 9, 1), brick("c3-5", 3, 1, 11), brick("c3-6", 3, 3, 11), brick("c3-7", 3, 5, 11), brick("c3-8", 3, 7, 11), brick("c3-9", 3, 9, 11), brick("c3-10", 3, 3, 3, "firebrick"), brick("c3-11", 3, 5, 3, "firebrick"), brick("c3-12", 3, 7, 3, "firebrick"), brick("c3-13", 3, 2, 7, "cleanout"), brick("c3-14", 3, 5, 7, "vent"), brick("c3-15", 3, 8, 8, "vent")],
+    4: [brick("c4-0", 4, 2, 1), brick("c4-1", 4, 4, 1), brick("c4-2", 4, 6, 1), brick("c4-3", 4, 8, 1), brick("c4-4", 4, 2, 11), brick("c4-5", 4, 4, 11), brick("c4-6", 4, 6, 11), brick("c4-7", 4, 8, 11), brick("c4-8", 4, 1, 4, "standard", "v"), brick("c4-9", 4, 9, 4, "standard", "v"), brick("c4-10", 4, 4, 4, "firebrick"), brick("c4-11", 4, 6, 4, "firebrick"), brick("c4-12", 4, 3, 8, "vent"), brick("c4-13", 4, 7, 8, "vent")],
+    5: [brick("c5-0", 5, 1, 1), brick("c5-1", 5, 3, 1), brick("c5-2", 5, 5, 1), brick("c5-3", 5, 7, 1), brick("c5-4", 5, 9, 1), brick("c5-5", 5, 1, 11), brick("c5-6", 5, 3, 11), brick("c5-7", 5, 5, 11), brick("c5-8", 5, 7, 11), brick("c5-9", 5, 9, 11), brick("c5-10", 5, 3, 4, "firebrick"), brick("c5-11", 5, 5, 4, "firebrick"), brick("c5-12", 5, 7, 4, "firebrick"), brick("c5-13", 5, 4, 8, "vent"), brick("c5-14", 5, 7, 8, "vent")],
+    6: [brick("c6-0", 6, 2, 1), brick("c6-1", 6, 4, 1), brick("c6-2", 6, 6, 1), brick("c6-3", 6, 8, 1), brick("c6-4", 6, 2, 11), brick("c6-5", 6, 4, 11), brick("c6-6", 6, 6, 11), brick("c6-7", 6, 8, 11), brick("c6-8", 6, 2, 5, "standard"), brick("c6-9", 6, 5, 5, "firebrick"), brick("c6-10", 6, 8, 5, "vent"), brick("c6-11", 6, 4, 8, "vent"), brick("c6-12", 6, 7, 8, "vent")],
+    7: [brick("c7-0", 7, 1, 1), brick("c7-1", 7, 3, 1), brick("c7-2", 7, 5, 1), brick("c7-3", 7, 7, 1), brick("c7-4", 7, 9, 1), brick("c7-5", 7, 1, 11), brick("c7-6", 7, 3, 11), brick("c7-7", 7, 5, 11), brick("c7-8", 7, 7, 11), brick("c7-9", 7, 9, 11), brick("c7-10", 7, 4, 5, "vent"), brick("c7-11", 7, 6, 5, "vent"), brick("c7-12", 7, 5, 8, "standard")],
+    8: [brick("c8-0", 8, 2, 1), brick("c8-1", 8, 4, 1), brick("c8-2", 8, 6, 1), brick("c8-3", 8, 8, 1), brick("c8-4", 8, 2, 11), brick("c8-5", 8, 4, 11), brick("c8-6", 8, 6, 11), brick("c8-7", 8, 8, 11), brick("c8-8", 8, 5, 4, "vent"), brick("c8-9", 8, 5, 7, "vent"), brick("c8-10", 8, 3, 6, "standard"), brick("c8-11", 8, 7, 6, "standard")]
+  };
+}
+
+const READY_PROJECTS: ReadyProject[] = [
+  {
+    id: "compact-heater",
+    title: { ru: "Компактная отопительная", en: "Compact heater", lt: "Kompaktiška šildymo" },
+    subtitle: { ru: "Небольшая канальная печь с шамотной топкой и центральным дымовым ходом.", en: "Small channel heater with a firebrick firebox and central flue path.", lt: "Maža kanalų krosnis su šamotine pakura ir centriniu dūmtakiu." },
+    parameters: { foundationWidth: 120, foundationLength: 160, foundationThickness: 25, roomHeight: 260 },
+    rowCount: 8,
+    lockedRows: [1, 2, 3, 4, 5, 6, 7, 8],
+    rows: makeCompactHeaterRows(),
+    accent: COLORS.brickRed
+  },
+  {
+    id: "cook-stove-channel",
+    title: { ru: "Варочно-отопительная с каналами", en: "Cooking heater with channels", lt: "Virimo-šildymo su kanalais" },
+    subtitle: { ru: "Более широкая схема: топочная зона, прочистка и разнесённые вертикальные каналы.", en: "Wider layout with firebox zone, cleanout and separated vertical channels.", lt: "Platesnis maketas su pakura, valymo durelėmis ir atskirais kanalais." },
+    parameters: { foundationWidth: 140, foundationLength: 180, foundationThickness: 28, roomHeight: 275 },
+    rowCount: 8,
+    lockedRows: [1, 2, 3, 4, 5, 6, 7, 8],
+    rows: makeCookStoveRows(),
+    accent: COLORS.sageDark
+  }
+];
+
 function cellToWorld(x: number, z: number, grid: GridSpec) {
   return { x: x - grid.cols / 2, z: z - grid.rows / 2 };
 }
@@ -429,8 +505,23 @@ function runSelfTests() {
   const g = brickWorldGeometry({ x: 1, y: 1, row: 2, kind: "standard", orientation: "h" }, grid);
   console.assert(g.position[0] === -3 && g.position[2] === -4.5, "3D brick center should align to the same grid coordinates as its footprint");
   console.assert(g.scale[0] > 1.9 && g.scale[2] > 0.9, "3D standard brick should be rendered as a 2x1 cell box with a small mortar gap");
+  READY_PROJECTS.forEach((project) => {
+    const projectGrid = gridFromParameters(project.parameters);
+    Object.values(project.rows).forEach((rowBricks) => {
+      rowBricks.forEach((item) => console.assert(isInsideGrid(item, projectGrid), `${project.id}: brick should fit its foundation grid`));
+      rowBricks.forEach((item, index) => {
+        rowBricks.slice(index + 1).forEach((next) => console.assert(!overlaps(item, next), `${project.id}: row bricks should not overlap`));
+      });
+    });
+  });
 }
 runSelfTests();
+
+function cloneRows(rows: Record<number, PlacedBrick[]>): Record<number, PlacedBrick[]> {
+  return Object.fromEntries(
+    Object.entries(rows).map(([row, bricks]) => [row, bricks.map((brick) => ({ ...brick }))])
+  ) as Record<number, PlacedBrick[]>;
+}
 
 export default function BrickStoveLayoutStudio() {
   const [locale, setLocale] = useState<Locale>("ru");
@@ -509,6 +600,19 @@ export default function BrickStoveLayoutStudio() {
     setLockedRows((current) => current.filter((row) => row !== currentRow));
   };
 
+  const loadProject = (project: ReadyProject) => {
+    setParameters(project.parameters);
+    setRows(cloneRows(project.rows));
+    setRowCount(project.rowCount);
+    setCurrentRow(1);
+    setLockedRows([...project.lockedRows]);
+    setViewMode("3d");
+    setActiveTool("standard");
+    setOrientation("h");
+    setCamera(DEFAULT_CAMERA);
+    setScreen("builder");
+  };
+
   return (
     <div className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4" style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}>
       <div className="mx-auto w-full max-w-[430px]">
@@ -516,6 +620,8 @@ export default function BrickStoveLayoutStudio() {
         <MobileTabs screen={screen} setScreen={setScreen} t={t} />
         {screen === "parameters" ? (
           <ParametersScreen parameters={parameters} updateParameter={updateParameter} t={t} onContinue={() => setScreen("builder")} lockedRows={lockedRows} />
+        ) : screen === "projects" ? (
+          <ProjectsScreen locale={locale} t={t} projects={READY_PROJECTS} onLoad={loadProject} />
         ) : (
           <BuilderScreen t={t} grid={grid} rows={rows} rowCount={rowCount} currentRow={currentRow} setCurrentRow={setCurrentRow} lockedRows={lockedRows} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} placeAt={placeAt} addRow={addRow} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} parameters={parameters} materials={materials} camera={camera} setCamera={setCamera} />
         )}
@@ -571,8 +677,9 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 function MobileTabs({ screen, setScreen, t }: { screen: Screen; setScreen: (screen: Screen) => void; t: (key: TranslationKey) => string }) {
   return (
-    <nav className="mt-3 grid grid-cols-2 gap-2 rounded-[24px] bg-[#3D2B1F]/10 p-1.5">
+    <nav className="mt-3 grid grid-cols-3 gap-2 rounded-[24px] bg-[#3D2B1F]/10 p-1.5">
       <TabButton active={screen === "parameters"} onClick={() => setScreen("parameters")}>{t("parametersTab")}</TabButton>
+      <TabButton active={screen === "projects"} onClick={() => setScreen("projects")}>{t("projectsTab")}</TabButton>
       <TabButton active={screen === "builder"} onClick={() => setScreen("builder")}>{t("builderTab")}</TabButton>
     </nav>
   );
@@ -580,6 +687,65 @@ function MobileTabs({ screen, setScreen, t }: { screen: Screen; setScreen: (scre
 
 function TabButton({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
   return <button onClick={onClick} className={`min-h-12 rounded-[20px] px-4 text-sm font-black transition ${active ? "bg-[#3D2B1F] text-[#F5E6C8]" : "text-[#3D2B1F]"}`}>{children}</button>;
+}
+
+
+function ProjectsScreen({ locale, t, projects, onLoad }: { locale: Locale; t: (key: TranslationKey) => string; projects: ReadyProject[]; onLoad: (project: ReadyProject) => void }) {
+  return (
+    <main className="mt-4 space-y-3">
+      <SectionTitle title={t("projectsTitle")} subtitle={t("projectsSubtitle")} />
+      <div className="space-y-3">
+        {projects.map((project) => {
+          const projectGrid = gridFromParameters(project.parameters);
+          const projectMaterials = estimateMaterials(Object.values(project.rows).flat(), project.parameters);
+          return (
+            <article key={project.id} className="overflow-hidden rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] shadow-md shadow-[#3D2B1F]/10">
+              <div className="p-3">
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black leading-6">{project.title[locale]}</h3>
+                    <p className="mt-1 text-sm font-bold leading-5 text-[#3D2B1F]/70">{project.subtitle[locale]}</p>
+                  </div>
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] border-2 border-[#3D2B1F]/10 text-xl font-black text-[#F5E6C8]" style={{ backgroundColor: project.accent }}>炉</div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Pill>{t("projectFootprint")}: {project.parameters.foundationWidth}×{project.parameters.foundationLength} см</Pill>
+                  <Pill>{project.rowCount} {t("projectRows")}</Pill>
+                  <Pill>{t("totalPlaced")}: {projectMaterials.total}</Pill>
+                </div>
+              </div>
+              <ProjectMiniMap grid={projectGrid} rows={project.rows} />
+              <div className="space-y-2 p-3 pt-0">
+                <p className="rounded-[18px] bg-[#FFF7E8]/80 px-3 py-2 text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("projectDemoNotice")}</p>
+                <button onClick={() => onLoad(project)} className="min-h-13 w-full rounded-[20px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8] shadow-lg shadow-[#C1440E]/20">{t("loadProject")}</button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </main>
+  );
+}
+
+function ProjectMiniMap({ grid, rows }: { grid: GridSpec; rows: Record<number, PlacedBrick[]> }) {
+  const bricks = rows[1] ?? [];
+  const cell = Math.min(18, 250 / Math.max(grid.cols, grid.rows));
+  const pad = 18;
+  const width = grid.cols * cell + pad * 2;
+  const height = grid.rows * cell + pad * 2;
+  return (
+    <div className="overflow-x-auto border-y border-[#3D2B1F]/10 bg-[#FFF7E8] px-3 py-2">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        <rect x="1" y="1" width={width - 2} height={height - 2} rx="18" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="2" opacity="0.25" />
+        {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={`pmx-${x}`} x1={pad + x * cell} y1={pad} x2={pad + x * cell} y2={pad + grid.rows * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
+        {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={`pmy-${y}`} x1={pad} y1={pad + y * cell} x2={pad + grid.cols * cell} y2={pad + y * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
+        {bricks.map((brick) => {
+          const size = brickSizeFor(brick.kind, brick.orientation);
+          return <rect key={brick.id} x={pad + brick.x * cell + 2} y={pad + brick.y * cell + 2} width={size.w * cell - 4} height={size.h * cell - 4} rx="5" fill={getToolColor(brick.kind)} stroke={COLORS.charcoal} strokeWidth="1.5" />;
+        })}
+      </svg>
+    </div>
+  );
 }
 
 function ParametersScreen({ parameters, updateParameter, t, onContinue, lockedRows }: { parameters: Parameters; updateParameter: (key: keyof Parameters, value: number) => void; t: (key: TranslationKey) => string; onContinue: () => void; lockedRows: number[] }) {

@@ -427,30 +427,71 @@ function brick(id: string, row: number, x: number, y: number, kind: BrickKind = 
   return { id, row, x, y, kind, orientation };
 }
 
+function frameCourse(prefix: string, row: number, rightCell: number, sideRight: number, bottom: number): PlacedBrick[] {
+  const items: PlacedBrick[] = [];
+  let index = 0;
+  const id = (part: string) => `${prefix}${row}-${part}-${index++}`;
+  const left = 1;
+  const top = 1;
+
+  if (row % 2 === 1) {
+    for (let x = left; x <= rightCell - 1; x += 2) items.push(brick(id("top"), row, x, top));
+    for (let x = left; x <= rightCell - 1; x += 2) items.push(brick(id("bottom"), row, x, bottom));
+  } else {
+    items.push(brick(id("top-cut-l"), row, left, top, "cut"));
+    items.push(brick(id("bottom-cut-l"), row, left, bottom, "cut"));
+    for (let x = left + 1; x <= rightCell - 2; x += 2) items.push(brick(id("top"), row, x, top));
+    for (let x = left + 1; x <= rightCell - 2; x += 2) items.push(brick(id("bottom"), row, x, bottom));
+    items.push(brick(id("top-cut-r"), row, rightCell, top, "cut"));
+    items.push(brick(id("bottom-cut-r"), row, rightCell, bottom, "cut"));
+  }
+
+  for (let y = row % 2 === 1 ? top + 2 : top + 1; y <= bottom - 2; y += 2) {
+    items.push(brick(id("left"), row, left, y, "standard", "v"));
+    items.push(brick(id("right"), row, sideRight, y, "standard", "v"));
+  }
+
+  return items;
+}
+
 function makeCompactHeaterRows(): Record<number, PlacedBrick[]> {
-  return {
-    1: [brick("h1-0", 1, 1, 1), brick("h1-1", 1, 3, 1), brick("h1-2", 1, 5, 1), brick("h1-3", 1, 7, 1), brick("h1-4", 1, 1, 10), brick("h1-5", 1, 3, 10), brick("h1-6", 1, 5, 10), brick("h1-7", 1, 7, 10), brick("h1-8", 1, 1, 3, "standard", "v"), brick("h1-9", 1, 8, 3, "standard", "v"), brick("h1-10", 1, 1, 6, "standard", "v"), brick("h1-11", 1, 8, 6, "standard", "v"), brick("h1-12", 1, 4, 5, "vent"), brick("h1-13", 1, 3, 3, "firebrick"), brick("h1-14", 1, 5, 3, "firebrick")],
-    2: [brick("h2-0", 2, 2, 1), brick("h2-1", 2, 4, 1), brick("h2-2", 2, 6, 1), brick("h2-3", 2, 2, 10), brick("h2-4", 2, 4, 10), brick("h2-5", 2, 6, 10), brick("h2-6", 2, 1, 2, "standard", "v"), brick("h2-7", 2, 8, 2, "standard", "v"), brick("h2-8", 2, 1, 6, "standard", "v"), brick("h2-9", 2, 8, 6, "standard", "v"), brick("h2-10", 2, 3, 4, "firebrick"), brick("h2-11", 2, 5, 4, "firebrick"), brick("h2-12", 2, 4, 7, "vent")],
-    3: [brick("h3-0", 3, 1, 1), brick("h3-1", 3, 3, 1), brick("h3-2", 3, 5, 1), brick("h3-3", 3, 7, 1), brick("h3-4", 3, 1, 10), brick("h3-5", 3, 3, 10), brick("h3-6", 3, 5, 10), brick("h3-7", 3, 7, 10), brick("h3-8", 3, 2, 3, "firebrick"), brick("h3-9", 3, 4, 3, "firebrick"), brick("h3-10", 3, 6, 3, "cleanout"), brick("h3-11", 3, 3, 6, "vent"), brick("h3-12", 3, 6, 7, "vent")],
-    4: [brick("h4-0", 4, 1, 2, "standard", "v"), brick("h4-1", 4, 8, 2, "standard", "v"), brick("h4-2", 4, 1, 6, "standard", "v"), brick("h4-3", 4, 8, 6, "standard", "v"), brick("h4-4", 4, 2, 1), brick("h4-5", 4, 4, 1), brick("h4-6", 4, 6, 1), brick("h4-7", 4, 2, 10), brick("h4-8", 4, 4, 10), brick("h4-9", 4, 6, 10), brick("h4-10", 4, 3, 4, "firebrick"), brick("h4-11", 4, 5, 5, "vent"), brick("h4-12", 4, 3, 8, "vent")],
-    5: [brick("h5-0", 5, 1, 1), brick("h5-1", 5, 3, 1), brick("h5-2", 5, 5, 1), brick("h5-3", 5, 7, 1), brick("h5-4", 5, 1, 10), brick("h5-5", 5, 3, 10), brick("h5-6", 5, 5, 10), brick("h5-7", 5, 7, 10), brick("h5-8", 5, 2, 4, "vent"), brick("h5-9", 5, 5, 4, "firebrick"), brick("h5-10", 5, 6, 6, "vent"), brick("h5-11", 5, 3, 8, "standard")],
-    6: [brick("h6-0", 6, 2, 1), brick("h6-1", 6, 4, 1), brick("h6-2", 6, 6, 1), brick("h6-3", 6, 2, 10), brick("h6-4", 6, 4, 10), brick("h6-5", 6, 6, 10), brick("h6-6", 6, 1, 3, "standard", "v"), brick("h6-7", 6, 8, 3, "standard", "v"), brick("h6-8", 6, 3, 4, "vent"), brick("h6-9", 6, 5, 7, "vent"), brick("h6-10", 6, 4, 5, "standard")],
-    7: [brick("h7-0", 7, 1, 1), brick("h7-1", 7, 3, 1), brick("h7-2", 7, 5, 1), brick("h7-3", 7, 7, 1), brick("h7-4", 7, 1, 10), brick("h7-5", 7, 3, 10), brick("h7-6", 7, 5, 10), brick("h7-7", 7, 7, 10), brick("h7-8", 7, 4, 4, "vent"), brick("h7-9", 7, 4, 7, "vent"), brick("h7-10", 7, 2, 5, "standard")],
-    8: [brick("h8-0", 8, 2, 1), brick("h8-1", 8, 4, 1), brick("h8-2", 8, 6, 1), brick("h8-3", 8, 2, 10), brick("h8-4", 8, 4, 10), brick("h8-5", 8, 6, 10), brick("h8-6", 8, 1, 4, "standard", "v"), brick("h8-7", 8, 8, 4, "standard", "v"), brick("h8-8", 8, 4, 5, "vent"), brick("h8-9", 8, 4, 8, "vent")]
+  const inside: Record<number, PlacedBrick[]> = {
+    1: [brick("h1-fire-l", 1, 3, 3, "firebrick"), brick("h1-fire-r", 1, 5, 3, "firebrick"), brick("h1-vent-a", 1, 4, 6, "vent"), brick("h1-vent-b", 1, 5, 8, "vent")],
+    2: [brick("h2-fire-l", 2, 3, 3, "firebrick"), brick("h2-fire-r", 2, 5, 3, "firebrick"), brick("h2-clean", 2, 4, 5, "cleanout"), brick("h2-vent", 2, 6, 7, "vent"), brick("h2-bridge", 2, 3, 9)],
+    3: [brick("h3-fire-l", 3, 3, 4, "firebrick"), brick("h3-fire-r", 3, 5, 4, "firebrick"), brick("h3-vent-a", 3, 3, 7, "vent"), brick("h3-vent-b", 3, 6, 7, "vent")],
+    4: [brick("h4-fire", 4, 4, 3, "firebrick"), brick("h4-baffle-a", 4, 3, 6), brick("h4-vent", 4, 6, 8, "vent")],
+    5: [brick("h5-fire-l", 5, 3, 3, "firebrick"), brick("h5-fire-r", 5, 5, 3, "firebrick"), brick("h5-vent-a", 5, 4, 6, "vent"), brick("h5-baffle", 5, 5, 8)],
+    6: [brick("h6-baffle-a", 6, 3, 4), brick("h6-baffle-b", 6, 5, 4), brick("h6-vent-a", 6, 3, 7, "vent"), brick("h6-vent-b", 6, 6, 7, "vent")],
+    7: [brick("h7-baffle", 7, 4, 4), brick("h7-vent-a", 7, 4, 6, "vent"), brick("h7-vent-b", 7, 5, 8, "vent")],
+    8: [brick("h8-cap-a", 8, 3, 4), brick("h8-cap-b", 8, 5, 4), brick("h8-vent", 8, 4, 7, "vent")]
   };
+
+  return Object.fromEntries(
+    Array.from({ length: 8 }, (_, index) => {
+      const row = index + 1;
+      return [row, [...frameCourse("h", row, 8, 8, 11), ...(inside[row] ?? [])]];
+    })
+  ) as Record<number, PlacedBrick[]>;
 }
 
 function makeCookStoveRows(): Record<number, PlacedBrick[]> {
-  return {
-    1: [brick("c1-0", 1, 1, 1), brick("c1-1", 1, 3, 1), brick("c1-2", 1, 5, 1), brick("c1-3", 1, 7, 1), brick("c1-4", 1, 9, 1), brick("c1-5", 1, 1, 11), brick("c1-6", 1, 3, 11), brick("c1-7", 1, 5, 11), brick("c1-8", 1, 7, 11), brick("c1-9", 1, 9, 11), brick("c1-10", 1, 1, 4, "standard", "v"), brick("c1-11", 1, 9, 4, "standard", "v"), brick("c1-12", 1, 1, 7, "standard", "v"), brick("c1-13", 1, 9, 7, "standard", "v"), brick("c1-14", 1, 4, 4, "firebrick"), brick("c1-15", 1, 6, 4, "firebrick"), brick("c1-16", 1, 5, 8, "vent")],
-    2: [brick("c2-0", 2, 2, 1), brick("c2-1", 2, 4, 1), brick("c2-2", 2, 6, 1), brick("c2-3", 2, 8, 1), brick("c2-4", 2, 2, 11), brick("c2-5", 2, 4, 11), brick("c2-6", 2, 6, 11), brick("c2-7", 2, 8, 11), brick("c2-8", 2, 1, 3, "standard", "v"), brick("c2-9", 2, 9, 3, "standard", "v"), brick("c2-10", 2, 1, 7, "standard", "v"), brick("c2-11", 2, 9, 7, "standard", "v"), brick("c2-12", 2, 3, 4, "firebrick"), brick("c2-13", 2, 5, 4, "firebrick"), brick("c2-14", 2, 7, 4, "cleanout"), brick("c2-15", 2, 4, 8, "vent"), brick("c2-16", 2, 7, 8, "vent")],
-    3: [brick("c3-0", 3, 1, 1), brick("c3-1", 3, 3, 1), brick("c3-2", 3, 5, 1), brick("c3-3", 3, 7, 1), brick("c3-4", 3, 9, 1), brick("c3-5", 3, 1, 11), brick("c3-6", 3, 3, 11), brick("c3-7", 3, 5, 11), brick("c3-8", 3, 7, 11), brick("c3-9", 3, 9, 11), brick("c3-10", 3, 3, 3, "firebrick"), brick("c3-11", 3, 5, 3, "firebrick"), brick("c3-12", 3, 7, 3, "firebrick"), brick("c3-13", 3, 2, 7, "cleanout"), brick("c3-14", 3, 5, 7, "vent"), brick("c3-15", 3, 8, 8, "vent")],
-    4: [brick("c4-0", 4, 2, 1), brick("c4-1", 4, 4, 1), brick("c4-2", 4, 6, 1), brick("c4-3", 4, 8, 1), brick("c4-4", 4, 2, 11), brick("c4-5", 4, 4, 11), brick("c4-6", 4, 6, 11), brick("c4-7", 4, 8, 11), brick("c4-8", 4, 1, 4, "standard", "v"), brick("c4-9", 4, 9, 4, "standard", "v"), brick("c4-10", 4, 4, 4, "firebrick"), brick("c4-11", 4, 6, 4, "firebrick"), brick("c4-12", 4, 3, 8, "vent"), brick("c4-13", 4, 7, 8, "vent")],
-    5: [brick("c5-0", 5, 1, 1), brick("c5-1", 5, 3, 1), brick("c5-2", 5, 5, 1), brick("c5-3", 5, 7, 1), brick("c5-4", 5, 9, 1), brick("c5-5", 5, 1, 11), brick("c5-6", 5, 3, 11), brick("c5-7", 5, 5, 11), brick("c5-8", 5, 7, 11), brick("c5-9", 5, 9, 11), brick("c5-10", 5, 3, 4, "firebrick"), brick("c5-11", 5, 5, 4, "firebrick"), brick("c5-12", 5, 7, 4, "firebrick"), brick("c5-13", 5, 4, 8, "vent"), brick("c5-14", 5, 7, 8, "vent")],
-    6: [brick("c6-0", 6, 2, 1), brick("c6-1", 6, 4, 1), brick("c6-2", 6, 6, 1), brick("c6-3", 6, 8, 1), brick("c6-4", 6, 2, 11), brick("c6-5", 6, 4, 11), brick("c6-6", 6, 6, 11), brick("c6-7", 6, 8, 11), brick("c6-8", 6, 2, 5, "standard"), brick("c6-9", 6, 5, 5, "firebrick"), brick("c6-10", 6, 8, 5, "vent"), brick("c6-11", 6, 4, 8, "vent"), brick("c6-12", 6, 7, 8, "vent")],
-    7: [brick("c7-0", 7, 1, 1), brick("c7-1", 7, 3, 1), brick("c7-2", 7, 5, 1), brick("c7-3", 7, 7, 1), brick("c7-4", 7, 9, 1), brick("c7-5", 7, 1, 11), brick("c7-6", 7, 3, 11), brick("c7-7", 7, 5, 11), brick("c7-8", 7, 7, 11), brick("c7-9", 7, 9, 11), brick("c7-10", 7, 4, 5, "vent"), brick("c7-11", 7, 6, 5, "vent"), brick("c7-12", 7, 5, 8, "standard")],
-    8: [brick("c8-0", 8, 2, 1), brick("c8-1", 8, 4, 1), brick("c8-2", 8, 6, 1), brick("c8-3", 8, 8, 1), brick("c8-4", 8, 2, 11), brick("c8-5", 8, 4, 11), brick("c8-6", 8, 6, 11), brick("c8-7", 8, 8, 11), brick("c8-8", 8, 5, 4, "vent"), brick("c8-9", 8, 5, 7, "vent"), brick("c8-10", 8, 3, 6, "standard"), brick("c8-11", 8, 7, 6, "standard")]
+  const inside: Record<number, PlacedBrick[]> = {
+    1: [brick("c1-fire-a", 1, 3, 3, "firebrick"), brick("c1-fire-b", 1, 5, 3, "firebrick"), brick("c1-fire-c", 1, 7, 3, "firebrick"), brick("c1-vent", 1, 6, 8, "vent")],
+    2: [brick("c2-fire-a", 2, 3, 3, "firebrick"), brick("c2-fire-b", 2, 5, 3, "firebrick"), brick("c2-clean", 2, 7, 5, "cleanout"), brick("c2-vent-a", 2, 4, 8, "vent"), brick("c2-vent-b", 2, 7, 8, "vent")],
+    3: [brick("c3-fire-a", 3, 3, 4, "firebrick"), brick("c3-fire-b", 3, 5, 4, "firebrick"), brick("c3-fire-c", 3, 7, 4, "firebrick"), brick("c3-clean", 3, 2, 7, "cleanout"), brick("c3-vent", 3, 6, 9, "vent")],
+    4: [brick("c4-fire-a", 4, 4, 3, "firebrick"), brick("c4-fire-b", 4, 6, 3, "firebrick"), brick("c4-baffle-a", 4, 3, 7), brick("c4-vent", 4, 7, 8, "vent")],
+    5: [brick("c5-fire-a", 5, 3, 3, "firebrick"), brick("c5-fire-b", 5, 5, 3, "firebrick"), brick("c5-fire-c", 5, 7, 3, "firebrick"), brick("c5-vent-a", 5, 4, 8, "vent"), brick("c5-vent-b", 5, 7, 9, "vent")],
+    6: [brick("c6-baffle-a", 6, 3, 4), brick("c6-baffle-b", 6, 5, 4), brick("c6-baffle-c", 6, 7, 4), brick("c6-vent-a", 6, 5, 7, "vent"), brick("c6-vent-b", 6, 8, 7, "vent")],
+    7: [brick("c7-baffle-a", 7, 4, 4), brick("c7-baffle-b", 7, 6, 4), brick("c7-vent-a", 7, 4, 7, "vent"), brick("c7-vent-b", 7, 7, 7, "vent")],
+    8: [brick("c8-cap-a", 8, 3, 4), brick("c8-cap-b", 8, 5, 4), brick("c8-cap-c", 8, 7, 4), brick("c8-vent", 8, 6, 8, "vent")]
   };
+
+  return Object.fromEntries(
+    Array.from({ length: 8 }, (_, index) => {
+      const row = index + 1;
+      return [row, [...frameCourse("c", row, 10, 9, 12), ...(inside[row] ?? [])]];
+    })
+  ) as Record<number, PlacedBrick[]>;
 }
 
 const READY_PROJECTS: ReadyProject[] = [

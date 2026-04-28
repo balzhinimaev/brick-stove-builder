@@ -18,7 +18,7 @@ npm ci
 npm run dev
 ```
 
-Run the API/server with MongoDB:
+Run the API/server with local MongoDB:
 
 ```bash
 cp .env.example .env
@@ -26,6 +26,20 @@ cp .env.example .env
 npm run build
 npm run server
 ```
+
+Run everything in Docker on one network:
+
+```bash
+docker compose up -d --build
+```
+
+Compose starts:
+
+- `app` — Express + static built frontend, published on `127.0.0.1:4174`
+- `mongo` — MongoDB 7, internal-only, reachable from app as `mongodb://mongo:27017/brick-stove-builder`
+- shared bridge network `brick-stove`
+
+If the app is served behind nginx at `/brick-stove-builder/`, use `deploy/nginx.brick-stove-builder.conf` as the proxy snippet.
 
 The frontend uses `/api` by default locally and `/brick-stove-builder/api` when deployed under `/brick-stove-builder/`.
 

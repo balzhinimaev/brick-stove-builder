@@ -1,0 +1,37 @@
+services:
+  app:
+    build: .
+    container_name: brick-stove-builder-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4174
+      MONGODB_URI: mongodb://mongo:27017/brick-stove-builder
+    ports:
+      - "127.0.0.1:4174:4174"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - brick-stove
+
+  mongo:
+    image: mongo:7
+    container_name: brick-stove-builder-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - brick-stove
+
+volumes:
+  mongo-data:
+
+networks:
+  brick-stove:
+    driver: bridge

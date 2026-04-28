@@ -580,22 +580,46 @@ function apiBaseUrl() {
   return "/api";
 }
 
-async function fetchSavedProjects(): Promise<ReadyProject[]> {
-  const response = await fetch(`${apiBaseUrl()}/projects`);
+async function fetchSavedProjects(login: string): Promise<ReadyProject[]> {
+  const response = await fetch(`${apiBaseUrl()}/projects`, { headers: { "x-user-login": login } });
   if (!response.ok) return [];
   const data = await response.json();
   return Array.isArray(data.projects) ? data.projects : [];
 }
 
-async function createSavedProject(project: ReadyProject): Promise<ReadyProject> {
+async function createSavedProject(project: ReadyProject, login: string): Promise<ReadyProject> {
   const response = await fetch(`${apiBaseUrl()}/projects`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-user-login": login },
     body: JSON.stringify(project)
   });
   if (!response.ok) throw new Error("Failed to save project");
   const data = await response.json();
   return data.project;
+}
+
+
+
+async function registerLogin(login: string): Promise<boolean> {
+  const response = await fetch(`${apiBaseUrl()}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ login })
+  });
+  return response.ok;
+}
+
+async function loginByLogin(login: string): Promise<boolean> {
+  const response = await fetch(`${apiBaseUrl()}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ login })
+  });
+  return response.ok;
+}
+
+function normalizeLogin(value: string) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 32);
 }
 
 export default function BrickStoveLayoutStudio() {
@@ -609,6 +633,9 @@ export default function BrickStoveLayoutStudio() {
   const [lockedRows, setLockedRows] = useState<number[]>([1]);
   const [rows, setRows] = useState<Record<number, PlacedBrick[]>>(makeDemoRows());
   const [savedProjects, setSavedProjects] = useState<ReadyProject[]>([]);
+  const [userLogin, setUserLogin] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authInput, setAuthInput] = useState("");
   const [parameters, setParameters] = useState<Parameters>(DEFAULT_PARAMETERS);
   const [camera, setCamera] = useState<CameraState>(DEFAULT_CAMERA);
   const idCounter = useRef(0);
@@ -619,12 +646,18 @@ export default function BrickStoveLayoutStudio() {
   const allProjects = useMemo(() => [...READY_PROJECTS, ...savedProjects], [savedProjects]);
 
   useEffect(() => {
+    const stored = localStorage.getItem("brick-stove-login") || "";
+    if (stored) setUserLogin(stored);
+  }, []);
+
+  useEffect(() => {
+    if (!userLogin) return;
     let active = true;
-    fetchSavedProjects()
+    fetchSavedProjects(userLogin)
       .then((projects) => { if (active) setSavedProjects(projects); })
       .catch(() => { if (active) setSavedProjects([]); });
     return () => { active = false; };
-  }, []);
+  }, [userLogin]);
 
   const updateParameter = (key: keyof Parameters, value: number) => {
     const bounds = parameterBounds(key);
@@ -698,6 +731,39 @@ export default function BrickStoveLayoutStudio() {
     setScreen("builder");
   };
 
+  const switchAccount = () => {
+    localStorage.removeItem("brick-stove-login");
+    setUserLogin("");
+    setSavedProjects([]);
+    setAuthInput("");
+  };
+
+  const submitAuth = async () => {
+    const login = normalizeLogin(authInput);
+    if (login.length < 3) {
+      window.alert("Логин должен быть минимум 3 символа");
+      return;
+    }
+
+    if (authMode === "register") {
+      const ok = await registerLogin(login);
+      if (!ok) {
+        window.alert("Логин уже занят");
+        return;
+      }
+    } else {
+      const ok = await loginByLogin(login);
+      if (!ok) {
+        window.alert("Логин не найден");
+        return;
+      }
+    }
+
+    localStorage.setItem("brick-stove-login", login);
+    setUserLogin(login);
+    setAuthInput("");
+  };
+
   const saveCurrentProject = async () => {
     const title = window.prompt(t("saveProjectPrompt"));
     if (!title?.trim()) return;
@@ -714,7 +780,11 @@ export default function BrickStoveLayoutStudio() {
     };
 
     try {
-      const saved = await createSavedProject(project);
+      if (!userLogin) {
+        window.alert("Сначала войдите по логину");
+        return;
+      }
+      const saved = await createSavedProject(project, userLogin);
       setSavedProjects((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
       setScreen("projects");
     } catch {
@@ -725,9 +795,17 @@ export default function BrickStoveLayoutStudio() {
   return (
     <div className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4" style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}>
       <div className="mx-auto w-full max-w-[430px]">
-        <Header locale={locale} setLocale={setLocale} t={t} reset={reset} placedCount={materials.total} lockedCount={lockedRows.length} />
+        <Header locale={locale} setLocale={setLocale} t={t} reset={reset} placedCount={materials.total} lockedCount={lockedRows.length} userLogin={userLogin} onSwitchAccount={switchAccount} />
         <MobileTabs screen={screen} setScreen={setScreen} t={t} />
-        {screen === "parameters" ? (
+        {!userLogin ? (
+          <AuthScreen
+            mode={authMode}
+            setMode={setAuthMode}
+            login={authInput}
+            setLogin={setAuthInput}
+            onSubmit={submitAuth}
+          />
+        ) : screen === "parameters" ? (
           <ParametersScreen parameters={parameters} updateParameter={updateParameter} t={t} onContinue={() => setScreen("builder")} lockedRows={lockedRows} />
         ) : screen === "projects" ? (
           <ProjectsScreen locale={locale} t={t} projects={allProjects} onLoad={loadProject} />
@@ -739,7 +817,21 @@ export default function BrickStoveLayoutStudio() {
   );
 }
 
-function Header({ locale, setLocale, t, reset, placedCount, lockedCount }: { locale: Locale; setLocale: (locale: Locale) => void; t: (key: TranslationKey) => string; reset: () => void; placedCount: number; lockedCount: number }) {
+function AuthScreen({ mode, setMode, login, setLogin, onSubmit }: { mode: "login" | "register"; setMode: (mode: "login" | "register") => void; login: string; setLogin: (v: string) => void; onSubmit: () => void }) {
+  return (
+    <section className="mt-3 rounded-[24px] border-2 border-[#3D2B1F]/15 bg-[#F5E6C8] p-4">
+      <h2 className="text-lg font-black">Вход</h2>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button onClick={() => setMode("login")} className={`min-h-11 rounded-2xl border ${mode === "login" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#FFF7E8]"}`}>Войти</button>
+        <button onClick={() => setMode("register")} className={`min-h-11 rounded-2xl border ${mode === "register" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#FFF7E8]"}`}>Регистрация</button>
+      </div>
+      <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="login" className="mt-3 min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3" />
+      <button onClick={onSubmit} className="mt-3 min-h-12 w-full rounded-2xl bg-[#8FAF76] font-black">{mode === "login" ? "Войти" : "Создать"}</button>
+    </section>
+  );
+}
+
+function Header({ locale, setLocale, t, reset, placedCount, lockedCount, userLogin, onSwitchAccount }: { locale: Locale; setLocale: (locale: Locale) => void; t: (key: TranslationKey) => string; reset: () => void; placedCount: number; lockedCount: number; userLogin: string; onSwitchAccount: () => void }) {
   return (
     <header className="sticky top-2 z-20 rounded-[26px] border-2 border-[#3D2B1F]/15 bg-[#F5E6C8]/95 p-3 shadow-lg shadow-[#3D2B1F]/10 backdrop-blur">
       <div className="flex items-center gap-3">
@@ -753,7 +845,10 @@ function Header({ locale, setLocale, t, reset, placedCount, lockedCount }: { loc
             <Pill>{t("brickSize")}</Pill>
           </div>
         </div>
-        <button onClick={reset} className="min-h-11 rounded-full border border-[#3D2B1F]/25 px-3 text-xs font-black">{t("reset")}</button>
+        <div className="flex flex-col gap-1">
+          <button onClick={reset} className="min-h-11 rounded-full border border-[#3D2B1F]/25 px-3 text-xs font-black">{t("reset")}</button>
+          {userLogin ? <button onClick={onSwitchAccount} className="min-h-9 rounded-full border border-[#3D2B1F]/25 px-3 text-[10px] font-black">@{userLogin} • выйти</button> : null}
+        </div>
       </div>
       <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-[20px] border border-[#3D2B1F]/10 bg-[#FFF7E8]/70 p-1.5">
         {LOCALES.map((item) => <button key={item} onClick={() => setLocale(item)} className={`min-h-9 rounded-2xl px-2 text-xs font-black transition ${locale === item ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>{item.toUpperCase()}</button>)}

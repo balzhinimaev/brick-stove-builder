@@ -59,7 +59,8 @@ const projectSchema = new mongoose.Schema(
     rowCount: { type: Number, required: true, min: 1 },
     lockedRows: { type: [Number], default: [] },
     rows: { type: Map, of: [brickSchema], default: {} },
-    accent: { type: String, default: "#C1440E" }
+    accent: { type: String, default: "#C1440E" },
+    ownerLogin: { type: String, required: true, trim: true, index: true }
   },
   { timestamps: true }
 );
@@ -67,6 +68,15 @@ const projectSchema = new mongoose.Schema(
 projectSchema.index({ updatedAt: -1 });
 
 const Project = mongoose.model("Project", projectSchema);
+
+const userSchema = new mongoose.Schema(
+  {
+    login: { type: String, required: true, unique: true, trim: true }
+  },
+  { timestamps: true }
+);
+
+const User = mongoose.model("User", userSchema);
 
 function requireMongo(_req, res, next) {
   if (mongoose.connection.readyState !== 1) {
@@ -89,6 +99,7 @@ function normalizeProject(project) {
     lockedRows: plain.lockedRows || [],
     rows,
     accent: plain.accent || "#C1440E",
+    ownerLogin: plain.ownerLogin,
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt
   };
@@ -122,18 +133,69 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, mongoConnected: mongoose.connection.readyState === 1 });
 });
 
-app.get("/api/projects", requireMongo, async (_req, res, next) => {
+function normalizeLogin(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 32);
+}
+
+function requireLogin(req, res, next) {
+  const login = normalizeLogin(req.headers["x-user-login"] || req.query.login || req.body?.login);
+  if (!login) {
+    res.status(401).json({ error: "Login is required" });
+    return;
+  }
+  req.userLogin = login;
+  next();
+}
+
+app.post("/api/auth/register", requireMongo, async (req, res, next) => {
   try {
-    const projects = await Project.find().sort({ updatedAt: -1 }).lean();
+    const login = normalizeLogin(req.body?.login);
+    if (!login) return res.status(400).json({ error: "Invalid login" });
+    if (login.length < 3) return res.status(400).json({ error: "Login must be at least 3 chars" });
+
+    const existing = await User.findOne({ login }).lean();
+    if (existing) return res.status(409).json({ error: "Login already taken" });
+
+    await User.create({ login });
+    res.status(201).json({ ok: true, login });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/login", requireMongo, async (req, res, next) => {
+  try {
+    const login = normalizeLogin(req.body?.login);
+    if (!login) return res.status(400).json({ error: "Invalid login" });
+
+    const user = await User.findOne({ login }).lean();
+    if (!user) return res.status(404).json({ error: "Login not found" });
+
+    res.json({ ok: true, login });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+app.get("/api/projects", requireMongo, requireLogin, async (req, res, next) => {
+  try {
+    const projects = await Project.find({ ownerLogin: req.userLogin }).sort({ updatedAt: -1 }).lean();
     res.json({ projects: projects.map(normalizeProject) });
   } catch (error) {
     next(error);
   }
 });
 
-app.get("/api/projects/:id", requireMongo, async (req, res, next) => {
+app.get("/api/projects/:id", requireMongo, requireLogin, async (req, res, next) => {
   try {
-    const query = mongoose.Types.ObjectId.isValid(req.params.id) ? { _id: req.params.id } : { slug: req.params.id };
+    const query = mongoose.Types.ObjectId.isValid(req.params.id)
+      ? { _id: req.params.id, ownerLogin: req.userLogin }
+      : { slug: req.params.id, ownerLogin: req.userLogin };
     const project = await Project.findOne(query);
     if (!project) return res.status(404).json({ error: "Project not found" });
     res.json({ project: normalizeProject(project) });
@@ -142,19 +204,21 @@ app.get("/api/projects/:id", requireMongo, async (req, res, next) => {
   }
 });
 
-app.post("/api/projects", requireMongo, async (req, res, next) => {
+app.post("/api/projects", requireMongo, requireLogin, async (req, res, next) => {
   try {
-    const project = await Project.create(projectPayload(req.body));
+    const project = await Project.create({ ...projectPayload(req.body), ownerLogin: req.userLogin });
     res.status(201).json({ project: normalizeProject(project) });
   } catch (error) {
     next(error);
   }
 });
 
-app.put("/api/projects/:id", requireMongo, async (req, res, next) => {
+app.put("/api/projects/:id", requireMongo, requireLogin, async (req, res, next) => {
   try {
-    const query = mongoose.Types.ObjectId.isValid(req.params.id) ? { _id: req.params.id } : { slug: req.params.id };
-    const project = await Project.findOneAndUpdate(query, projectPayload(req.body), { new: true, runValidators: true });
+    const query = mongoose.Types.ObjectId.isValid(req.params.id)
+      ? { _id: req.params.id, ownerLogin: req.userLogin }
+      : { slug: req.params.id, ownerLogin: req.userLogin };
+    const project = await Project.findOneAndUpdate(query, { ...projectPayload(req.body), ownerLogin: req.userLogin }, { new: true, runValidators: true });
     if (!project) return res.status(404).json({ error: "Project not found" });
     res.json({ project: normalizeProject(project) });
   } catch (error) {

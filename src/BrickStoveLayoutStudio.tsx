@@ -755,7 +755,7 @@ function ProjectsScreen({ locale, t, projects, onLoad }: { locale: Locale; t: (k
                   <Pill>{t("totalPlaced")}: {projectMaterials.total}</Pill>
                 </div>
               </div>
-              <ProjectMiniMap grid={projectGrid} rows={project.rows} />
+              <ProjectOrderPreview grid={projectGrid} rows={project.rows} rowCount={project.rowCount} t={t} />
               <div className="space-y-2 p-3 pt-0">
                 <p className="rounded-[18px] bg-[#FFF7E8]/80 px-3 py-2 text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("projectDemoNotice")}</p>
                 <button onClick={() => onLoad(project)} className="min-h-13 w-full rounded-[20px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8] shadow-lg shadow-[#C1440E]/20">{t("loadProject")}</button>
@@ -768,24 +768,46 @@ function ProjectsScreen({ locale, t, projects, onLoad }: { locale: Locale; t: (k
   );
 }
 
-function ProjectMiniMap({ grid, rows }: { grid: GridSpec; rows: Record<number, PlacedBrick[]> }) {
-  const bricks = rows[1] ?? [];
-  const cell = Math.min(18, 250 / Math.max(grid.cols, grid.rows));
-  const pad = 18;
+function ProjectOrderPreview({ grid, rows, rowCount, t }: { grid: GridSpec; rows: Record<number, PlacedBrick[]>; rowCount: number; t: (key: TranslationKey) => string }) {
+  return (
+    <div className="border-y border-[#3D2B1F]/10 bg-[#FFF7E8] px-3 py-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("rowsRail")}</div>
+        <div className="text-[11px] font-black text-[#5F7E4D]">{t("currentRow")} 1 → {rowCount}</div>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+        {Array.from({ length: rowCount }).map((_, index) => {
+          const row = index + 1;
+          return (
+            <div key={row} className="w-[150px] shrink-0 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2">
+              <div className="mb-1 flex items-center justify-between text-[11px] font-black">
+                <span>{t("currentRow")} {row}</span>
+                <span className="text-[#5F7E4D]">{rows[row]?.length ?? 0}</span>
+              </div>
+              <ProjectRowMap grid={grid} bricks={rows[row] ?? []} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProjectRowMap({ grid, bricks }: { grid: GridSpec; bricks: PlacedBrick[] }) {
+  const cell = Math.min(10, 112 / Math.max(grid.cols, grid.rows));
+  const pad = 9;
   const width = grid.cols * cell + pad * 2;
   const height = grid.rows * cell + pad * 2;
   return (
-    <div className="overflow-x-auto border-y border-[#3D2B1F]/10 bg-[#FFF7E8] px-3 py-2">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        <rect x="1" y="1" width={width - 2} height={height - 2} rx="18" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="2" opacity="0.25" />
-        {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={`pmx-${x}`} x1={pad + x * cell} y1={pad} x2={pad + x * cell} y2={pad + grid.rows * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
-        {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={`pmy-${y}`} x1={pad} y1={pad + y * cell} x2={pad + grid.cols * cell} y2={pad + y * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
-        {bricks.map((brick) => {
-          const size = brickSizeFor(brick.kind, brick.orientation);
-          return <rect key={brick.id} x={pad + brick.x * cell + 2} y={pad + brick.y * cell + 2} width={size.w * cell - 4} height={size.h * cell - 4} rx="5" fill={getToolColor(brick.kind)} stroke={COLORS.charcoal} strokeWidth="1.5" />;
-        })}
-      </svg>
-    </div>
+    <svg className="mx-auto block" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <rect x="1" y="1" width={width - 2} height={height - 2} rx="12" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="1.5" opacity="0.26" />
+      {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={`prx-${x}`} x1={pad + x * cell} y1={pad} x2={pad + x * cell} y2={pad + grid.rows * cell} stroke={COLORS.gridLine} strokeWidth="0.8" />)}
+      {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={`pry-${y}`} x1={pad} y1={pad + y * cell} x2={pad + grid.cols * cell} y2={pad + y * cell} stroke={COLORS.gridLine} strokeWidth="0.8" />)}
+      {bricks.map((brick) => {
+        const size = brickSizeFor(brick.kind, brick.orientation);
+        return <rect key={brick.id} x={pad + brick.x * cell + 1} y={pad + brick.y * cell + 1} width={size.w * cell - 2} height={size.h * cell - 2} rx="3" fill={getToolColor(brick.kind)} stroke={COLORS.charcoal} strokeWidth="0.8" />;
+      })}
+    </svg>
   );
 }
 

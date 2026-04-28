@@ -28,6 +28,7 @@ npm run build
 - RU/EN/LT UI translations
 - Parameter screen for foundation and room dimensions
 - Ready project gallery with two demo stove layouts
+- Row-by-row project previews for stove order layouts («порядовки»)
 - Manual row-by-row brick placement
 - Tools: standard brick, half brick, firebrick, vent, cleanout door, eraser
 - Horizontal/vertical brick orientation

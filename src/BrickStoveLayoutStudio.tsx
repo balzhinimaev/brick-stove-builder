@@ -15,6 +15,7 @@ const COLORS = {
   cutBrick: "#F2A35E",
   vent: "#6B7C85",
   cleanout: "#8B5E3C",
+  grate: "#4A4A4A",
   foundation: "#B8A38D",
   skyCream: "#FFF7E8",
   gridLine: "rgba(61,43,31,0.18)"
@@ -68,11 +69,13 @@ const translations = {
     firebrick: "Шамот",
     vent: "Канал",
     cleanout: "Дверца",
+    grate: "Колосник",
     eraser: "Ластик",
     materialsSnapshot: "Материалы",
     regularBricks: "Обычный кирпич",
     firebricks: "Шамот",
     cutBricks: "Подрезки",
+    grates: "Колосники",
     mortarEstimate: "Раствор",
     foundationConcrete: "Бетон",
     totalPlaced: "Уложено",
@@ -150,11 +153,13 @@ const translations = {
     firebrick: "Firebrick",
     vent: "Flue",
     cleanout: "Door",
+    grate: "Grate",
     eraser: "Eraser",
     materialsSnapshot: "Materials",
     regularBricks: "Regular bricks",
     firebricks: "Firebricks",
     cutBricks: "Cuts",
+    grates: "Grates",
     mortarEstimate: "Mortar",
     foundationConcrete: "Concrete",
     totalPlaced: "Placed",
@@ -232,11 +237,13 @@ const translations = {
     firebrick: "Šamotinė",
     vent: "Kanalas",
     cleanout: "Durelės",
+    grate: "Grotelės",
     eraser: "Trintukas",
     materialsSnapshot: "Medžiagos",
     regularBricks: "Paprastos plytos",
     firebricks: "Šamotinės plytos",
     cutBricks: "Pjautos",
+    grates: "Grotelės",
     mortarEstimate: "Skiedinys",
     foundationConcrete: "Betonas",
     totalPlaced: "Sudėta",
@@ -273,13 +280,13 @@ type Locale = keyof typeof translations;
 type TranslationKey = keyof typeof translations.ru;
 type Screen = "parameters" | "projects" | "builder";
 type ViewMode = "2d" | "3d";
-type BrickKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout";
+type BrickKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout" | "grate";
 type ToolKind = BrickKind | "eraser";
 type Orientation = "h" | "v";
 type Parameters = { foundationWidth: number; foundationLength: number; foundationThickness: number; roomHeight: number };
 type GridSpec = { cols: number; rows: number; widthCm: number; lengthCm: number };
 type PlacedBrick = { id: string; x: number; y: number; row: number; kind: BrickKind; orientation: Orientation };
-type MaterialsEstimate = { regularBricks: number; cutBricks: number; firebricks: number; mortarM3: number; concreteVolumeM3: number; total: number };
+type MaterialsEstimate = { regularBricks: number; cutBricks: number; firebricks: number; grates: number; mortarM3: number; concreteVolumeM3: number; total: number };
 type CameraState = { zoom: number; angle: number; offsetX: number; offsetY: number };
 type ReadyProject = { id: string; title: Record<Locale, string>; subtitle: Record<Locale, string>; parameters: Parameters; rowCount: number; lockedRows: number[]; rows: Record<number, PlacedBrick[]>; accent: string };
 
@@ -290,7 +297,7 @@ const MIN_GRID_COLS = 4;
 const MIN_GRID_ROWS = 4;
 const BRICK_LAYER_HEIGHT = 0.34;
 const BRICK_GAP = 0.035;
-const TOOLS: ToolKind[] = ["standard", "cut", "firebrick", "vent", "cleanout", "eraser"];
+const TOOLS: ToolKind[] = ["standard", "cut", "firebrick", "vent", "cleanout", "grate", "eraser"];
 const DEFAULT_PARAMETERS: Parameters = { foundationWidth: 120, foundationLength: 160, foundationThickness: 25, roomHeight: 260 };
 const DEFAULT_CAMERA: CameraState = { zoom: 1, angle: 0, offsetX: 0, offsetY: 0 };
 
@@ -311,6 +318,7 @@ function getToolColor(kind: ToolKind | BrickKind): string {
     case "firebrick": return COLORS.firebrick;
     case "vent": return COLORS.vent;
     case "cleanout": return COLORS.cleanout;
+    case "grate": return COLORS.grate;
     case "eraser": return COLORS.creamDark;
   }
 }
@@ -322,6 +330,7 @@ function toolLabelKey(kind: ToolKind): TranslationKey {
     case "firebrick": return "firebrick";
     case "vent": return "vent";
     case "cleanout": return "cleanout";
+    case "grate": return "grate";
     case "eraser": return "eraser";
   }
 }
@@ -349,6 +358,7 @@ function validateParameters(parameters: Parameters, t: (key: TranslationKey) => 
 }
 
 function brickSizeFor(kind: ToolKind | BrickKind, orientation: Orientation) {
+  if (kind === "grate") return orientation === "h" ? { w: 3, h: 2 } : { w: 2, h: 3 };
   const isCutLike = kind === "cut" || kind === "cleanout";
   if (orientation === "h") return { w: isCutLike ? 1 : 2, h: 1 };
   return { w: 1, h: isCutLike ? 1 : 2 };
@@ -392,9 +402,10 @@ function estimateMaterials(allBricks: PlacedBrick[], parameters: Parameters): Ma
   const regularBricks = allBricks.filter((brick) => brick.kind === "standard").length;
   const cutBricks = allBricks.filter((brick) => brick.kind === "cut" || brick.kind === "cleanout").length;
   const firebricks = allBricks.filter((brick) => brick.kind === "firebrick").length;
+  const grates = allBricks.filter((brick) => brick.kind === "grate").length;
   const mortarM3 = (regularBricks + firebricks + cutBricks * 0.5) * 0.0016;
   const concreteVolumeM3 = (parameters.foundationWidth / 100) * (parameters.foundationLength / 100) * (parameters.foundationThickness / 100);
-  return { regularBricks, cutBricks, firebricks, mortarM3, concreteVolumeM3, total: allBricks.length };
+  return { regularBricks, cutBricks, firebricks, grates, mortarM3, concreteVolumeM3, total: allBricks.length };
 }
 
 function shadeColor(hex: string, percent: number) {
@@ -1193,11 +1204,11 @@ function PlanGrid({ grid, bricks, activeTool, orientation, placeAt, t }: { grid:
         {hoverCell ? <rect x={pad + hoverCell.x * cell + 1.5} y={pad + 26 + hoverCell.y * cell + 1.5} width={cell - 3} height={cell - 3} rx="8" fill="rgba(143,175,118,0.18)" stroke="rgba(95,126,77,0.75)" strokeWidth="1.5" /> : null}
 
         {hoverCell && ghost && hoverGhostFits ? <g>
-          <rect x={hoverGhostX} y={hoverGhostY} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.34" stroke={COLORS.charcoal} strokeDasharray="4 4" />
+          {activeTool === "grate" ? <Grate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * cell - 6} h={ghost.h * cell - 6} orientation={orientation} opacity={0.72} /> : <rect x={hoverGhostX} y={hoverGhostY} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.34" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
           <text x={hoverGhostX + (ghost.w * cell - 6) / 2} y={hoverGhostY + (ghost.h * cell - 6) / 2 + 5} textAnchor="middle" fontSize="18" fontWeight="900" fill="#2f5d38">+</text>
         </g> : null}
 
-        {ghost && !hoverCell && <rect x={pad + 0.2 * cell} y={pad + 26 + 0.2 * cell} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.24" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
+        {ghost && !hoverCell && (activeTool === "grate" ? <Grate2D x={pad + 0.2 * cell} y={pad + 26 + 0.2 * cell} w={ghost.w * cell - 6} h={ghost.h * cell - 6} orientation={orientation} opacity={0.45} /> : <rect x={pad + 0.2 * cell} y={pad + 26 + 0.2 * cell} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.24" stroke={COLORS.charcoal} strokeDasharray="4 4" />)}
 
         {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => <rect key={`${x}-${y}`} x={pad + x * cell} y={pad + 26 + y * cell} width={cell} height={cell} fill="transparent" className="cursor-pointer" onMouseEnter={() => setHoverCell({ x, y })} onClick={() => placeAt(x, y)} />))}
       </svg>
@@ -1212,7 +1223,34 @@ function Brick2D({ brick, cell, pad }: { brick: PlacedBrick; cell: number; pad: 
   const w = size.w * cell - 6;
   const h = size.h * cell - 6;
   const fill = getToolColor(brick.kind);
+
+  if (brick.kind === "grate") return <Grate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
+
   return <g><rect x={x + 3} y={y + 4} width={w} height={h} rx="10" fill="rgba(61,43,31,0.14)" /><rect x={x} y={y} width={w} height={h} rx="10" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" /><path d={`M${x + 7} ${y + h * 0.45} C${x + w * 0.35} ${y + h * 0.54}, ${x + w * 0.7} ${y + h * 0.35}, ${x + w - 7} ${y + h * 0.48}`} stroke={COLORS.mortar} strokeWidth="2" fill="none" opacity="0.7" />{brick.kind === "vent" && <text x={x + w / 2} y={y + h / 2 + 5} textAnchor="middle" fontSize="16" fontWeight="900" fill={COLORS.cream}>V</text>}{brick.kind === "cleanout" && <text x={x + w / 2} y={y + h / 2 + 5} textAnchor="middle" fontSize="16" fontWeight="900" fill={COLORS.cream}>D</text>}</g>;
+}
+
+function Grate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: number; w: number; h: number; orientation: Orientation; opacity?: number }) {
+  const barCount = 5;
+  const horizontal = orientation === "h";
+  return (
+    <g opacity={opacity}>
+      <rect x={x + 3} y={y + 4} width={w} height={h} rx="8" fill="rgba(61,43,31,0.18)" />
+      <rect x={x} y={y} width={w} height={h} rx="8" fill="#2f2f2f" stroke={COLORS.charcoal} strokeWidth="2" />
+      {Array.from({ length: barCount }).map((_, i) => {
+        if (horizontal) {
+          const barH = (h - 10) / (barCount * 1.7);
+          const gap = (h - 10 - barH * barCount) / Math.max(1, barCount - 1);
+          const by = y + 5 + i * (barH + gap);
+          return <rect key={i} x={x + 7} y={by} width={w - 14} height={barH} rx="3" fill="#555" />;
+        }
+        const barW = (w - 10) / (barCount * 1.7);
+        const gap = (w - 10 - barW * barCount) / Math.max(1, barCount - 1);
+        const bx = x + 5 + i * (barW + gap);
+        return <rect key={i} x={bx} y={y + 7} width={barW} height={h - 14} rx="3" fill="#555" />;
+      })}
+      <text x={x + w / 2} y={y + h / 2 + 5} textAnchor="middle" fontSize="13" fontWeight="900" fill="#e6d7bd">РУ</text>
+    </g>
+  );
 }
 
 function ThreeStack({ grid, bricks, currentRow, placeAt, t, camera, activeTool, orientation }: { grid: GridSpec; bricks: PlacedBrick[]; currentRow: number; placeAt: (x: number, y: number) => void; t: (key: TranslationKey) => string; camera: CameraState; activeTool: ToolKind; orientation: Orientation }) {
@@ -1265,6 +1303,8 @@ function DimensionLabels({ grid, gridY }: { grid: GridSpec; gridY: number }) {
 }
 
 function ThreeBrick({ grid, brick, currentRow }: { grid: GridSpec; brick: PlacedBrick; currentRow: number }) {
+  if (brick.kind === "grate") return <ThreeGrate grid={grid} brick={brick} currentRow={currentRow} />;
+
   const geometry = brickWorldGeometry(brick, grid);
   const color = getToolColor(brick.kind);
   const isCurrent = brick.row === currentRow;
@@ -1275,6 +1315,35 @@ function ThreeBrick({ grid, brick, currentRow }: { grid: GridSpec; brick: Placed
       <mesh position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.006, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] * 0.96, 0.01, geometry.scale[2] * 0.08]} /><meshBasicMaterial color={COLORS.mortar} transparent opacity={0.65} /></mesh>
       {isCurrent && <mesh position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.014, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] + 0.035, 0.018, geometry.scale[2] + 0.035]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.23} /></mesh>}
       {label && <Text position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.025, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.28} color={COLORS.cream} anchorX="center" anchorY="middle">{label}</Text>}
+    </group>
+  );
+}
+
+function ThreeGrate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
+  const geometry = brickWorldGeometry(brick, grid);
+  const grateHeight = BRICK_LAYER_HEIGHT * 0.3;
+  const y = (brick.row - 1) * BRICK_LAYER_HEIGHT + grateHeight / 2 + 0.01;
+  const isCurrent = brick.row === currentRow;
+  const bars = 5;
+  const longX = geometry.scale[0] >= geometry.scale[2];
+  const span = longX ? geometry.scale[2] : geometry.scale[0];
+  const barSize = span / (bars * 1.7);
+  const gap = (span - barSize * bars) / Math.max(1, bars - 1);
+
+  return (
+    <group>
+      {Array.from({ length: bars }).map((_, i) => {
+        const offset = -span / 2 + barSize / 2 + i * (barSize + gap);
+        const position: [number, number, number] = longX
+          ? [geometry.position[0], y, geometry.position[2] + offset]
+          : [geometry.position[0] + offset, y, geometry.position[2]];
+        const args: [number, number, number] = longX
+          ? [geometry.scale[0], grateHeight, Math.max(0.04, barSize)]
+          : [Math.max(0.04, barSize), grateHeight, geometry.scale[2]];
+        return <mesh key={i} position={position} castShadow receiveShadow><boxGeometry args={args} /><meshStandardMaterial color={COLORS.grate} roughness={0.58} metalness={0.42} transparent opacity={opacity} /></mesh>;
+      })}
+      {isCurrent && <mesh position={[geometry.position[0], y + grateHeight / 2 + 0.012, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] + 0.035, 0.014, geometry.scale[2] + 0.035]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.18} /></mesh>}
+      <Text position={[geometry.position[0], y + grateHeight / 2 + 0.025, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.22} color="#e6d7bd" anchorX="center" anchorY="middle">РУ</Text>
     </group>
   );
 }
@@ -1293,10 +1362,10 @@ function PlacementCells({ grid, currentRow, placeAt, hoverCell, setHoverCell, ac
         const color = activeTool === "eraser" ? "#c94f4f" : getToolColor(previewKind);
 
         return <group>
-          <mesh position={[geom.position[0], gridY + geom.scale[1] / 2, geom.position[2]]}>
+          {previewKind === "grate" ? <ThreeGrate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} /> : <mesh position={[geom.position[0], gridY + geom.scale[1] / 2, geom.position[2]]}>
             <boxGeometry args={[geom.scale[0], Math.max(0.06, geom.scale[1] * 0.65), geom.scale[2]]} />
             <meshStandardMaterial color={color} transparent opacity={fits ? 0.35 : 0.22} />
-          </mesh>
+          </mesh>}
           <Text position={[geom.position[0], gridY + Math.max(0.08, geom.scale[1] * 0.75), geom.position[2]]} fontSize={0.22} color={fits ? "#2f5d38" : "#9b2c2c"} anchorX="center" anchorY="middle">{activeTool === "eraser" ? "−" : previewOrientation === "h" ? "+ H" : "+ V"}</Text>
         </group>;
       })() : null}
@@ -1328,7 +1397,7 @@ function SideSilhouette({ parameters, lockedRows, t }: { parameters: Parameters;
 }
 
 function MaterialsSummary({ materials, t }: { materials: MaterialsEstimate; t: (key: TranslationKey) => string }) {
-  return <div className="mt-3 rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-3"><div className="mb-2 text-lg font-black">{t("materialsSnapshot")}</div><MaterialRow label={t("regularBricks")} value={materials.regularBricks} /><MaterialRow label={t("firebricks")} value={materials.firebricks} /><MaterialRow label={t("cutBricks")} value={materials.cutBricks} /><MaterialRow label={t("mortarEstimate")} value={`${materials.mortarM3.toFixed(2)} m³`} /><MaterialRow label={t("foundationConcrete")} value={`${materials.concreteVolumeM3.toFixed(2)} m³`} /></div>;
+  return <div className="mt-3 rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-3"><div className="mb-2 text-lg font-black">{t("materialsSnapshot")}</div><MaterialRow label={t("regularBricks")} value={materials.regularBricks} /><MaterialRow label={t("firebricks")} value={materials.firebricks} /><MaterialRow label={t("cutBricks")} value={materials.cutBricks} /><MaterialRow label={t("grates")} value={materials.grates} /><MaterialRow label={t("mortarEstimate")} value={`${materials.mortarM3.toFixed(2)} m³`} /><MaterialRow label={t("foundationConcrete")} value={`${materials.concreteVolumeM3.toFixed(2)} m³`} /></div>;
 }
 
 function MaterialRow({ label, value }: { label: string; value: React.ReactNode }) {

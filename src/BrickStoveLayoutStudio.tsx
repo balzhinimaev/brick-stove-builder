@@ -622,6 +622,34 @@ function normalizeLogin(value: string) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 32);
 }
 
+
+type LocalDraft = {
+  parameters: Parameters;
+  rowCount: number;
+  currentRow: number;
+  lockedRows: number[];
+  rows: Record<number, PlacedBrick[]>;
+  updatedAt: number;
+};
+
+function draftStorageKey(login: string) {
+  return `brick-stove-draft:${login}`;
+}
+
+function loadLocalDraft(login: string): LocalDraft | null {
+  try {
+    const raw = localStorage.getItem(draftStorageKey(login));
+    if (!raw) return null;
+    return JSON.parse(raw) as LocalDraft;
+  } catch {
+    return null;
+  }
+}
+
+function saveLocalDraft(login: string, draft: LocalDraft) {
+  localStorage.setItem(draftStorageKey(login), JSON.stringify(draft));
+}
+
 export default function BrickStoveLayoutStudio() {
   const [locale, setLocale] = useState<Locale>("ru");
   const [screen, setScreen] = useState<Screen>("builder");
@@ -636,6 +664,7 @@ export default function BrickStoveLayoutStudio() {
   const [userLogin, setUserLogin] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authInput, setAuthInput] = useState("");
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [parameters, setParameters] = useState<Parameters>(DEFAULT_PARAMETERS);
   const [camera, setCamera] = useState<CameraState>(DEFAULT_CAMERA);
   const idCounter = useRef(0);
@@ -658,6 +687,41 @@ export default function BrickStoveLayoutStudio() {
       .catch(() => { if (active) setSavedProjects([]); });
     return () => { active = false; };
   }, [userLogin]);
+
+
+  useEffect(() => {
+    if (!userLogin) return;
+    const draft = loadLocalDraft(userLogin);
+    if (!draft) return;
+    setParameters(draft.parameters);
+    setRowCount(draft.rowCount);
+    setCurrentRow(draft.currentRow);
+    setLockedRows(draft.lockedRows);
+    setRows(cloneRows(draft.rows));
+    setAutosaveState("saved");
+  }, [userLogin]);
+
+  useEffect(() => {
+    if (!userLogin) return;
+    setAutosaveState("saving");
+    const timer = window.setTimeout(() => {
+      try {
+        saveLocalDraft(userLogin, {
+          parameters,
+          rowCount,
+          currentRow,
+          lockedRows,
+          rows: cloneRows(rows),
+          updatedAt: Date.now()
+        });
+        setAutosaveState("saved");
+      } catch {
+        setAutosaveState("error");
+      }
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [userLogin, parameters, rowCount, currentRow, lockedRows, rows]);
 
   const updateParameter = (key: keyof Parameters, value: number) => {
     const bounds = parameterBounds(key);
@@ -794,8 +858,8 @@ export default function BrickStoveLayoutStudio() {
 
   return (
     <div className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4" style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}>
-      <div className="mx-auto w-full max-w-[430px]">
-        <Header locale={locale} setLocale={setLocale} t={t} reset={reset} placedCount={materials.total} lockedCount={lockedRows.length} userLogin={userLogin} onSwitchAccount={switchAccount} />
+      <div className="mx-auto w-full max-w-[1280px]">
+        <Header locale={locale} setLocale={setLocale} t={t} reset={reset} placedCount={materials.total} lockedCount={lockedRows.length} userLogin={userLogin} onSwitchAccount={switchAccount} autosaveState={autosaveState} />
         <MobileTabs screen={screen} setScreen={setScreen} t={t} />
         {!userLogin ? (
           <AuthScreen
@@ -831,7 +895,7 @@ function AuthScreen({ mode, setMode, login, setLogin, onSubmit }: { mode: "login
   );
 }
 
-function Header({ locale, setLocale, t, reset, placedCount, lockedCount, userLogin, onSwitchAccount }: { locale: Locale; setLocale: (locale: Locale) => void; t: (key: TranslationKey) => string; reset: () => void; placedCount: number; lockedCount: number; userLogin: string; onSwitchAccount: () => void }) {
+function Header({ locale, setLocale, t, reset, placedCount, lockedCount, userLogin, onSwitchAccount, autosaveState }: { locale: Locale; setLocale: (locale: Locale) => void; t: (key: TranslationKey) => string; reset: () => void; placedCount: number; lockedCount: number; userLogin: string; onSwitchAccount: () => void; autosaveState: "idle" | "saving" | "saved" | "error" }) {
   return (
     <header className="sticky top-2 z-20 rounded-[26px] border-2 border-[#3D2B1F]/15 bg-[#F5E6C8]/95 p-3 shadow-lg shadow-[#3D2B1F]/10 backdrop-blur">
       <div className="flex items-center gap-3">
@@ -843,6 +907,7 @@ function Header({ locale, setLocale, t, reset, placedCount, lockedCount, userLog
             <Pill>{t("totalPlaced")}: {placedCount}</Pill>
             <Pill>{t("rowsRail")}: {lockedCount}</Pill>
             <Pill>{t("brickSize")}</Pill>
+            {userLogin ? <Pill>{autosaveState === "saving" ? "Сохранение…" : autosaveState === "saved" ? "Сохранено локально" : autosaveState === "error" ? "Ошибка автосохранения" : ""}</Pill> : null}
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -881,7 +946,7 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 function MobileTabs({ screen, setScreen, t }: { screen: Screen; setScreen: (screen: Screen) => void; t: (key: TranslationKey) => string }) {
   return (
-    <nav className="mt-3 grid grid-cols-3 gap-2 rounded-[24px] bg-[#3D2B1F]/10 p-1.5">
+    <nav className="mt-3 grid grid-cols-3 gap-2 rounded-[24px] bg-[#3D2B1F]/10 p-1.5 md:max-w-[680px]">
       <TabButton active={screen === "parameters"} onClick={() => setScreen("parameters")}>{t("parametersTab")}</TabButton>
       <TabButton active={screen === "projects"} onClick={() => setScreen("projects")}>{t("projectsTab")}</TabButton>
       <TabButton active={screen === "builder"} onClick={() => setScreen("builder")}>{t("builderTab")}</TabButton>
@@ -896,7 +961,7 @@ function TabButton({ children, active, onClick }: { children: React.ReactNode; a
 
 function ProjectsScreen({ locale, t, projects, onLoad }: { locale: Locale; t: (key: TranslationKey) => string; projects: ReadyProject[]; onLoad: (project: ReadyProject) => void }) {
   return (
-    <main className="mt-4 space-y-3">
+    <main className="mt-4 space-y-3 xl:space-y-4">
       <SectionTitle title={t("projectsTitle")} subtitle={t("projectsSubtitle")} />
       <div className="space-y-3">
         {projects.map((project) => {
@@ -977,7 +1042,7 @@ function ProjectRowMap({ grid, bricks }: { grid: GridSpec; bricks: PlacedBrick[]
 function ParametersScreen({ parameters, updateParameter, t, onContinue, lockedRows }: { parameters: Parameters; updateParameter: (key: keyof Parameters, value: number) => void; t: (key: TranslationKey) => string; onContinue: () => void; lockedRows: number[] }) {
   const valid = useMemo(() => validateParameters(parameters, t), [parameters, t]);
   return (
-    <main className="mt-4 space-y-3">
+    <main className="mt-4 space-y-3 xl:space-y-4">
       <SectionTitle title={t("parametersTitle")} subtitle={t("parametersSubtitle")} />
       {(Object.keys(parameters) as Array<keyof Parameters>).map((key) => <ParameterControl key={key} field={key} value={parameters[key]} updateParameter={updateParameter} t={t} />)}
       <div className="flex items-center gap-3 rounded-[26px] border-2 border-[#5F7E4D]/20 bg-[#8FAF76]/20 p-3">
@@ -1025,18 +1090,26 @@ function BuilderScreen(props: { t: (key: TranslationKey) => string; grid: GridSp
   const currentBricks = rows[currentRow] ?? [];
   const visibleBricks = Object.values(rows).flat().filter((brick) => brick.row <= currentRow && isInsideGrid(brick, grid));
   return (
-    <main className="mt-4 space-y-3">
+    <main className="mt-4 space-y-3 xl:space-y-4">
       <SectionTitle title={t("editorTitle")} subtitle={t("editorSubtitle")} />
-      <button onClick={saveCurrentProject} className="min-h-12 w-full rounded-[20px] border-2 border-[#3D2B1F]/10 bg-[#8FAF76] px-4 text-sm font-black text-[#3D2B1F]">{t("saveProject")}</button>
-      <div className="flex flex-wrap gap-2"><Pill>{t("currentRow")}: {currentRow}</Pill><Pill>{t("totalPlaced")}: {currentBricks.length}</Pill><Pill>{t("true3d")}</Pill><Pill>{grid.widthCm}×{grid.lengthCm} см</Pill></div>
-      <MobileRowRail rowCount={rowCount} currentRow={currentRow} lockedRows={lockedRows} setCurrentRow={setCurrentRow} t={t} addRow={addRow} />
-      <Toolbox t={t} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} />
-      {viewMode === "3d" && <CameraControls t={t} camera={camera} setCamera={setCamera} />}
-      <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10">
-        {viewMode === "2d" ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} placeAt={placeAt} t={t} /> : <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} />}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <button onClick={saveCurrentProject} className="min-h-12 w-full rounded-[20px] border-2 border-[#3D2B1F]/10 bg-[#8FAF76] px-4 text-sm font-black text-[#3D2B1F] md:w-auto md:min-w-[240px]">{t("saveProject")}</button>
+        <div className="flex flex-wrap gap-2"><Pill>{t("currentRow")}: {currentRow}</Pill><Pill>{t("totalPlaced")}: {currentBricks.length}</Pill><Pill>{t("true3d")}</Pill><Pill>{grid.widthCm}×{grid.lengthCm} см</Pill></div>
       </div>
-      <MobileActionBar t={t} currentRow={currentRow} lockedRows={lockedRows} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} />
-      <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-3"><div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div><SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} /><MaterialsSummary materials={materials} t={t} /></div>
+      <div className="xl:grid xl:grid-cols-[320px_minmax(0,1fr)] xl:gap-4 xl:items-start">
+        <aside className="space-y-3 xl:sticky xl:top-4">
+          <MobileRowRail rowCount={rowCount} currentRow={currentRow} lockedRows={lockedRows} setCurrentRow={setCurrentRow} t={t} addRow={addRow} />
+          <Toolbox t={t} activeTool={activeTool} setActiveTool={setActiveTool} orientation={orientation} setOrientation={setOrientation} viewMode={viewMode} setViewMode={setViewMode} />
+          {viewMode === "3d" && <CameraControls t={t} camera={camera} setCamera={setCamera} />}
+          <MobileActionBar t={t} currentRow={currentRow} lockedRows={lockedRows} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} />
+        </aside>
+        <section className="space-y-3">
+          <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10 min-h-[620px]">
+            {viewMode === "2d" ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} placeAt={placeAt} t={t} /> : <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} activeTool={activeTool} orientation={orientation} />}
+          </div>
+          <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-3"><div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div><SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} /><MaterialsSummary materials={materials} t={t} /></div>
+        </section>
+      </div>
     </main>
   );
 }
@@ -1045,12 +1118,12 @@ function MobileRowRail({ rowCount, currentRow, lockedRows, setCurrentRow, t, add
   return (
     <section className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2">
       <div className="mb-2 flex items-center justify-between px-1"><div className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("rowsRail")}</div><button onClick={addRow} className="min-h-9 rounded-2xl bg-[#C1440E] px-3 text-xs font-black text-[#F5E6C8]">{t("addRow")}</button></div>
-      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible">
         {Array.from({ length: rowCount }).map((_, index) => {
           const row = index + 1;
           const active = row === currentRow;
           const locked = lockedRows.includes(row);
-          return <button key={row} onClick={() => setCurrentRow(row)} className={`grid min-h-12 min-w-12 place-items-center rounded-2xl border-2 text-sm font-black transition ${active ? "border-[#3D2B1F] bg-[#3D2B1F] text-[#F5E6C8]" : locked ? "border-[#5F7E4D]/30 bg-[#8FAF76] text-[#3D2B1F]" : "border-[#3D2B1F]/10 bg-[#FFF7E8] text-[#3D2B1F]"}`}>{locked ? "✓" : row}</button>;
+          return <button key={row} onClick={() => setCurrentRow(row)} className={`grid shrink-0 min-h-12 min-w-12 place-items-center rounded-2xl border-2 text-sm font-black transition ${active ? "border-[#3D2B1F] bg-[#3D2B1F] text-[#F5E6C8]" : locked ? "border-[#5F7E4D]/30 bg-[#8FAF76] text-[#3D2B1F]" : "border-[#3D2B1F]/10 bg-[#FFF7E8] text-[#3D2B1F]"}`}>{locked ? "✓" : row}</button>;
         })}
       </div>
     </section>
@@ -1062,7 +1135,7 @@ function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, vi
     <section className="space-y-2">
       <div className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
         <div className="mb-2 px-1 text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("tools")}</div>
-        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible">
           {TOOLS.map((tool) => <button key={tool} onClick={() => setActiveTool(tool)} className={`min-h-[58px] min-w-[78px] rounded-2xl border-2 px-2 text-[11px] font-black transition ${activeTool === tool ? "border-[#3D2B1F] bg-[#3D2B1F] text-[#F5E6C8]" : "border-[#3D2B1F]/10 bg-[#F5E6C8] text-[#3D2B1F]"}`}><span className="mx-auto mb-1 block h-4 w-9 rounded-md border border-[#3D2B1F]/40" style={{ backgroundColor: getToolColor(tool) }} />{t(toolLabelKey(tool))}</button>)}
         </div>
         <p className="mt-1 px-1 text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("paletteHint")}</p>
@@ -1100,18 +1173,33 @@ function PlanGrid({ grid, bricks, activeTool, orientation, placeAt, t }: { grid:
   const width = grid.cols * cell + pad * 2;
   const height = grid.rows * cell + pad * 2 + 26;
   const ghost = activeTool === "eraser" ? null : brickSizeFor(activeTool, orientation);
+  const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
+  const hoverGhostFits = hoverCell && ghost ? isInsideGrid({ ...hoverCell, kind: activeTool as BrickKind, orientation }, grid) : false;
+  const hoverGhostX = hoverCell ? pad + hoverCell.x * cell + 3 : 0;
+  const hoverGhostY = hoverCell ? pad + 26 + hoverCell.y * cell + 3 : 0;
+
   return (
     <div className="w-full overflow-x-auto rounded-[22px] bg-[#FFF7E8]">
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label={t("ariaPlan")}>
-        <rect x="1" y="1" width={width - 2} height={height - 2} rx="22" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="2" opacity="0.28" />
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label={t("ariaPlan")} onMouseLeave={() => setHoverCell(null)}>
+        <rect x="1" y="1" width={width - 2} height={height - 2} rx="22" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="2" opacity="0.36" />
+        <rect x={pad - 2} y={pad + 24} width={grid.cols * cell + 4} height={grid.rows * cell + 4} rx="14" fill="#fff6e5" stroke="#8FAF76" strokeWidth="1.5" opacity="0.75" />
         <text x="16" y="22" fontSize="12" fontWeight="900" fill={COLORS.charcoal}>{t("gridLabel")}</text>
-        {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={`vx-${x}`} x1={pad + x * cell} y1={pad + 26} x2={pad + x * cell} y2={pad + 26 + grid.rows * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
-        {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={`hy-${y}`} x1={pad} y1={pad + 26 + y * cell} x2={pad + grid.cols * cell} y2={pad + 26 + y * cell} stroke={COLORS.gridLine} strokeWidth="1" />)}
-        {Array.from({ length: grid.cols + 1 }).map((_, x) => <text key={`xl-${x}`} x={pad + x * cell - 7} y={pad + 18} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{Math.round((x * grid.widthCm) / grid.cols)}</text>)}
-        {Array.from({ length: grid.rows + 1 }).map((_, y) => <text key={`yl-${y}`} x={5} y={pad + 30 + y * cell} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{Math.round((y * grid.lengthCm) / grid.rows)}см</text>)}
+        {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={x} x1={pad + x * cell} y1={pad + 26} x2={pad + x * cell} y2={pad + 26 + grid.rows * cell} stroke="rgba(61,43,31,0.28)" strokeWidth="1.3" />)}
+        {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={y} x1={pad} y1={pad + 26 + y * cell} x2={pad + grid.cols * cell} y2={pad + 26 + y * cell} stroke="rgba(61,43,31,0.28)" strokeWidth="1.3" />)}
+        {Array.from({ length: grid.cols + 1 }).map((_, x) => <text key={x} x={pad + x * cell - 7} y={pad + 18} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{Math.round((x * grid.widthCm) / grid.cols)}</text>)}
+        {Array.from({ length: grid.rows + 1 }).map((_, y) => <text key={y} x={5} y={pad + 30 + y * cell} fontSize="8" fontWeight="800" fill={COLORS.sageDark}>{Math.round((y * grid.lengthCm) / grid.rows)}см</text>)}
         {bricks.map((brick) => <Brick2D key={brick.id} brick={brick} cell={cell} pad={pad} />)}
-        {ghost && <rect x={pad + 0.2 * cell} y={pad + 26 + 0.2 * cell} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.28" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
-        {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => <rect key={`tap-${x}-${y}`} x={pad + x * cell} y={pad + 26 + y * cell} width={cell} height={cell} fill="transparent" className="cursor-pointer" onClick={() => placeAt(x, y)} />))}
+
+        {hoverCell ? <rect x={pad + hoverCell.x * cell + 1.5} y={pad + 26 + hoverCell.y * cell + 1.5} width={cell - 3} height={cell - 3} rx="8" fill="rgba(143,175,118,0.18)" stroke="rgba(95,126,77,0.75)" strokeWidth="1.5" /> : null}
+
+        {hoverCell && ghost && hoverGhostFits ? <g>
+          <rect x={hoverGhostX} y={hoverGhostY} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.34" stroke={COLORS.charcoal} strokeDasharray="4 4" />
+          <text x={hoverGhostX + (ghost.w * cell - 6) / 2} y={hoverGhostY + (ghost.h * cell - 6) / 2 + 5} textAnchor="middle" fontSize="18" fontWeight="900" fill="#2f5d38">+</text>
+        </g> : null}
+
+        {ghost && !hoverCell && <rect x={pad + 0.2 * cell} y={pad + 26 + 0.2 * cell} width={ghost.w * cell - 6} height={ghost.h * cell - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.24" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
+
+        {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => <rect key={`${x}-${y}`} x={pad + x * cell} y={pad + 26 + y * cell} width={cell} height={cell} fill="transparent" className="cursor-pointer" onMouseEnter={() => setHoverCell({ x, y })} onClick={() => placeAt(x, y)} />))}
       </svg>
     </div>
   );
@@ -1127,7 +1215,8 @@ function Brick2D({ brick, cell, pad }: { brick: PlacedBrick; cell: number; pad: 
   return <g><rect x={x + 3} y={y + 4} width={w} height={h} rx="10" fill="rgba(61,43,31,0.14)" /><rect x={x} y={y} width={w} height={h} rx="10" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" /><path d={`M${x + 7} ${y + h * 0.45} C${x + w * 0.35} ${y + h * 0.54}, ${x + w * 0.7} ${y + h * 0.35}, ${x + w - 7} ${y + h * 0.48}`} stroke={COLORS.mortar} strokeWidth="2" fill="none" opacity="0.7" />{brick.kind === "vent" && <text x={x + w / 2} y={y + h / 2 + 5} textAnchor="middle" fontSize="16" fontWeight="900" fill={COLORS.cream}>V</text>}{brick.kind === "cleanout" && <text x={x + w / 2} y={y + h / 2 + 5} textAnchor="middle" fontSize="16" fontWeight="900" fill={COLORS.cream}>D</text>}</g>;
 }
 
-function ThreeStack({ grid, bricks, currentRow, placeAt, t, camera }: { grid: GridSpec; bricks: PlacedBrick[]; currentRow: number; placeAt: (x: number, y: number) => void; t: (key: TranslationKey) => string; camera: CameraState }) {
+function ThreeStack({ grid, bricks, currentRow, placeAt, t, camera, activeTool, orientation }: { grid: GridSpec; bricks: PlacedBrick[]; currentRow: number; placeAt: (x: number, y: number) => void; t: (key: TranslationKey) => string; camera: CameraState; activeTool: ToolKind; orientation: Orientation }) {
+  const [hoverCell3d, setHoverCell3d] = useState<{ x: number; y: number } | null>(null);
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.006;
   return (
@@ -1144,7 +1233,7 @@ function ThreeStack({ grid, bricks, currentRow, placeAt, t, camera }: { grid: Gr
           <ThreeGrid grid={grid} gridY={gridY} />
           <DimensionLabels grid={grid} gridY={gridY} />
           {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} />)}
-          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} />
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} />
         </group>
       </Canvas>
     </div>
@@ -1190,11 +1279,35 @@ function ThreeBrick({ grid, brick, currentRow }: { grid: GridSpec; brick: Placed
   );
 }
 
-function PlacementCells({ grid, currentRow, placeAt }: { grid: GridSpec; currentRow: number; placeAt: (x: number, y: number) => void }) {
+function PlacementCells({ grid, currentRow, placeAt, hoverCell, setHoverCell, activeTool, orientation }: { grid: GridSpec; currentRow: number; placeAt: (x: number, y: number) => void; hoverCell: { x: number; y: number } | null; setHoverCell: React.Dispatch<React.SetStateAction<{ x: number; y: number } | null>>; activeTool: ToolKind; orientation: Orientation }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
+  const previewKind: BrickKind = activeTool === "eraser" ? "cut" : activeTool;
+  const previewOrientation: Orientation = activeTool === "eraser" ? "h" : orientation;
+
   return (
     <group>
-      {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => { const world = cellToWorld(x + 0.5, y + 0.5, grid); return <mesh key={`cell-${x}-${y}`} position={[world.x, gridY, world.z]} rotation={[-Math.PI / 2, 0, 0]} onClick={(event) => { event.stopPropagation(); placeAt(x, y); }}><planeGeometry args={[0.96, 0.96]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} /></mesh>; }))}
+      {hoverCell ? (() => {
+        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation } as PlacedBrick;
+        const geom = brickWorldGeometry(draft, grid);
+        const fits = activeTool === "eraser" ? true : isInsideGrid({ x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation }, grid);
+        const color = activeTool === "eraser" ? "#c94f4f" : getToolColor(previewKind);
+
+        return <group>
+          <mesh position={[geom.position[0], gridY + geom.scale[1] / 2, geom.position[2]]}>
+            <boxGeometry args={[geom.scale[0], Math.max(0.06, geom.scale[1] * 0.65), geom.scale[2]]} />
+            <meshStandardMaterial color={color} transparent opacity={fits ? 0.35 : 0.22} />
+          </mesh>
+          <Text position={[geom.position[0], gridY + Math.max(0.08, geom.scale[1] * 0.75), geom.position[2]]} fontSize={0.22} color={fits ? "#2f5d38" : "#9b2c2c"} anchorX="center" anchorY="middle">{activeTool === "eraser" ? "−" : previewOrientation === "h" ? "+ H" : "+ V"}</Text>
+        </group>;
+      })() : null}
+
+      {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => {
+        const world = cellToWorld(x + 0.5, y + 0.5, grid);
+        return <mesh key={`cell-${x}-${y}`} position={[world.x, gridY, world.z]} rotation={[-Math.PI / 2, 0, 0]} onPointerOver={(event) => { event.stopPropagation(); setHoverCell({ x, y }); document.body.style.cursor = "pointer"; }} onPointerOut={() => { setHoverCell(null); document.body.style.cursor = "default"; }} onClick={(event) => { event.stopPropagation(); placeAt(x, y); }}>
+          <planeGeometry args={[0.96, 0.96]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>;
+      }))}
     </group>
   );
 }

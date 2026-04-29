@@ -1330,9 +1330,6 @@ function ThreeGrate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; 
   const span = longX ? geometry.scale[2] : geometry.scale[0];
   const barSize = span / (bars * 1.7);
   const gap = (span - barSize * bars) / Math.max(1, bars - 1);
-  const rebateDepth = 0.28; // 3.5 см при ячейке 12.5 см — зона опирания/выборки
-  const ledgeHeight = grateHeight * 0.72;
-  const ledgeY = grateY - grateHeight / 2 - ledgeHeight / 2 + 0.012;
   const alongXCm = brick.orientation === "h" ? 38 : 25.2;
   const alongZCm = brick.orientation === "h" ? 25.2 : 38;
   const topLabelY = grateY + grateHeight / 2 + 0.035;
@@ -1340,27 +1337,6 @@ function ThreeGrate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; 
 
   return (
     <group>
-      <mesh position={[geometry.position[0], ledgeY, geometry.position[2] - geometry.scale[2] / 2 + rebateDepth / 2]} receiveShadow>
-        <boxGeometry args={[geometry.scale[0] + rebateDepth * 0.7, ledgeHeight, rebateDepth]} />
-        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.78} />
-      </mesh>
-      <mesh position={[geometry.position[0], ledgeY, geometry.position[2] + geometry.scale[2] / 2 - rebateDepth / 2]} receiveShadow>
-        <boxGeometry args={[geometry.scale[0] + rebateDepth * 0.7, ledgeHeight, rebateDepth]} />
-        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.78} />
-      </mesh>
-      <mesh position={[geometry.position[0] - geometry.scale[0] / 2 + rebateDepth / 2, ledgeY, geometry.position[2]]} receiveShadow>
-        <boxGeometry args={[rebateDepth, ledgeHeight, geometry.scale[2]]} />
-        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.68} />
-      </mesh>
-      <mesh position={[geometry.position[0] + geometry.scale[0] / 2 - rebateDepth / 2, ledgeY, geometry.position[2]]} receiveShadow>
-        <boxGeometry args={[rebateDepth, ledgeHeight, geometry.scale[2]]} />
-        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.68} />
-      </mesh>
-      <mesh position={[geometry.position[0], ledgeY + ledgeHeight / 2 + 0.002, geometry.position[2]]}>
-        <boxGeometry args={[geometry.scale[0] + 0.02, 0.01, geometry.scale[2] + 0.02]} />
-        <meshBasicMaterial color="#241913" transparent opacity={opacity * 0.2} />
-      </mesh>
-
       {Array.from({ length: bars }).map((_, i) => {
         const offset = -span / 2 + barSize / 2 + i * (barSize + gap);
         const position: [number, number, number] = longX

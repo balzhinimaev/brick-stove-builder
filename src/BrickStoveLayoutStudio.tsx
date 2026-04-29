@@ -1321,29 +1321,70 @@ function ThreeBrick({ grid, brick, currentRow }: { grid: GridSpec; brick: Placed
 
 function ThreeGrate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
   const geometry = brickWorldGeometry(brick, grid);
-  const grateHeight = BRICK_LAYER_HEIGHT * 0.3;
-  const y = (brick.row - 1) * BRICK_LAYER_HEIGHT + grateHeight / 2 + 0.01;
+  const grateHeight = BRICK_LAYER_HEIGHT * 0.3; // ≈22 мм при кирпичном ряде ~65–70 мм
+  const courseTopY = brick.row * BRICK_LAYER_HEIGHT - BRICK_LAYER_HEIGHT * 0.04;
+  const grateY = courseTopY - grateHeight / 2;
   const isCurrent = brick.row === currentRow;
   const bars = 5;
   const longX = geometry.scale[0] >= geometry.scale[2];
   const span = longX ? geometry.scale[2] : geometry.scale[0];
   const barSize = span / (bars * 1.7);
   const gap = (span - barSize * bars) / Math.max(1, bars - 1);
+  const rebateDepth = 0.28; // 3.5 см при ячейке 12.5 см — зона опирания/выборки
+  const ledgeHeight = grateHeight * 0.72;
+  const ledgeY = grateY - grateHeight / 2 - ledgeHeight / 2 + 0.012;
+  const alongXCm = brick.orientation === "h" ? 38 : 25.2;
+  const alongZCm = brick.orientation === "h" ? 25.2 : 38;
+  const topLabelY = grateY + grateHeight / 2 + 0.035;
+  const labelOpacity = opacity >= 0.95 ? 1 : 0.55;
 
   return (
     <group>
+      <mesh position={[geometry.position[0], ledgeY, geometry.position[2] - geometry.scale[2] / 2 + rebateDepth / 2]} receiveShadow>
+        <boxGeometry args={[geometry.scale[0] + rebateDepth * 0.7, ledgeHeight, rebateDepth]} />
+        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.78} />
+      </mesh>
+      <mesh position={[geometry.position[0], ledgeY, geometry.position[2] + geometry.scale[2] / 2 - rebateDepth / 2]} receiveShadow>
+        <boxGeometry args={[geometry.scale[0] + rebateDepth * 0.7, ledgeHeight, rebateDepth]} />
+        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.78} />
+      </mesh>
+      <mesh position={[geometry.position[0] - geometry.scale[0] / 2 + rebateDepth / 2, ledgeY, geometry.position[2]]} receiveShadow>
+        <boxGeometry args={[rebateDepth, ledgeHeight, geometry.scale[2]]} />
+        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.68} />
+      </mesh>
+      <mesh position={[geometry.position[0] + geometry.scale[0] / 2 - rebateDepth / 2, ledgeY, geometry.position[2]]} receiveShadow>
+        <boxGeometry args={[rebateDepth, ledgeHeight, geometry.scale[2]]} />
+        <meshStandardMaterial color={COLORS.brickRed} roughness={0.82} transparent opacity={opacity * 0.68} />
+      </mesh>
+      <mesh position={[geometry.position[0], ledgeY + ledgeHeight / 2 + 0.002, geometry.position[2]]}>
+        <boxGeometry args={[geometry.scale[0] + 0.02, 0.01, geometry.scale[2] + 0.02]} />
+        <meshBasicMaterial color="#241913" transparent opacity={opacity * 0.2} />
+      </mesh>
+
       {Array.from({ length: bars }).map((_, i) => {
         const offset = -span / 2 + barSize / 2 + i * (barSize + gap);
         const position: [number, number, number] = longX
-          ? [geometry.position[0], y, geometry.position[2] + offset]
-          : [geometry.position[0] + offset, y, geometry.position[2]];
+          ? [geometry.position[0], grateY, geometry.position[2] + offset]
+          : [geometry.position[0] + offset, grateY, geometry.position[2]];
         const args: [number, number, number] = longX
           ? [geometry.scale[0], grateHeight, Math.max(0.04, barSize)]
           : [Math.max(0.04, barSize), grateHeight, geometry.scale[2]];
         return <mesh key={i} position={position} castShadow receiveShadow><boxGeometry args={args} /><meshStandardMaterial color={COLORS.grate} roughness={0.58} metalness={0.42} transparent opacity={opacity} /></mesh>;
       })}
-      {isCurrent && <mesh position={[geometry.position[0], y + grateHeight / 2 + 0.012, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] + 0.035, 0.014, geometry.scale[2] + 0.035]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.18} /></mesh>}
-      <Text position={[geometry.position[0], y + grateHeight / 2 + 0.025, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.22} color="#e6d7bd" anchorX="center" anchorY="middle">РУ</Text>
+
+      {isCurrent && <mesh position={[geometry.position[0], topLabelY + 0.002, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] + 0.05, 0.012, geometry.scale[2] + 0.05]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.16} /></mesh>}
+      <Text position={[geometry.position[0], topLabelY + 0.03, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#f4e3c4" anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>РУ {brick.orientation === "h" ? "380×252×22 мм" : "252×380×22 мм"}</Text>
+
+      <mesh position={[geometry.position[0], topLabelY, geometry.position[2] - geometry.scale[2] / 2 - 0.22]}>
+        <boxGeometry args={[geometry.scale[0], 0.012, 0.018]} />
+        <meshBasicMaterial color={COLORS.sageDark} transparent opacity={labelOpacity * 0.75} />
+      </mesh>
+      <Text position={[geometry.position[0], topLabelY + 0.012, geometry.position[2] - geometry.scale[2] / 2 - 0.32]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongXCm.toLocaleString("ru-RU")} см</Text>
+      <mesh position={[geometry.position[0] - geometry.scale[0] / 2 - 0.22, topLabelY, geometry.position[2]]}>
+        <boxGeometry args={[0.018, 0.012, geometry.scale[2]]} />
+        <meshBasicMaterial color={COLORS.sageDark} transparent opacity={labelOpacity * 0.75} />
+      </mesh>
+      <Text position={[geometry.position[0] - geometry.scale[0] / 2 - 0.32, topLabelY + 0.012, geometry.position[2]]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongZCm.toLocaleString("ru-RU")} см</Text>
     </group>
   );
 }

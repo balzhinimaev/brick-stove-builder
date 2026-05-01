@@ -868,8 +868,8 @@ export default function BrickStoveLayoutStudio() {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4" style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}>
-      <div className="mx-auto w-full max-w-[1280px]">
+    <div className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4 xl:pb-12" style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}>
+      <div className="mx-auto w-full max-w-[1280px] xl:max-w-[1520px] 2xl:max-w-[min(100%,1800px)]">
         <Header locale={locale} setLocale={setLocale} t={t} reset={reset} placedCount={materials.total} lockedCount={lockedRows.length} userLogin={userLogin} onSwitchAccount={switchAccount} autosaveState={autosaveState} />
         <MobileTabs screen={screen} setScreen={setScreen} t={t} />
         {!userLogin ? (
@@ -1115,7 +1115,7 @@ function BuilderScreen(props: { t: (key: TranslationKey) => string; grid: GridSp
           <MobileActionBar t={t} currentRow={currentRow} lockedRows={lockedRows} copyPreviousRow={copyPreviousRow} clearCurrentRow={clearCurrentRow} lockRow={lockRow} unlockRow={unlockRow} />
         </aside>
         <section className="space-y-3">
-          <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10 min-h-[620px]">
+          <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10 min-h-[620px] xl:min-h-[min(70dvh,900px)]">
             {viewMode === "2d" ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} placeAt={placeAt} t={t} /> : <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} activeTool={activeTool} orientation={orientation} />}
           </div>
           <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-3"><div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div><SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} /><MaterialsSummary materials={materials} t={t} /></div>
@@ -1258,12 +1258,27 @@ function ThreeStack({ grid, bricks, currentRow, placeAt, t, camera, activeTool, 
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.006;
   return (
-    <div className="relative h-[390px] overflow-hidden rounded-[22px] bg-[#FFF7E8]" aria-label={t("aria3d")}>
+    <div className="relative h-[390px] overflow-hidden rounded-[22px] bg-[#FFF7E8] md:h-[460px] xl:h-[min(62dvh,780px)] 2xl:h-[min(68dvh,860px)]" aria-label={t("aria3d")}>
       <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-2xl border border-[#3D2B1F]/10 bg-[#F5E6C8]/90 px-3 py-2 text-xs font-black shadow-sm">{t("view3d")} · {grid.widthCm}×{grid.lengthCm} см</div>
-      <Canvas shadows dpr={[1, 2]} gl={{ antialias: true }}>
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        gl={{ antialias: true, powerPreference: "high-performance" }}
+      >
         <color attach="background" args={[COLORS.skyCream]} />
-        <ambientLight intensity={1.15} />
-        <directionalLight position={[4, 8, 5]} intensity={1.2} castShadow />
+        {/* Soft "sky" fill + key + rim light to avoid overly dark faces. */}
+        <ambientLight intensity={1.35} />
+        <hemisphereLight intensity={0.55} color={COLORS.skyCream} groundColor={COLORS.foundation} />
+        <directionalLight
+          position={[4, 8, 5]}
+          intensity={1.35}
+          castShadow
+          shadow-bias={-0.00005}
+          shadow-normalBias={0.03}
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+        />
+        <directionalLight position={[-6, 4.5, -4]} intensity={0.65} />
         <OrthographicCamera makeDefault position={[Math.max(grid.cols, 6.8), 6.2, Math.max(grid.rows, 7.2)]} zoom={(520 / Math.max(grid.cols, grid.rows, 10)) * camera.zoom} />
         <OrbitControls enableDamping dampingFactor={0.12} enableRotate enableZoom enablePan minZoom={25} maxZoom={120} target={[camera.offsetX, BRICK_LAYER_HEIGHT * currentRow * 0.45, camera.offsetY]} />
         <group rotation={[0, (camera.angle * Math.PI) / 180, 0]} position={[camera.offsetX, 0, camera.offsetY]}>

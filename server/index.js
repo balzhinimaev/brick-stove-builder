@@ -238,7 +238,9 @@ app.use((error, _req, res, _next) => {
 
 async function start() {
   if (mongoUri) {
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(mongoUri, {
+      dbName: "brickstove"
+    });
     console.log("MongoDB connected");
   } else {
     console.warn("MONGODB_URI is not set. API project routes will return 503 until MongoDB is configured.");

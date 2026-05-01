@@ -13,16 +13,28 @@ Mobile-first React prototype for manually building brick stove row layouts («п
 
 ## Run locally
 
+**Frontend + hot reload** (Vite dev server). The terminal prints the exact URL (by default `127.0.0.1:5173`, or the next free port if that one is busy):
+
 ```bash
 npm ci
 npm run dev
 ```
 
-Run the API/server with local MongoDB:
+With the default setup, `/api` is proxied to Express on `127.0.0.1:4174`. Start the backend in another terminal:
 
 ```bash
 cp .env.example .env
 # edit MONGODB_URI if needed
+npm run server
+```
+
+You only need `npm run build` before `npm run server` if you want Express to serve the production `dist/` bundle from the same port. During pure API development, running `npm run server` alone is enough; Vite will proxy API calls without a local `dist` build.
+
+To point the SPA at another API explicitly, set `VITE_API_BASE` (e.g. `http://127.0.0.1:4174/api`); change the proxy target with `VITE_DEV_API_ORIGIN` (defaults to `http://127.0.0.1:4174`).
+
+**Production-style** (single process: Express + static build):
+
+```bash
 npm run build
 npm run server
 ```

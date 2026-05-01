@@ -280,8 +280,8 @@ type Locale = keyof typeof translations;
 type TranslationKey = keyof typeof translations.ru;
 type Screen = "parameters" | "projects" | "builder";
 type ViewMode = "2d" | "3d";
-type BrickKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout" | "grate";
-type ToolKind = BrickKind | "eraser";
+type BrickKind = "standard" | "cut" | "trim" | "firebrick" | "vent" | "cleanout" | "grate";
+type ToolKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout" | "grate" | "eraser";
 type Orientation = "h" | "v";
 type Parameters = { foundationWidth: number; foundationLength: number; foundationThickness: number; roomHeight: number };
 type GridSpec = { cols: number; rows: number; widthCm: number; lengthCm: number };
@@ -315,6 +315,7 @@ function getToolColor(kind: ToolKind | BrickKind): string {
   switch (kind) {
     case "standard": return COLORS.brickOrange;
     case "cut": return COLORS.cutBrick;
+    case "trim": return COLORS.cutBrick;
     case "firebrick": return COLORS.firebrick;
     case "vent": return COLORS.vent;
     case "cleanout": return COLORS.cleanout;
@@ -359,33 +360,57 @@ function validateParameters(parameters: Parameters, t: (key: TranslationKey) => 
 
 function brickSizeFor(kind: ToolKind | BrickKind, orientation: Orientation) {
   if (kind === "grate") return orientation === "h" ? { w: 3, h: 2 } : { w: 2, h: 3 };
+  if (kind === "trim") return orientation === "h" ? { w: 0.5, h: 1 } : { w: 1, h: 0.5 };
   const isCutLike = kind === "cut" || kind === "cleanout";
   if (orientation === "h") return { w: isCutLike ? 1 : 2, h: 1 };
   return { w: 1, h: isCutLike ? 1 : 2 };
 }
 
-function getFootprint(brick: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">) {
+function brickBounds(brick: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">) {
   const size = brickSizeFor(brick.kind, brick.orientation);
-  const cells: Array<{ x: number; y: number }> = [];
-  for (let y = 0; y < size.h; y += 1) {
-    for (let x = 0; x < size.w; x += 1) cells.push({ x: brick.x + x, y: brick.y + y });
-  }
-  return cells;
+  return { x1: brick.x, y1: brick.y, x2: brick.x + size.w, y2: brick.y + size.h };
 }
 
 function isInsideGrid(brick: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">, grid: GridSpec) {
-  return getFootprint(brick).every((cell) => cell.x >= 0 && cell.x < grid.cols && cell.y >= 0 && cell.y < grid.rows);
+  const b = brickBounds(brick);
+  return b.x1 >= 0 && b.y1 >= 0 && b.x2 <= grid.cols && b.y2 <= grid.rows;
 }
 
 function overlaps(a: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">, b: Pick<PlacedBrick, "x" | "y" | "kind" | "orientation">) {
-  const aCells = getFootprint(a);
-  const bCells = getFootprint(b);
-  return aCells.some((aCell) => bCells.some((bCell) => aCell.x === bCell.x && aCell.y === bCell.y));
+  const aa = brickBounds(a);
+  const bb = brickBounds(b);
+  return aa.x1 < bb.x2 && aa.x2 > bb.x1 && aa.y1 < bb.y2 && aa.y2 > bb.y1;
 }
 
 function placeBrickInRow(rowBricks: PlacedBrick[], draft: PlacedBrick, grid: GridSpec) {
   if (!isInsideGrid(draft, grid)) return rowBricks;
   return [...rowBricks.filter((brick) => !overlaps(brick, draft)), draft];
+}
+
+function placeBricksInRow(rowBricks: PlacedBrick[], drafts: PlacedBrick[], grid: GridSpec) {
+  if (!drafts.length) return rowBricks;
+  if (drafts.some((draft) => !isInsideGrid(draft, grid))) return rowBricks;
+  return [...rowBricks.filter((brick) => !drafts.some((draft) => overlaps(brick, draft))), ...drafts];
+}
+
+function grateAssemblyBricks(row: number, x: number, y: number, orientation: Orientation, nextId: () => number): PlacedBrick[] {
+  const grate: PlacedBrick = { id: `r${row}-${nextId()}-${x}-${y}`, row, x, y, kind: "grate", orientation };
+  if (orientation === "h") {
+    return [
+      grate,
+      { id: `r${row}-${nextId()}-${x - 0.5}-${y}`, row, x: x - 0.5, y, kind: "trim", orientation: "h" },
+      { id: `r${row}-${nextId()}-${x - 0.5}-${y + 1}`, row, x: x - 0.5, y: y + 1, kind: "trim", orientation: "h" },
+      { id: `r${row}-${nextId()}-${x + 3}-${y}`, row, x: x + 3, y, kind: "trim", orientation: "h" },
+      { id: `r${row}-${nextId()}-${x + 3}-${y + 1}`, row, x: x + 3, y: y + 1, kind: "trim", orientation: "h" }
+    ];
+  }
+  return [
+    grate,
+    { id: `r${row}-${nextId()}-${x}-${y - 0.5}`, row, x, y: y - 0.5, kind: "trim", orientation: "v" },
+    { id: `r${row}-${nextId()}-${x + 1}-${y - 0.5}`, row, x: x + 1, y: y - 0.5, kind: "trim", orientation: "v" },
+    { id: `r${row}-${nextId()}-${x}-${y + 3}`, row, x, y: y + 3, kind: "trim", orientation: "v" },
+    { id: `r${row}-${nextId()}-${x + 1}-${y + 3}`, row, x: x + 1, y: y + 3, kind: "trim", orientation: "v" }
+  ];
 }
 
 function pruneRowsToGrid(rows: Record<number, PlacedBrick[]>, grid: GridSpec) {
@@ -395,12 +420,15 @@ function pruneRowsToGrid(rows: Record<number, PlacedBrick[]>, grid: GridSpec) {
 }
 
 function removeBrickAt(rowBricks: PlacedBrick[], x: number, y: number) {
-  return rowBricks.filter((brick) => !getFootprint(brick).some((cell) => cell.x === x && cell.y === y));
+  return rowBricks.filter((brick) => {
+    const b = brickBounds(brick);
+    return !(x >= b.x1 && x < b.x2 && y >= b.y1 && y < b.y2);
+  });
 }
 
 function estimateMaterials(allBricks: PlacedBrick[], parameters: Parameters): MaterialsEstimate {
   const regularBricks = allBricks.filter((brick) => brick.kind === "standard").length;
-  const cutBricks = allBricks.filter((brick) => brick.kind === "cut" || brick.kind === "cleanout").length;
+  const cutBricks = allBricks.filter((brick) => brick.kind === "cut" || brick.kind === "cleanout").length + allBricks.filter((brick) => brick.kind === "trim").length * 0.5;
   const firebricks = allBricks.filter((brick) => brick.kind === "firebrick").length;
   const grates = allBricks.filter((brick) => brick.kind === "grate").length;
   const mortarM3 = (regularBricks + firebricks + cutBricks * 0.5) * 0.0016;
@@ -762,6 +790,10 @@ export default function BrickStoveLayoutStudio() {
     setRows((current) => {
       const rowBricks = current[currentRow] ?? [];
       if (activeTool === "eraser") return { ...current, [currentRow]: removeBrickAt(rowBricks, x, y) };
+      if (activeTool === "grate") {
+        const drafts = grateAssemblyBricks(currentRow, x, y, orientation, () => idCounter.current++);
+        return { ...current, [currentRow]: placeBricksInRow(rowBricks, drafts, grid) };
+      }
       const draft: PlacedBrick = { id: `r${currentRow}-${idCounter.current++}-${x}-${y}`, row: currentRow, x, y, kind: activeTool, orientation };
       return { ...current, [currentRow]: placeBrickInRow(rowBricks, draft, grid) };
     });
@@ -1336,15 +1368,25 @@ function ThreeBrick({ grid, brick, currentRow }: { grid: GridSpec; brick: Placed
 
 function ThreeGrate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
   const geometry = brickWorldGeometry(brick, grid);
-  const grateHeight = BRICK_LAYER_HEIGHT * 0.3; // ≈22 мм при кирпичном ряде ~65–70 мм
-  const courseTopY = brick.row * BRICK_LAYER_HEIGHT - BRICK_LAYER_HEIGHT * 0.04;
-  const grateY = courseTopY - grateHeight / 2;
+  const grateSize = brickSizeFor("grate", brick.orientation);
+  // Grate should not inherit full brick mortar gaps; keep it almost flush with support cuts.
+  const grateScaleX = Math.max(0.1, grateSize.w - BRICK_GAP * 0.12);
+  const grateScaleZ = Math.max(0.1, grateSize.h - BRICK_GAP * 0.12);
+  const grateHeight = BRICK_LAYER_HEIGHT * 0.22; // thinner cast-iron grate profile
+  const supportTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
+  const grateSeatEmbed = 0.004; // tiny embed removes "floating" seam
+  const grateY = supportTopY + grateHeight / 2 - grateSeatEmbed;
   const isCurrent = brick.row === currentRow;
   const bars = 5;
-  const longX = geometry.scale[0] >= geometry.scale[2];
-  const span = longX ? geometry.scale[2] : geometry.scale[0];
+  const longX = grateScaleX >= grateScaleZ;
+  const span = longX ? grateScaleZ : grateScaleX;
   const barSize = span / (bars * 1.7);
   const gap = (span - barSize * bars) / Math.max(1, bars - 1);
+  const supportRailHeight = Math.max(0.02, grateHeight * 0.58);
+  const supportRailWidth = 0.12;
+  const supportRailY = supportTopY - supportRailHeight / 2;
+  const halfX = grateScaleX / 2;
+  const halfZ = grateScaleZ / 2;
   const alongXCm = brick.orientation === "h" ? 38 : 25.2;
   const alongZCm = brick.orientation === "h" ? 25.2 : 38;
   const topLabelY = grateY + grateHeight / 2 + 0.035;
@@ -1352,30 +1394,74 @@ function ThreeGrate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; 
 
   return (
     <group>
+      {/* Brick seat rails: visual quarter-cut support where the grate rests. */}
+      {longX ? (
+        <>
+          <mesh position={[geometry.position[0], supportRailY, geometry.position[2] - halfZ + supportRailWidth / 2]} castShadow receiveShadow>
+            <boxGeometry args={[grateScaleX, supportRailHeight, supportRailWidth]} />
+            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
+          </mesh>
+          <mesh position={[geometry.position[0], supportRailY, geometry.position[2] + halfZ - supportRailWidth / 2]} castShadow receiveShadow>
+            <boxGeometry args={[grateScaleX, supportRailHeight, supportRailWidth]} />
+            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
+          </mesh>
+        </>
+      ) : (
+        <>
+          <mesh position={[geometry.position[0] - halfX + supportRailWidth / 2, supportRailY, geometry.position[2]]} castShadow receiveShadow>
+            <boxGeometry args={[supportRailWidth, supportRailHeight, grateScaleZ]} />
+            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
+          </mesh>
+          <mesh position={[geometry.position[0] + halfX - supportRailWidth / 2, supportRailY, geometry.position[2]]} castShadow receiveShadow>
+            <boxGeometry args={[supportRailWidth, supportRailHeight, grateScaleZ]} />
+            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
+          </mesh>
+        </>
+      )}
+
+      {/* Corner chamfers to avoid the "floating rectangle" look. */}
+      {[
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1]
+      ].map(([sx, sz], i) => (
+        <mesh
+          key={`seat-corner-${i}`}
+          position={[geometry.position[0] + sx * (halfX - 0.06), supportTopY - 0.012, geometry.position[2] + sz * (halfZ - 0.06)]}
+          rotation={[0, Math.PI / 4, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[0.09, 0.024, 0.09]} />
+          <meshStandardMaterial color={COLORS.cutBrick} roughness={0.9} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.94)} />
+        </mesh>
+      ))}
+
       {Array.from({ length: bars }).map((_, i) => {
         const offset = -span / 2 + barSize / 2 + i * (barSize + gap);
         const position: [number, number, number] = longX
           ? [geometry.position[0], grateY, geometry.position[2] + offset]
           : [geometry.position[0] + offset, grateY, geometry.position[2]];
         const args: [number, number, number] = longX
-          ? [geometry.scale[0], grateHeight, Math.max(0.04, barSize)]
-          : [Math.max(0.04, barSize), grateHeight, geometry.scale[2]];
+          ? [grateScaleX, grateHeight, Math.max(0.04, barSize)]
+          : [Math.max(0.04, barSize), grateHeight, grateScaleZ];
         return <mesh key={i} position={position} castShadow receiveShadow><boxGeometry args={args} /><meshStandardMaterial color={COLORS.grate} roughness={0.58} metalness={0.42} transparent opacity={opacity} /></mesh>;
       })}
 
-      {isCurrent && <mesh position={[geometry.position[0], topLabelY + 0.002, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] + 0.05, 0.012, geometry.scale[2] + 0.05]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.16} /></mesh>}
+      {isCurrent && <mesh position={[geometry.position[0], topLabelY + 0.002, geometry.position[2]]}><boxGeometry args={[grateScaleX + 0.05, 0.012, grateScaleZ + 0.05]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.16} /></mesh>}
       <Text position={[geometry.position[0], topLabelY + 0.03, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#f4e3c4" anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>РУ {brick.orientation === "h" ? "380×252×22 мм" : "252×380×22 мм"}</Text>
 
-      <mesh position={[geometry.position[0], topLabelY, geometry.position[2] - geometry.scale[2] / 2 - 0.22]}>
-        <boxGeometry args={[geometry.scale[0], 0.012, 0.018]} />
+      <mesh position={[geometry.position[0], topLabelY, geometry.position[2] - grateScaleZ / 2 - 0.22]}>
+        <boxGeometry args={[grateScaleX, 0.012, 0.018]} />
         <meshBasicMaterial color={COLORS.sageDark} transparent opacity={labelOpacity * 0.75} />
       </mesh>
-      <Text position={[geometry.position[0], topLabelY + 0.012, geometry.position[2] - geometry.scale[2] / 2 - 0.32]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongXCm.toLocaleString("ru-RU")} см</Text>
-      <mesh position={[geometry.position[0] - geometry.scale[0] / 2 - 0.22, topLabelY, geometry.position[2]]}>
-        <boxGeometry args={[0.018, 0.012, geometry.scale[2]]} />
+      <Text position={[geometry.position[0], topLabelY + 0.012, geometry.position[2] - grateScaleZ / 2 - 0.32]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongXCm.toLocaleString("ru-RU")} см</Text>
+      <mesh position={[geometry.position[0] - grateScaleX / 2 - 0.22, topLabelY, geometry.position[2]]}>
+        <boxGeometry args={[0.018, 0.012, grateScaleZ]} />
         <meshBasicMaterial color={COLORS.sageDark} transparent opacity={labelOpacity * 0.75} />
       </mesh>
-      <Text position={[geometry.position[0] - geometry.scale[0] / 2 - 0.32, topLabelY + 0.012, geometry.position[2]]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongZCm.toLocaleString("ru-RU")} см</Text>
+      <Text position={[geometry.position[0] - grateScaleX / 2 - 0.32, topLabelY + 0.012, geometry.position[2]]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongZCm.toLocaleString("ru-RU")} см</Text>
     </group>
   );
 }

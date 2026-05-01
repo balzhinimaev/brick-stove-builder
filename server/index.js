@@ -44,7 +44,7 @@ const brickSchema = new mongoose.Schema(
     x: { type: Number, required: true, min: 0 },
     y: { type: Number, required: true, min: 0 },
     row: { type: Number, required: true, min: 1 },
-    kind: { type: String, enum: ["standard", "cut", "firebrick", "vent", "cleanout", "grate"], required: true },
+    kind: { type: String, enum: ["standard", "cut", "trim", "firebrick", "vent", "cleanout", "grate"], required: true },
     orientation: { type: String, enum: ["h", "v"], required: true }
   },
   { _id: false }

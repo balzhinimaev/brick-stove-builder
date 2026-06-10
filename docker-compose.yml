@@ -1,6 +1,9 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_APP_BASE: /brick-stove-builder/
     container_name: brick-stove-builder-app
     restart: unless-stopped
     environment:

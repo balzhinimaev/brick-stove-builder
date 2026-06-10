@@ -4,8 +4,10 @@ import tailwindcss from "@tailwindcss/vite";
 
 /** During `npm run dev`, forward `/api` to Express (see README: run `npm run server` alongside). */
 const devApiOrigin = process.env.VITE_DEV_API_ORIGIN ?? "http://127.0.0.1:4174";
+const appBase = process.env.VITE_APP_BASE ?? "/";
 
 export default defineConfig({
+  base: appBase,
   plugins: [react(), tailwindcss()],
   server: {
     /** Prefer IPv4 so `127.0.0.1:5173` matches tooling (npm proxy target stays 127.0.0.1:4174). */

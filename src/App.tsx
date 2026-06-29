@@ -1,0 +1,86 @@
+import { useStudioState } from "./hooks/useStudioState";
+import { Header } from "./components/Header";
+import { MobileTabs } from "./components/MobileTabs";
+import { AuthScreen } from "./components/AuthScreen";
+import { ParametersScreen } from "./components/ParametersScreen";
+import { ProjectsScreen } from "./components/ProjectsScreen";
+import { BuilderScreen } from "./components/BuilderScreen";
+
+export default function App() {
+  const studio = useStudioState();
+  const { t, locale, screen, userLogin } = studio;
+
+  return (
+    <div
+      className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4 xl:pb-12"
+      style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}
+    >
+      <div className="mx-auto w-full max-w-[1280px] xl:max-w-[1520px] 2xl:max-w-[min(100%,1800px)]">
+        <Header
+          locale={locale}
+          setLocale={studio.setLocale}
+          t={t}
+          reset={studio.reset}
+          placedCount={studio.materials.total}
+          lockedCount={studio.lockedRows.length}
+          userLogin={userLogin}
+          onSwitchAccount={studio.switchAccount}
+          autosaveState={studio.autosaveState}
+        />
+        <MobileTabs screen={screen} setScreen={studio.setScreen} t={t} />
+        {!userLogin ? (
+          <AuthScreen
+            mode={studio.authMode}
+            setMode={studio.setAuthMode}
+            login={studio.authLogin}
+            setLogin={studio.setAuthLogin}
+            password={studio.authPassword}
+            setPassword={studio.setAuthPassword}
+            onSubmit={studio.submitAuth}
+            t={t}
+          />
+        ) : screen === "parameters" ? (
+          <ParametersScreen
+            parameters={studio.parameters}
+            updateParameter={studio.updateParameter}
+            t={t}
+            onContinue={() => studio.setScreen("builder")}
+            lockedRows={studio.lockedRows}
+          />
+        ) : screen === "projects" ? (
+          <ProjectsScreen locale={locale} t={t} projects={studio.allProjects} onLoad={studio.loadProject} />
+        ) : (
+          <BuilderScreen
+            t={t}
+            grid={studio.grid}
+            rows={studio.rows}
+            rowCount={studio.rowCount}
+            currentRow={studio.currentRow}
+            setCurrentRow={studio.setCurrentRow}
+            lockedRows={studio.lockedRows}
+            activeTool={studio.activeTool}
+            setActiveTool={studio.setActiveTool}
+            orientation={studio.orientation}
+            setOrientation={studio.setOrientation}
+            viewMode={studio.viewMode}
+            setViewMode={studio.setViewMode}
+            placeAt={studio.placeAt}
+            addRow={studio.addRow}
+            copyPreviousRow={studio.copyPreviousRow}
+            clearCurrentRow={studio.clearCurrentRow}
+            lockRow={studio.lockRow}
+            unlockRow={studio.unlockRow}
+            parameters={studio.parameters}
+            materials={studio.materials}
+            camera={studio.camera}
+            cameraZoom={studio.cameraZoom}
+            cameraRotate={studio.cameraRotate}
+            cameraPan={studio.cameraPan}
+            cameraReset={studio.cameraReset}
+            saveCurrentProject={studio.saveCurrentProject}
+          />
+        )}
+      </div>
+    </div>
+  );
+}

@@ -10,6 +10,9 @@ services:
       NODE_ENV: production
       PORT: 4174
       MONGODB_URI: mongodb://mongo:27017/brick-stove-builder
+      # Set a stable secret so auth tokens survive restarts. Provide it via the
+      # host environment or a .env file (never commit the real value).
+      AUTH_SECRET: ${AUTH_SECRET:-change-me-to-a-long-random-string}
     ports:
       - "127.0.0.1:4174:4174"
     depends_on:

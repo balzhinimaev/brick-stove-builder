@@ -13,10 +13,12 @@
     "test:watch": "vitest",
     "cap:sync": "npm run build && cap sync android",
     "android:apk": "npm run cap:sync && cd android && ./gradlew assembleDebug",
+    "android:release": "npm run cap:sync && cd android && ./gradlew assembleRelease",
     "android:open": "cap open android"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",

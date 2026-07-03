@@ -1,5 +1,5 @@
 import { DEFAULT_CAMERA, DEFAULT_PARAMETERS, INITIAL_ROWS } from "./constants";
-import { cloneRows, gridFromParameters, placeBricksInRow, pruneRowsToGrid, removeBrickAt } from "./geometry";
+import { cloneRows, gridFromParameters, placeBricksInRows, pruneRowsToGrid, removeBrickAt } from "./geometry";
 import { PARAM_BOUNDS, clamp } from "./parameters";
 import { makeDemoRows } from "./projects";
 import type {
@@ -195,9 +195,12 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         rows: cloneRows(action.draft.rows)
       };
 
-    case "place":
+    case "place": {
       if (isLocked(state)) return state;
-      return withRow(state, placeBricksInRow(state.rows[state.currentRow] ?? [], action.bricks, state.grid));
+      // честная 3D-проверка: конфликты считаются по плану И высоте, между рядами
+      const rows = placeBricksInRows(state.rows, state.currentRow, action.bricks, state.grid);
+      return rows ? { ...state, rows } : state;
+    }
 
     case "erase":
       if (isLocked(state)) return state;

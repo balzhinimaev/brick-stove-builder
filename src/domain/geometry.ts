@@ -155,40 +155,108 @@ export function isOverlayKind(kind: BrickFootprint["kind"]): boolean {
   return kind === "plate";
 }
 
+/** Ряд кладки: кирпич на плашку 65 мм + шов ≈ 70 мм. */
+export const COURSE_MM = 70;
+export const BRICK_MM = 65;
+/** Толщина колосниковой решётки; лежит заподлицо с верхом ряда. */
+const GRATE_THICKNESS_MM = 22;
+/** Толщина варочной плиты, лежит НА ряду. */
+const PLATE_THICKNESS_MM = 14;
+/** Подрезка колосникового узла лежит на посадочной полке — верхняя половина. */
+const TRIM_SEAT_MM = BRICK_MM / 2;
+
+export type BrickSolid = { box: BrickBox; z1: number; z2: number };
+
+/**
+ * Занятые объёмы элемента: плановые боксы + вертикальный интервал в мм
+ * ОТ НИЗА СВОЕГО РЯДА. Это и есть «честная» высота: колосник — только верхние
+ * 22 мм, дверца — вверх на всю высоту проёма (через ряды), полка выреза —
+ * снизу до (65 − глубина реза), над ней свободно.
+ */
+export function brickSolids(brick: BrickFootprint): BrickSolid[] {
+  const bounds = brickBounds(brick);
+  if (brick.kind === "plate") return [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + PLATE_THICKNESS_MM }];
+  if (brick.kind === "grate") return [{ box: bounds, z1: BRICK_MM - GRATE_THICKNESS_MM, z2: BRICK_MM }];
+  if (brick.kind === "cleanout") return [{ box: bounds, z1: 0, z2: brick.custom?.heightMm ?? BRICK_MM }];
+  if (brick.kind === "trim") return [{ box: bounds, z1: TRIM_SEAT_MM, z2: BRICK_MM }];
+
+  const notch = notchBox(brick);
+  if (!notch) return [{ box: bounds, z1: 0, z2: BRICK_MM }];
+  const depthMm = brick.custom?.notchDepthMm ?? (brick.custom?.ledge === false ? BRICK_MM : BRICK_MM / 2);
+  const solids: BrickSolid[] = brickBoxes(brick).map((box) => ({ box, z1: 0, z2: BRICK_MM }));
+  const ledgeTop = Math.max(0, BRICK_MM - depthMm);
+  if (ledgeTop > 0) solids.push({ box: notch, z1: 0, z2: ledgeTop });
+  return solids;
+}
+
+/**
+ * Честное 3D-пересечение: план И высота, с учётом рядов (дверца из ряда N
+ * занимает объём над рядами N+1, N+2…). Плита — накладная: с кладкой не
+ * конфликтует, только плита с плитой.
+ */
+export function overlaps3D(a: PlacedBrick, b: PlacedBrick): boolean {
+  if (isOverlayKind(a.kind) !== isOverlayKind(b.kind)) return false;
+  const aBase = (a.row - 1) * COURSE_MM;
+  const bBase = (b.row - 1) * COURSE_MM;
+  return brickSolids(a).some((sa) =>
+    brickSolids(b).some(
+      (sb) =>
+        boxesIntersect(sa.box, sb.box) &&
+        aBase + sa.z1 < bBase + sb.z2 &&
+        aBase + sa.z2 > bBase + sb.z1
+    )
+  );
+}
+
+/** Совместимая обёртка для сценариев в пределах одного ряда (тесты, утилиты). */
 export function placeBrickInRow(rowBricks: PlacedBrick[], draft: PlacedBrick, grid: GridSpec): PlacedBrick[] {
   return placeBricksInRow(rowBricks, [draft], grid);
 }
 
-/**
- * Правила размещения:
- * - плита не конфликтует с кирпичами (перекрывает их сверху), но две плиты
- *   внахлёст нельзя — отказ;
- * - ОДИНОЧНЫЙ кирпич перекладывается поверх занятого места (старое удобное
- *   поведение «тап — заменил»);
- * - сборка из нескольких частей (колосник с подрезками) на занятое место —
- *   ОТКАЗ без изменений: ничего не стираем молча.
- */
 export function placeBricksInRow(rowBricks: PlacedBrick[], drafts: PlacedBrick[], grid: GridSpec): PlacedBrick[] {
-  if (!drafts.length) return rowBricks;
-  if (drafts.some((draft) => !isInsideGrid(draft, grid))) return rowBricks;
+  const row = drafts[0]?.row ?? 1;
+  const result = placeBricksInRows({ [row]: rowBricks }, row, drafts, grid);
+  return result ? result[row] : rowBricks;
+}
 
-  const overlayDrafts = drafts.filter((draft) => isOverlayKind(draft.kind));
-  const solidDrafts = drafts.filter((draft) => !isOverlayKind(draft.kind));
+/**
+ * Правила размещения (честные, 3D, между рядами):
+ * - конфликт = пересечение и в плане, и по ВЫСОТЕ (overlaps3D): дверца из
+ *   нижнего ряда блокирует объём над собой, полка выреза пускает только то,
+ *   что помещается над ней, колосник — только верхние 22 мм ряда;
+ * - плита накладная: с кладкой не конфликтует, две плиты внахлёст — отказ;
+ * - ОДИНОЧНЫЙ кирпич перекладывает конфликтующих В СВОЁМ ряду («тап —
+ *   заменил»); конфликт с элементом ДРУГОГО ряда — отказ, чужие ряды молча
+ *   не трогаем;
+ * - сборка из нескольких частей на занятое место — отказ без изменений.
+ * Возвращает новый rows или null, если размещение отклонено.
+ */
+export function placeBricksInRows(
+  rows: Record<number, PlacedBrick[]>,
+  row: number,
+  drafts: PlacedBrick[],
+  grid: GridSpec
+): Record<number, PlacedBrick[]> | null {
+  if (!drafts.length) return null;
+  if (drafts.some((draft) => !isInsideGrid(draft, grid))) return null;
 
-  if (overlayDrafts.length && rowBricks.some((brick) => isOverlayKind(brick.kind) && overlayDrafts.some((draft) => overlaps(brick, draft)))) {
-    return rowBricks;
+  const conflicts = Object.values(rows)
+    .flat()
+    .filter((brick) => drafts.some((draft) => overlaps3D(draft, brick)));
+
+  if (drafts.some((draft) => isOverlayKind(draft.kind))) {
+    if (conflicts.length) return null;
+    return { ...rows, [row]: [...(rows[row] ?? []), ...drafts] };
   }
 
-  if (solidDrafts.length) {
-    const collides = (brick: PlacedBrick) => !isOverlayKind(brick.kind) && solidDrafts.some((draft) => overlaps(brick, draft));
-    if (drafts.length === 1) {
-      // одиночный кирпич: заменяем то, что под ним
-      return [...rowBricks.filter((brick) => !collides(brick)), ...drafts];
-    }
-    if (rowBricks.some(collides)) return rowBricks;
+  if (drafts.length === 1) {
+    if (conflicts.some((brick) => brick.row !== row)) return null;
+    const replaced = new Set(conflicts.map((brick) => brick.id));
+    return { ...rows, [row]: [...(rows[row] ?? []).filter((brick) => !replaced.has(brick.id)), ...drafts] };
   }
 
-  return [...rowBricks, ...drafts];
+  if (conflicts.length) return null;
+  return { ...rows, [row]: [...(rows[row] ?? []), ...drafts] };
 }
 
 export function grateAssemblyBricks(row: number, x: number, y: number, orientation: Orientation, nextId: () => number): PlacedBrick[] {
@@ -225,8 +293,10 @@ export function fillRowBricks(
   nextId: () => number
 ): PlacedBrick[] {
   const drafts: PlacedBrick[] = [];
-  const collides = (candidate: BrickFootprint) =>
-    existing.some((brick) => overlaps(brick, candidate)) || drafts.some((brick) => overlaps(brick, candidate));
+  // существующие проверяем честно по высоте (полки/колосники/дверцы),
+  // свои черновики — в плане (все полной высоты)
+  const collides = (candidate: PlacedBrick) =>
+    existing.some((brick) => overlaps3D(candidate, brick)) || drafts.some((brick) => overlaps(brick, candidate));
 
   const tryPlace = (x: number, y: number, kind: "standard" | "cut") => {
     const candidate: PlacedBrick = { id: `r${row}-fill-${nextId()}-${x}-${y}`, row, x, y, kind, orientation };

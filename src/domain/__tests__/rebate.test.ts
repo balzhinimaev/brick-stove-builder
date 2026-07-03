@@ -219,3 +219,48 @@ describe("door size (дверцы с размерами)", () => {
     expect(brickBounds({ ...door, custom: undefined })).toEqual({ x1: 0, y1: 0, x2: 1, y2: 1 });
   });
 });
+
+describe("честные 3D-коллизии по высоте", () => {
+  it("дверца из нижнего ряда блокирует объём над собой через ряды", async () => {
+    const { placeBricksInRows, overlaps3D } = await import("../geometry");
+    const door: PlacedBrick = { id: "door", row: 1, x: 2, y: 4, kind: "cleanout", orientation: "h", custom: { name: "ДТ", w: 2, h: 1, notch: null, heightMm: 210 } };
+    const over = (row: number): PlacedBrick => ({ id: `b${row}`, row, x: 2, y: 4, kind: "standard", orientation: "h" });
+    expect(overlaps3D(over(2), door)).toBe(true);  // 70..135 ∩ 0..210
+    expect(overlaps3D(over(3), door)).toBe(true);  // 140..205 ∩ 0..210
+    expect(overlaps3D(over(4), door)).toBe(false); // 210..275 — касание, свободно
+    const rows = { 1: [door] };
+    expect(placeBricksInRows(rows, 2, [over(2)], grid)).toBeNull();   // чужой ряд не трогаем — отказ
+    expect(placeBricksInRows(rows, 4, [over(4)], grid)).not.toBeNull();
+  });
+
+  it("колосник садится только в достаточно глубокий вырез", async () => {
+    const { overlaps3D } = await import("../geometry");
+    const shelf = (depth: number): PlacedBrick => ({
+      id: `r${depth}`, row: 1, x: 2, y: 4, kind: "custom", orientation: "h",
+      custom: { name: "паз", w: 2, h: 1, notch: { x1: 1.5, y1: 0, x2: 2, y2: 1 }, ledge: true, notchDepthMm: depth }
+    });
+    // колосник краем в пазу: x 3.5..5.5 → зона выреза 3.5..4
+    const grate: PlacedBrick = { id: "g", row: 1, x: 3.5, y: 4, kind: "grate", orientation: "h" };
+    expect(overlaps3D(grate, shelf(15))).toBe(true);  // полка 0..50, колосник 43..65 — мелко!
+    expect(overlaps3D(grate, shelf(25))).toBe(false); // полка 0..40 — сел
+  });
+
+  it("кирпич полной высоты проходит только в сквозной вырез", async () => {
+    const { overlaps3D } = await import("../geometry");
+    const cut = (depth: number): PlacedBrick => ({
+      id: `c${depth}`, row: 1, x: 2, y: 4, kind: "custom", orientation: "h",
+      custom: { name: "в", w: 2, h: 1, notch: { x1: 1, y1: 0, x2: 2, y2: 0.5 }, notchDepthMm: depth }
+    });
+    const insert: PlacedBrick = { id: "i", row: 1, x: 3, y: 4, kind: "custom", orientation: "h", custom: { name: "вст", w: 1, h: 0.5, notch: null } };
+    expect(overlaps3D(insert, cut(35))).toBe(true);  // полка мешает
+    expect(overlaps3D(insert, cut(65))).toBe(false); // насквозь — влезает
+  });
+
+  it("плита над рядом не пересекается по высоте даже с кирпичом под собой", async () => {
+    const { overlaps3D } = await import("../geometry");
+    const plate: PlacedBrick = { id: "p", row: 1, x: 2, y: 4, kind: "plate", orientation: "h" };
+    expect(overlaps3D(plate, standard(2, 4))).toBe(false);
+    const plateAbove: PlacedBrick = { id: "p2", row: 2, x: 2, y: 4, kind: "plate", orientation: "h" };
+    expect(overlaps3D(plate, plateAbove)).toBe(false); // 65..79 vs 135..149
+  });
+});

@@ -11,7 +11,9 @@ export type LocalDraft = {
 };
 
 function draftStorageKey(login: string): string {
-  return `brick-stove-draft:${login}`;
+  // Пустой логин = гость: его кладка тоже переживает перезапуск (важно для
+  // офлайн-приложения, где аккаунта может не быть вовсе).
+  return `brick-stove-draft:${login || "anon"}`;
 }
 
 export function loadLocalDraft(login: string): LocalDraft | null {

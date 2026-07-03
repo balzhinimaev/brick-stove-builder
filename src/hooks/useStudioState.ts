@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COLORS } from "../theme/colors";
 import { cloneRows } from "../domain/geometry";
 import { READY_PROJECTS } from "../domain/projects";
@@ -10,6 +10,7 @@ import {
   type PublishFields
 } from "../api/client";
 import type { ReadyProject, Screen } from "../domain/types";
+import { isNativeApp } from "../lib/platform";
 import { useEditor } from "./useEditor";
 import { useSession } from "./useSession";
 import { useSavedProjects } from "./useSavedProjects";
@@ -58,6 +59,41 @@ export function useStudioState() {
 
   const allProjects = useMemo(() => [...READY_PROJECTS, ...savedProjects], [savedProjects]);
 
+  // Экран входа нужен только гостю: после успешного логина возвращаемся к кладке.
+  const userLogin = session.userLogin;
+  useEffect(() => {
+    if (userLogin) setScreen((current) => (current === "auth" ? "builder" : current));
+  }, [userLogin]);
+
+  // Android: системная кнопка «назад» возвращает к кладке, а с кладки сворачивает
+  // приложение (иначе Capacitor закрывает activity и теряется несохранённое).
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let removed = false;
+    let remove: (() => void) | undefined;
+    void import("@capacitor/app")
+      .then(({ App: CapApp }) => {
+        const handle = CapApp.addListener("backButton", () => {
+          if (screenRef.current !== "builder") setScreen("builder");
+          else void CapApp.minimizeApp();
+        });
+        void handle
+          .then((subscription) => {
+            if (removed) void subscription.remove();
+            else remove = () => void subscription.remove();
+          })
+          .catch(() => {});
+      })
+      // плагин недоступен (нестандартная оболочка) — редактор важнее кнопки «назад»
+      .catch(() => {});
+    return () => {
+      removed = true;
+      remove?.();
+    };
+  }, []);
+
   const reset = () => {
     editor.reset();
     setCurrentProjectId(null);
@@ -72,13 +108,16 @@ export function useStudioState() {
   };
 
   const saveCurrentProject = async () => {
+    // Гостю сохранять некуда (проекты живут на аккаунте) — ведём на вход;
+    // его кладка при этом не теряется: анонимный черновик автосейвится.
+    if (!session.session) {
+      window.alert(t("authLoginFirst"));
+      setScreen("auth");
+      return;
+    }
     const editingOwn = currentProjectId ? savedProjects.find((item) => item.id === currentProjectId) : undefined;
     const title = window.prompt(t("saveProjectPrompt"), editingOwn?.title.ru ?? "");
     if (!title?.trim()) return;
-    if (!session.session) {
-      window.alert(t("authLoginFirst"));
-      return;
-    }
 
     const project: ReadyProject = {
       id: editingOwn?.id ?? uniqueId("custom"),

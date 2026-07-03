@@ -12,6 +12,7 @@ export function Header({
   lockedCount,
   userLogin,
   onSwitchAccount,
+  onSignIn,
   autosaveState,
   pendingCount
 }: {
@@ -23,6 +24,7 @@ export function Header({
   lockedCount: number;
   userLogin: string;
   onSwitchAccount: () => void;
+  onSignIn: () => void;
   autosaveState: AutosaveState;
   pendingCount: number;
 }) {
@@ -42,13 +44,15 @@ export function Header({
             <Pill>{t("totalPlaced")}: {placedCount}</Pill>
             <Pill>{t("rowCompleted")}: {lockedCount}</Pill>
             <Pill>{t("brickSize")}</Pill>
-            {userLogin && autosaveLabel ? <Pill>{autosaveLabel}</Pill> : null}
+            {autosaveLabel ? <Pill>{autosaveLabel}</Pill> : null}
             {pendingCount > 0 ? <span className="shrink-0 rounded-full bg-[#9b2c2c]/15 px-2.5 py-1 text-[11px] font-extrabold text-[#9b2c2c]">⏳ {t("pendingSync")}: {pendingCount}</span> : null}
           </div>
         </div>
         <div className="flex flex-col gap-1">
           <button onClick={reset} className="min-h-11 rounded-full border border-[#3D2B1F]/25 px-3 text-xs font-black">{t("reset")}</button>
-          {userLogin ? <button onClick={onSwitchAccount} className="min-h-9 rounded-full border border-[#3D2B1F]/25 px-3 text-[10px] font-black">@{userLogin} • {t("signOut")}</button> : null}
+          {userLogin
+            ? <button onClick={onSwitchAccount} className="min-h-9 rounded-full border border-[#3D2B1F]/25 px-3 text-[10px] font-black">@{userLogin} • {t("signOut")}</button>
+            : <button onClick={onSignIn} className="min-h-9 rounded-full bg-[#8FAF76] px-3 text-[10px] font-black text-[#3D2B1F]">{t("authLogin")}</button>}
         </div>
       </div>
       <div className="mt-2 grid grid-cols-3 gap-1.5 rounded-[20px] border border-[#3D2B1F]/10 bg-[#FFF7E8]/70 p-1.5" role="group" aria-label={t("language")}>

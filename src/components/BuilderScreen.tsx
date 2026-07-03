@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useState, type ReactNode } from "react";
 import type { Translate } from "../i18n";
 import type { CameraState, CustomBrickSpec, MaterialsEstimate, NotchCorner, Orientation, Parameters, PlacedBrick, SnapStep, ToolKind, ViewMode, GridSpec } from "../domain/types";
 import { isInsideGrid } from "../domain/geometry";
+import { isNativeApp } from "../lib/platform";
 import { useCustomBricks } from "../hooks/useCustomBricks";
 import { BrickCutter } from "./BrickCutter";
 import { Pill, SectionTitle } from "./ui";
@@ -122,7 +123,8 @@ export function BuilderScreen(props: BuilderScreenProps) {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex gap-2 md:min-w-[340px]">
           <button onClick={saveCurrentProject} className="min-h-12 flex-1 rounded-[20px] border-2 border-[#3D2B1F]/10 bg-[#8FAF76] px-4 text-sm font-black text-[#3D2B1F]">{t("saveProject")}</button>
-          <button onClick={() => window.print()} aria-label={t("printOrder")} className="min-h-12 rounded-[20px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] px-4 text-sm font-black text-[#3D2B1F]">🖨 {t("printOrder")}</button>
+          {/* window.print() в Android WebView не работает — в приложении кнопку прячем */}
+          {isNativeApp() ? null : <button onClick={() => window.print()} aria-label={t("printOrder")} className="min-h-12 rounded-[20px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] px-4 text-sm font-black text-[#3D2B1F]">🖨 {t("printOrder")}</button>}
         </div>
         <div className="flex flex-wrap gap-2"><Pill>{t("currentRow")}: {currentRow}</Pill><Pill>{t("totalPlaced")}: {currentBricks.length}</Pill><Pill>{t("true3d")}</Pill><Pill>{grid.widthCm}×{grid.lengthCm} {unit}</Pill></div>
       </div>

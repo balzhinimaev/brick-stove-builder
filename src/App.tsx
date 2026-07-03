@@ -14,7 +14,11 @@ export default function App() {
   return (
     <div
       className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4 xl:pb-12"
-      style={{ fontFamily: "Nunito, ui-rounded, system-ui, sans-serif" }}
+      style={{
+        fontFamily: "Nunito, ui-rounded, system-ui, sans-serif",
+        // Статус-бар/вырез телефона (viewport-fit=cover): шапка не заезжает под него.
+        paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)"
+      }}
     >
       <div className="mx-auto w-full max-w-[1280px] xl:max-w-[1520px] 2xl:max-w-[min(100%,1800px)]">
         <Header
@@ -26,6 +30,7 @@ export default function App() {
           lockedCount={studio.lockedRows.length}
           userLogin={userLogin}
           onSwitchAccount={studio.switchAccount}
+          onSignIn={() => studio.setScreen("auth")}
           autosaveState={studio.autosaveState}
           pendingCount={studio.pendingCount}
         />
@@ -33,7 +38,9 @@ export default function App() {
         {screen === "showcase" ? (
           // Витрина публичная: заказчики смотрят печи без регистрации.
           <ShowcaseScreen locale={locale} t={t} />
-        ) : !userLogin ? (
+        ) : screen === "auth" ? (
+          // Редактор гостевой (печь строится и без сети, и без аккаунта);
+          // вход нужен только для синка между устройствами и витрины.
           <AuthScreen
             mode={studio.authMode}
             setMode={studio.setAuthMode}

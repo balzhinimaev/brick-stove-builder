@@ -1,6 +1,6 @@
 import type { Locale } from "../i18n";
 
-export type Screen = "parameters" | "projects" | "builder" | "showcase";
+export type Screen = "parameters" | "projects" | "builder" | "showcase" | "auth";
 export type ViewMode = "2d" | "3d";
 export type BrickKind = "standard" | "cut" | "trim" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate" | "custom";
 export type ToolKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate" | "custom" | "eraser";

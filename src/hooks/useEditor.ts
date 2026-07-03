@@ -35,9 +35,10 @@ export function useEditor() {
         brick.custom = state.customBrick;
       }
       if (state.activeTool === "plate") brick.custom = state.plateSpec;
+      if (state.activeTool === "cleanout") brick.custom = state.doorSpec;
       dispatch({ type: "place", bricks: [brick] });
     },
-    [state.activeTool, state.orientation, state.currentRow, state.notchCorner, state.customBrick, state.plateSpec]
+    [state.activeTool, state.orientation, state.currentRow, state.notchCorner, state.customBrick, state.plateSpec, state.doorSpec]
   );
 
   const copyPreviousRow = useCallback(() => {
@@ -68,6 +69,7 @@ export function useEditor() {
     snapStep: state.snapStep,
     customBrick: state.customBrick,
     plateSpec: state.plateSpec,
+    doorSpec: state.doorSpec,
     viewMode: state.viewMode,
     camera: state.camera,
     allBricks,
@@ -80,6 +82,7 @@ export function useEditor() {
     setSnapStep: useCallback((step: SnapStep) => dispatch({ type: "setSnapStep", step }), []),
     pickCustomBrick: useCallback((spec: CustomBrickSpec) => dispatch({ type: "pickCustomBrick", spec }), []),
     setPlateSize: useCallback((lengthMm: number, widthMm: number) => dispatch({ type: "setPlateSize", lengthMm, widthMm }), []),
+    setDoorSize: useCallback((widthMm: number, heightMm: number) => dispatch({ type: "setDoorSize", widthMm, heightMm }), []),
     setViewMode: useCallback((mode: ViewMode) => dispatch({ type: "setViewMode", mode }), []),
     updateParameter: useCallback((key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }), []),
 

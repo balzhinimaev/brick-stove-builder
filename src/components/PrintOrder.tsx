@@ -69,6 +69,7 @@ export function PrintOrder({
             [t("firebricks"), materials.firebricks],
             [t("grates"), materials.grates],
             [t("plates"), materials.plates],
+            [t("doors"), materials.doors],
             [t("mortarEstimate"), `${materials.mortarM3} м³`],
             [t("foundationConcrete"), `${materials.concreteVolumeM3} м³`]
           ].map(([label, value]) => (

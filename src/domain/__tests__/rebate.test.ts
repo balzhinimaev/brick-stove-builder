@@ -207,3 +207,15 @@ describe("plate size (настраиваемый размер)", () => {
     expect(brickBounds({ ...plate, custom: undefined }).x2).toBe(5);
   });
 });
+
+describe("door size (дверцы с размерами)", () => {
+  it("дверца несёт ширину в плане и высоту в мм, ориентация поворачивает след", () => {
+    const spec = { name: "Дверца 250×210", w: 2, h: 1, notch: null, heightMm: 210 };
+    const door: PlacedBrick = { id: "d", row: 1, x: 0, y: 0, kind: "cleanout", orientation: "h", custom: spec };
+    expect(brickBounds(door)).toEqual({ x1: 0, y1: 0, x2: 2, y2: 1 });
+    expect(brickBounds({ ...door, orientation: "v" })).toEqual({ x1: 0, y1: 0, x2: 1, y2: 2 });
+    expect(door.custom?.heightMm).toBe(210);
+    // старая дверца без custom — прежний след 1×1
+    expect(brickBounds({ ...door, custom: undefined })).toEqual({ x1: 0, y1: 0, x2: 1, y2: 1 });
+  });
+});

@@ -150,6 +150,8 @@ export function useStudioState() {
     pickCustomBrick: editor.pickCustomBrick,
     plateSpec: editor.plateSpec,
     setPlateSize: editor.setPlateSize,
+    doorSpec: editor.doorSpec,
+    setDoorSize: editor.setDoorSize,
     viewMode: editor.viewMode,
     setViewMode: editor.setViewMode,
     camera: editor.camera,

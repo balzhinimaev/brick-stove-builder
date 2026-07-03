@@ -18,6 +18,7 @@ export function PlanGrid({
   snapStep,
   customBrick,
   plateSpec,
+  doorSpec,
   placeAt,
   t
 }: {
@@ -29,12 +30,13 @@ export function PlanGrid({
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
   plateSpec: CustomBrickSpec;
+  doorSpec: CustomBrickSpec;
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   t: Translate;
 }) {
   const width = grid.cols * CELL + PAD * 2;
   const height = grid.rows * CELL + PAD * 2 + HEADER;
-  const ghostCustom = activeTool === "plate" ? plateSpec : activeTool === "custom" ? customBrick : null;
+  const ghostCustom = activeTool === "plate" ? plateSpec : activeTool === "cleanout" ? doorSpec : activeTool === "custom" ? customBrick : null;
   const ghost = activeTool === "eraser" || (activeTool === "custom" && !customBrick)
     ? null
     : footprintSizeOf({ x: 0, y: 0, kind: activeTool as BrickKind, orientation, custom: ghostCustom ?? undefined });

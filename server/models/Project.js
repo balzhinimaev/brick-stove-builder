@@ -43,7 +43,9 @@ export const brickSchema = new mongoose.Schema(
             ),
             required: false
           },
-          ledge: { type: Boolean, default: true }
+          ledge: { type: Boolean, default: true },
+          // высота проёма дверцы, мм (вертикальный размер)
+          heightMm: { type: Number, min: 0, required: false }
         },
         { _id: false }
       ),

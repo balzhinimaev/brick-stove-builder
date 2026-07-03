@@ -168,7 +168,11 @@ const ru = {
   cutterName: "Название (например «трёхчетвертка»)",
   cutterSave: "В палитру",
   cutterPalette: "Нарезанные кирпичи",
-  plateSizeTitle: "Размер плиты, мм"
+  plateSizeTitle: "Размер плиты, мм",
+  doorSizeTitle: "Размер дверцы, мм (ширина × высота)",
+  doorWidth: "Ширина, мм",
+  doorHeight: "Высота, мм",
+  doors: "Дверцы"
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -338,7 +342,11 @@ const en: Record<TranslationKey, string> = {
   cutterName: "Name (e.g. \"three-quarter\")",
   cutterSave: "Add to palette",
   cutterPalette: "Cut bricks",
-  plateSizeTitle: "Plate size, mm"
+  plateSizeTitle: "Plate size, mm",
+  doorSizeTitle: "Door size, mm (width × height)",
+  doorWidth: "Width, mm",
+  doorHeight: "Height, mm",
+  doors: "Doors"
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -506,7 +514,11 @@ const lt: Record<TranslationKey, string> = {
   cutterName: "Pavadinimas",
   cutterSave: "Į paletę",
   cutterPalette: "Pjaustytos plytos",
-  plateSizeTitle: "Plokštės dydis, mm"
+  plateSizeTitle: "Plokštės dydis, mm",
+  doorSizeTitle: "Durelių dydis, mm (plotis × aukštis)",
+  doorWidth: "Plotis, mm",
+  doorHeight: "Aukštis, mm",
+  doors: "Durelės"
 };
 
 export const translations = { ru, en, lt } as const;

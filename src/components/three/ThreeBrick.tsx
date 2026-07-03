@@ -10,11 +10,12 @@ export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, un
   if (brick.kind === "grate") return <ThreeGrate grid={grid} brick={brick} currentRow={currentRow} unit={unit} />;
   if (brick.kind === "rebate" || brick.kind === "custom") return <ThreeRebate grid={grid} brick={brick} currentRow={currentRow} />;
   if (brick.kind === "plate") return <ThreePlate grid={grid} brick={brick} currentRow={currentRow} />;
+  if (brick.kind === "cleanout") return <ThreeDoor grid={grid} brick={brick} currentRow={currentRow} />;
 
   const geometry = brickWorldGeometry(brick, grid);
   const color = getToolColor(brick.kind);
   const isCurrent = brick.row === currentRow;
-  const label = brick.kind === "vent" ? "V" : brick.kind === "cleanout" ? "D" : "";
+  const label = brick.kind === "vent" ? "V" : "";
   return (
     <group>
       <mesh position={geometry.position} castShadow receiveShadow><boxGeometry args={geometry.scale} /><meshStandardMaterial color={color} roughness={0.82} metalness={0.02} /></mesh>
@@ -72,6 +73,59 @@ export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: Gr
           <meshBasicMaterial color={COLORS.sage} transparent opacity={0.23} />
         </mesh>
       )}
+    </group>
+  );
+}
+
+/** ≈70 мм на ряд кладки (кирпич на плашку + шов). */
+const MM_PER_COURSE = 70;
+
+/**
+ * Дверца (топочная/поддувальная/прочистная): чугунная рамка с полотном и
+ * ручкой. Стоит вертикально от низа своего ряда на высоту heightMm — проём
+ * поднимается через несколько рядов, как в реальной кладке.
+ */
+export function ThreeDoor({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
+  const geometry = brickWorldGeometry(brick, grid);
+  const size = footprintSizeOf(brick);
+  const heightMm = brick.custom?.heightMm ?? 140;
+  const height = (heightMm / MM_PER_COURSE) * BRICK_LAYER_HEIGHT;
+  const bottom = (brick.row - 1) * BRICK_LAYER_HEIGHT + BRICK_LAYER_HEIGHT * 0.04;
+  const centerY = bottom + height / 2;
+  const isCurrent = brick.row === currentRow;
+  const transparent = opacity < 1;
+  // полотно смотрит вдоль короткой стороны следа
+  const alongX = size.w >= size.h;
+  const frameW = alongX ? size.w - 0.08 : size.h * 0.42;
+  const frameD = alongX ? size.h * 0.42 : size.w - 0.08;
+  const mat = (color: string, metal = 0.5) => <meshStandardMaterial color={color} roughness={0.5} metalness={metal} transparent={transparent} opacity={opacity} />;
+
+  return (
+    <group>
+      {/* рамка */}
+      <mesh position={[geometry.position[0], centerY, geometry.position[2]]} castShadow receiveShadow>
+        <boxGeometry args={[frameW, height, frameD]} />
+        {mat("#2b2f33")}
+      </mesh>
+      {/* полотно дверцы чуть выступает */}
+      <mesh position={[geometry.position[0], centerY, geometry.position[2]]} castShadow>
+        <boxGeometry args={[frameW * 0.78, height * 0.78, frameD + 0.05]} />
+        {mat("#3a4046", 0.6)}
+      </mesh>
+      {/* ручка */}
+      <mesh position={[geometry.position[0] + (alongX ? frameW * 0.26 : 0), centerY - height * 0.05, geometry.position[2] + (alongX ? 0 : frameW * 0.26)]}>
+        <boxGeometry args={alongX ? [0.1, 0.1, frameD + 0.14] : [frameD + 0.14, 0.1, 0.1]} />
+        {mat("#15181a", 0.7)}
+      </mesh>
+      {isCurrent && !transparent && (
+        <mesh position={[geometry.position[0], bottom + height + 0.02, geometry.position[2]]}>
+          <boxGeometry args={[size.w + 0.05, 0.012, size.h + 0.05]} />
+          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.2} />
+        </mesh>
+      )}
+      <Text position={[geometry.position[0], bottom + height + 0.06, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.15} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
+        {`Дверца ${Math.round((alongX ? size.w : size.h) * 125)}×${heightMm} мм`}
+      </Text>
     </group>
   );
 }

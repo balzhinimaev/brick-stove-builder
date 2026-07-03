@@ -16,6 +16,7 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
   let firebricks = 0;
   let grates = 0;
   let plates = 0;
+  let doors = 0;
 
   for (const brick of allBricks) {
     switch (brick.kind) {
@@ -26,9 +27,11 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
         rebatedBricks++;
         break;
       case "cut":
-      case "cleanout":
       case "custom":
         cutLike++;
+        break;
+      case "cleanout":
+        doors++;
         break;
       case "trim":
         trims++;
@@ -53,5 +56,5 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
     (parameters.foundationLength / CM_PER_M) *
     (parameters.foundationThickness / CM_PER_M);
 
-  return { regularBricks, cutBricks, rebatedBricks, firebricks, grates, plates, mortarM3, concreteVolumeM3, total: allBricks.length };
+  return { regularBricks, cutBricks, rebatedBricks, firebricks, grates, plates, doors, mortarM3, concreteVolumeM3, total: allBricks.length };
 }

@@ -7,7 +7,7 @@ import { brickWorldGeometry, cellToWorld, isInsideGrid, snapToStep } from "../..
 import { getToolColor } from "../../domain/tools";
 import type { Translate } from "../../i18n";
 import type { BrickKind, CameraState, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../../domain/types";
-import { ThreeBrick, ThreeGrate, ThreePlate, ThreeRebate } from "./ThreeBrick";
+import { ThreeBrick, ThreeDoor, ThreeGrate, ThreePlate, ThreeRebate } from "./ThreeBrick";
 
 type HoverCell = { x: number; y: number } | null;
 
@@ -31,7 +31,8 @@ export function ThreeStack({
   notchCorner,
   snapStep,
   customBrick,
-  plateSpec
+  plateSpec,
+  doorSpec
 }: {
   grid: GridSpec;
   bricks: PlacedBrick[];
@@ -45,6 +46,7 @@ export function ThreeStack({
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
   plateSpec: CustomBrickSpec;
+  doorSpec: CustomBrickSpec;
 }) {
   const [hoverCell3d, setHoverCell3d] = useState<HoverCell>(null);
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
@@ -74,7 +76,7 @@ export function ThreeStack({
           <ThreeGrid grid={grid} gridY={gridY} />
           <DimensionLabels grid={grid} gridY={gridY} unit={unit} />
           {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} unit={unit} />)}
-          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} unit={unit} />
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} unit={unit} />
         </group>
       </Canvas>
     </div>
@@ -117,6 +119,7 @@ function PlacementCells({
   snapStep,
   customBrick,
   plateSpec,
+  doorSpec,
   unit
 }: {
   grid: GridSpec;
@@ -130,6 +133,7 @@ function PlacementCells({
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
   plateSpec: CustomBrickSpec;
+  doorSpec: CustomBrickSpec;
   unit: string;
 }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
@@ -153,7 +157,7 @@ function PlacementCells({
     <group>
       {hoverCell ? (() => {
         if (previewKind === "custom" && !customBrick) return null;
-        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : undefined } as PlacedBrick;
+        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : previewKind === "cleanout" ? doorSpec : undefined } as PlacedBrick;
         const geom = brickWorldGeometry(draft, grid);
         const fits = activeTool === "eraser" ? true : isInsideGrid(draft, grid);
         const color = activeTool === "eraser" ? "#c94f4f" : getToolColor(previewKind);
@@ -166,6 +170,8 @@ function PlacementCells({
               ? <ThreeRebate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
               : previewKind === "plate"
               ? <ThreePlate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
+              : previewKind === "cleanout"
+              ? <ThreeDoor grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
               : (
                 <mesh position={[geom.position[0], gridY + geom.scale[1] / 2, geom.position[2]]}>
                   <boxGeometry args={[geom.scale[0], Math.max(0.06, geom.scale[1] * 0.65), geom.scale[2]]} />

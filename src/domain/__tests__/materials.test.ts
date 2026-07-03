@@ -24,8 +24,9 @@ describe("estimateMaterials", () => {
     expect(m.regularBricks).toBe(2);
     expect(m.firebricks).toBe(1);
     expect(m.grates).toBe(1);
-    // cut + cleanout (=2) + two trims counted as 0.5 each (=1) => 3
-    expect(m.cutBricks).toBe(3);
+    // cut (=1) + two trims counted as 0.5 each (=1) => 2; дверца — отдельной строкой
+    expect(m.cutBricks).toBe(2);
+    expect(m.doors).toBe(1);
     expect(m.total).toBe(8);
   });
 

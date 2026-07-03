@@ -52,6 +52,8 @@ export type BuilderScreenProps = {
   pickCustomBrick: (spec: CustomBrickSpec) => void;
   plateSpec: CustomBrickSpec;
   setPlateSize: (lengthMm: number, widthMm: number) => void;
+  doorSpec: CustomBrickSpec;
+  setDoorSize: (widthMm: number, heightMm: number) => void;
   userLogin: string;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -81,7 +83,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   const {
     t, grid, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool,
     orientation, setOrientation, notchCorner, setNotchCorner, snapStep, setSnapStep,
-    customBrick, pickCustomBrick, plateSpec, setPlateSize, userLogin, viewMode, setViewMode, placeAt, addRow, deleteCurrentRow,
+    customBrick, pickCustomBrick, plateSpec, setPlateSize, doorSpec, setDoorSize, userLogin, viewMode, setViewMode, placeAt, addRow, deleteCurrentRow,
     copyPreviousRow, fillCurrentRow, clearCurrentRow, lockRow, unlockRow, canUndo, canRedo,
     undo, redo, parameters, materials, camera, cameraZoom, cameraRotate,
     cameraPan, cameraReset, saveCurrentProject
@@ -146,6 +148,8 @@ export function BuilderScreen(props: BuilderScreenProps) {
             onOpenCutter={() => setCutterOpen(true)}
             plateSpec={plateSpec}
             setPlateSize={setPlateSize}
+            doorSpec={doorSpec}
+            setDoorSize={setDoorSize}
           />
           {cutterOpen && (
             <BrickCutter
@@ -163,11 +167,11 @@ export function BuilderScreen(props: BuilderScreenProps) {
         <section className="space-y-3">
           <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10 min-h-[620px] xl:min-h-[min(70dvh,900px)]">
             {viewMode === "2d"
-              ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} placeAt={placeAt} t={t} />
+              ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} placeAt={placeAt} t={t} />
               : (
                 <ErrorBoundary fallback={<CanvasFallback>{t("aria3d")}</CanvasFallback>}>
                   <Suspense fallback={<CanvasFallback>{t("view3d")}…</CanvasFallback>}>
-                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} />
+                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} />
                   </Suspense>
                 </ErrorBoundary>
               )}
@@ -225,7 +229,7 @@ function MobileRowRail({ rowCount, currentRow, lockedRows, setCurrentRow, t, add
   );
 }
 
-function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter, plateSpec, setPlateSize }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number) => void }) {
+function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter, plateSpec, setPlateSize, doorSpec, setDoorSize }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number) => void; doorSpec: CustomBrickSpec; setDoorSize: (widthMm: number, heightMm: number) => void }) {
   return (
     <section className="space-y-2">
       <div className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
@@ -284,6 +288,7 @@ function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, no
         <Segmented title={t("snapTitle")} options={[{ key: "1", label: t("snapWhole") }, { key: "0.5", label: t("snapHalf") }]} value={String(snapStep)} onChange={(value) => setSnapStep(Number(value) as SnapStep)} />
       </div>
       {activeTool === "plate" && <PlateSizePanel t={t} plateSpec={plateSpec} setPlateSize={setPlateSize} />}
+      {activeTool === "cleanout" && <DoorSizePanel t={t} doorSpec={doorSpec} setDoorSize={setDoorSize} />}
       {activeTool === "rebate" && (
         <Segmented
           title={t("notchCornerTitle")}
@@ -339,6 +344,46 @@ function PlateSizePanel({ t, plateSpec, setPlateSize }: { t: Translate; plateSpe
         {slider(lengthMm, 300, 1000, (v) => setPlateSize(v, widthMm))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterWidth")}</div>
         {slider(widthMm, 250, 750, (v) => setPlateSize(lengthMm, v))}
+      </div>
+    </div>
+  );
+}
+
+const DOOR_PRESETS: Array<[string, number, number]> = [
+  ["ДТ 250×210", 250, 210],
+  ["ДТ 250×280", 250, 280],
+  ["ДП 250×140", 250, 140],
+  ["ДПр 130×140", 130, 140]
+];
+
+/** Размер дверцы: топочные/поддувальные/прочистные по ГОСТ + произвольный. */
+function DoorSizePanel({ t, doorSpec, setDoorSize }: { t: Translate; doorSpec: CustomBrickSpec; setDoorSize: (widthMm: number, heightMm: number) => void }) {
+  const widthMm = Math.round(doorSpec.w * 125);
+  const heightMm = doorSpec.heightMm ?? 210;
+  const slider = (value: number, min: number, max: number, onChange: (v: number) => void) => (
+    <div className="flex items-center gap-2">
+      <input type="range" min={min} max={max} step={5} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-2 flex-1 accent-[#C1440E]" />
+      <span className="w-14 shrink-0 rounded-lg bg-white px-1.5 py-0.5 text-right text-xs font-black">{value}</span>
+    </div>
+  );
+  return (
+    <div className="rounded-[22px] border border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
+      <div className="mb-2 px-1 text-[11px] font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("doorSizeTitle")}</div>
+      <div className="mb-2 grid grid-cols-2 gap-1.5">
+        {DOOR_PRESETS.map(([label, w, h]) => {
+          const active = w === widthMm && h === heightMm;
+          return (
+            <button key={label} onClick={() => setDoorSize(w, h)} aria-pressed={active} className={`min-h-9 rounded-2xl px-1 text-[11px] font-black ${active ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="space-y-1.5 px-1">
+        <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("doorWidth")}</div>
+        {slider(widthMm, 100, 500, (v) => setDoorSize(v, heightMm))}
+        <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("doorHeight")}</div>
+        {slider(heightMm, 100, 400, (v) => setDoorSize(widthMm, v))}
       </div>
     </div>
   );

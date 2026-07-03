@@ -83,6 +83,8 @@ export default function App() {
             pickCustomBrick={studio.pickCustomBrick}
             plateSpec={studio.plateSpec}
             setPlateSize={studio.setPlateSize}
+            doorSpec={studio.doorSpec}
+            setDoorSize={studio.setDoorSize}
             userLogin={userLogin}
             viewMode={studio.viewMode}
             setViewMode={studio.setViewMode}

@@ -36,6 +36,8 @@ export type EditorState = {
   customBrick: CustomBrickSpec | null;
   /** Размер варочной плиты (мм → ячейки), применяется при установке плиты. */
   plateSpec: CustomBrickSpec;
+  /** Размер дверцы (ширина × высота, мм), применяется при установке дверцы. */
+  doorSpec: CustomBrickSpec;
   viewMode: ViewMode;
   camera: CameraState;
 };
@@ -56,6 +58,7 @@ export type EditorAction =
   | { type: "setSnapStep"; step: SnapStep }
   | { type: "pickCustomBrick"; spec: CustomBrickSpec }
   | { type: "setPlateSize"; lengthMm: number; widthMm: number }
+  | { type: "setDoorSize"; widthMm: number; heightMm: number }
   | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
   | { type: "reset" }
@@ -92,6 +95,20 @@ export function plateSpecFromMm(lengthMm: number, widthMm: number): CustomBrickS
 /** Двухконфорочная 710×410 — самый ходовой типоразмер. */
 export const DEFAULT_PLATE = plateSpecFromMm(710, 410);
 
+export function doorSpecFromMm(widthMm: number, heightMm: number): CustomBrickSpec {
+  return {
+    name: `Дверца ${widthMm}×${heightMm}`,
+    w: widthMm / MM_PER_CELL,
+    // глубина рамки в плане — полкирпича (одна ячейка)
+    h: 1,
+    notch: null,
+    heightMm
+  };
+}
+
+/** Топочная ДТ-3 250×210 — базовый типоразмер. */
+export const DEFAULT_DOOR = doorSpecFromMm(250, 210);
+
 export function initialEditorState(): EditorState {
   return {
     parameters: DEFAULT_PARAMETERS,
@@ -106,6 +123,7 @@ export function initialEditorState(): EditorState {
     snapStep: 1,
     customBrick: null,
     plateSpec: DEFAULT_PLATE,
+    doorSpec: DEFAULT_DOOR,
     viewMode: "3d",
     camera: DEFAULT_CAMERA
   };
@@ -135,6 +153,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, activeTool: "custom", customBrick: action.spec };
     case "setPlateSize":
       return { ...state, plateSpec: plateSpecFromMm(action.lengthMm, action.widthMm) };
+    case "setDoorSize":
+      return { ...state, doorSpec: doorSpecFromMm(action.widthMm, action.heightMm) };
     case "setViewMode":
       return { ...state, viewMode: action.mode };
 
@@ -286,6 +306,7 @@ function restoreDocument(snapshot: EditorState, view: EditorState): EditorState 
     snapStep: view.snapStep,
     customBrick: view.customBrick,
     plateSpec: view.plateSpec,
+    doorSpec: view.doorSpec,
     viewMode: view.viewMode,
     camera: view.camera
   };

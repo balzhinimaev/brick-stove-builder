@@ -36,6 +36,8 @@ export type CustomBrickSpec = {
   notch?: { x1: number; y1: number; x2: number; y2: number } | null;
   /** true — в вырезе остаётся полка на посадку; false — вырез сквозной */
   ledge?: boolean;
+  /** вертикальный размер (дверцы): высота проёма в мм, ~70 мм на ряд кладки */
+  heightMm?: number;
 };
 
 export type PlacedBrick = {
@@ -58,6 +60,7 @@ export type MaterialsEstimate = {
   firebricks: number;
   grates: number;
   plates: number;
+  doors: number;
   mortarM3: number;
   concreteVolumeM3: number;
   total: number;

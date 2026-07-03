@@ -172,7 +172,8 @@ const ru = {
   doorSizeTitle: "Размер дверцы, мм (ширина × высота)",
   doorWidth: "Ширина, мм",
   doorHeight: "Высота, мм",
-  doors: "Дверцы"
+  doors: "Дверцы",
+  cutterBlueprint: "Чертёж"
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -346,7 +347,8 @@ const en: Record<TranslationKey, string> = {
   doorSizeTitle: "Door size, mm (width × height)",
   doorWidth: "Width, mm",
   doorHeight: "Height, mm",
-  doors: "Doors"
+  doors: "Doors",
+  cutterBlueprint: "Blueprint"
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -518,7 +520,8 @@ const lt: Record<TranslationKey, string> = {
   doorSizeTitle: "Durelių dydis, mm (plotis × aukštis)",
   doorWidth: "Plotis, mm",
   doorHeight: "Aukštis, mm",
-  doors: "Durelės"
+  doors: "Durelės",
+  cutterBlueprint: "Brėžinys"
 };
 
 export const translations = { ru, en, lt } as const;

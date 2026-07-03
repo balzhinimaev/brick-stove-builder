@@ -1,8 +1,11 @@
-import { useMemo, useState } from "react";
+import { Suspense, lazy, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
 import type { CustomBrickSpec } from "../domain/types";
+
+// Three.js тяжёлый — 3D-превью резака грузим лениво, как и основную сцену.
+const CutterPreview3D = lazy(() => import("./three/CutterPreview3D"));
 
 /** Полный кирпич-заготовка: 250×120 мм; 1 ячейка сетки редактора = 125 мм. */
 const BLANK_L = 250;
@@ -23,6 +26,7 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
   const [notchWidMm, setNotchWidMm] = useState(60);
   const [ledge, setLedge] = useState(true);
   const [name, setName] = useState("");
+  const [view, setView] = useState<"3d" | "2d">("3d");
 
   const clampedNotchLen = Math.min(notchLenMm, lengthMm - STEP_MM);
   const clampedNotchWid = Math.min(notchWidMm, widthMm - STEP_MM);
@@ -85,9 +89,22 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
           <h3 className="text-xl font-black">✂ {t("cutterTitle")}</h3>
           <button onClick={onClose} aria-label={t("cancel")} className="grid h-10 w-10 place-items-center rounded-2xl bg-[#3D2B1F]/10 text-lg font-black">✕</button>
         </div>
-        <p className="mb-3 text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("cutterHint")}</p>
+        <p className="mb-2 text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("cutterHint")}</p>
 
-        <div className="overflow-x-auto rounded-[18px] bg-[#F5E6C8] p-2">
+        <div className="mb-2 grid grid-cols-2 gap-1.5">
+          <button onClick={() => setView("3d")} aria-pressed={view === "3d"} className={`min-h-9 rounded-2xl text-xs font-black ${view === "3d" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>{t("view3d")}</button>
+          <button onClick={() => setView("2d")} aria-pressed={view === "2d"} className={`min-h-9 rounded-2xl text-xs font-black ${view === "2d" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>{t("cutterBlueprint")}</button>
+        </div>
+
+        {view === "3d" && (
+          <div className="h-[280px] overflow-hidden rounded-[18px] bg-[#F5E6C8]">
+            <Suspense fallback={<div className="grid h-full place-items-center text-sm font-black text-[#3D2B1F]/55">{t("view3d")}…</div>}>
+              <CutterPreview3D spec={spec} />
+            </Suspense>
+          </div>
+        )}
+
+        <div className={`overflow-x-auto rounded-[18px] bg-[#F5E6C8] p-2 ${view === "3d" ? "hidden" : ""}`}>
           <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
             <defs>
               {/* штриховка отпиливаемых зон */}

@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from "react";
 import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
 import type { BrickKind, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../domain/types";
-import { brickBoxes, brickSizeFor, isInsideGrid, notchBox, snapToStep } from "../domain/geometry";
+import { brickBounds, brickSizeFor, isInsideGrid, notchBox, snapToStep } from "../domain/geometry";
 import { getToolColor } from "../domain/tools";
 
 const CELL = 34;
@@ -145,26 +145,49 @@ const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick
   );
 });
 
-/** Кирпич с четвертью на плане: Г-образное тело + светлая посадочная полка в вырезе. */
+/**
+ * Кирпич с четвертью на плане: ОДИН контур с явно вырезанным углом (или узкое
+ * тело при пазе вдоль грани) + бледная ступень-полка внутри выреза.
+ */
 function Rebate2D({ brick, cell, pad, opacity = 1 }: { brick: PlacedBrick; cell: number; pad: number; opacity?: number }) {
-  const toRect = (box: { x1: number; y1: number; x2: number; y2: number }, inset: number) => ({
-    x: pad + box.x1 * cell + 3 + inset,
-    y: pad + HEADER + box.y1 * cell + 3 + inset,
-    w: (box.x2 - box.x1) * cell - 6 - inset * 2,
-    h: (box.y2 - box.y1) * cell - 6 - inset * 2
-  });
-  const fill = getToolColor("rebate");
-  const notch = notchBox(brick);
+  const b = brickBounds(brick);
+  const notch = notchBox(brick)!;
+  const inset = 3;
+  const px = (v: number) => pad + v * cell;
+  const py = (v: number) => pad + HEADER + v * cell;
+  // внешние грани ужимаем как у обычных кирпичей; линии среза оставляем точными
+  const X1 = px(b.x1) + inset;
+  const X2 = px(b.x2) - inset;
+  const Y1 = py(b.y1) + inset;
+  const Y2 = py(b.y2) - inset;
+  const nx1 = notch.x1 === b.x1 ? X1 : px(notch.x1);
+  const nx2 = notch.x2 === b.x2 ? X2 : px(notch.x2);
+  const ny1 = notch.y1 === b.y1 ? Y1 : py(notch.y1);
+  const ny2 = notch.y2 === b.y2 ? Y2 : py(notch.y2);
+
+  const corner = brick.notchCorner ?? "ne";
+  const CORNER_POINTS: Record<string, Array<[number, number]> | null> = {
+    ne: [[X1, Y1], [nx1, Y1], [nx1, ny2], [X2, ny2], [X2, Y2], [X1, Y2]],
+    nw: [[nx2, Y1], [X2, Y1], [X2, Y2], [X1, Y2], [X1, ny2], [nx2, ny2]],
+    se: [[X1, Y1], [X2, Y1], [X2, ny1], [nx1, ny1], [nx1, Y2], [X1, Y2]],
+    sw: [[X1, Y1], [X2, Y1], [X2, Y2], [nx2, Y2], [nx2, ny1], [X1, ny1]],
+    n: null, e: null, s: null, w: null
+  };
+  const points = CORNER_POINTS[corner];
+  // паз вдоль грани: тело — прямоугольник, «отрезанный» по линии паза
+  const bodyRect = points
+    ? null
+    : { x: corner === "w" ? nx2 : X1, y: corner === "n" ? ny2 : Y1, x2: corner === "e" ? nx1 : X2, y2: corner === "s" ? ny1 : Y2 };
+
   return (
     <g opacity={opacity}>
-      {brickBoxes(brick).map((box, index) => {
-        const r = toRect(box, 0);
-        return <rect key={index} x={r.x} y={r.y} width={r.w} height={r.h} rx="7" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" />;
-      })}
-      {notch ? (() => {
-        const r = toRect(notch, 2);
-        return <rect x={r.x} y={r.y} width={r.w} height={r.h} rx="5" fill={COLORS.cutBrick} stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" opacity="0.55" />;
-      })() : null}
+      {points ? (
+        <path d={`M${points.map(([x, y]) => `${x} ${y}`).join(" L")} Z`} fill={getToolColor("rebate")} stroke={COLORS.charcoal} strokeWidth="2" strokeLinejoin="round" />
+      ) : bodyRect ? (
+        <rect x={bodyRect.x} y={bodyRect.y} width={bodyRect.x2 - bodyRect.x} height={bodyRect.y2 - bodyRect.y} rx="7" fill={getToolColor("rebate")} stroke={COLORS.charcoal} strokeWidth="2" />
+      ) : null}
+      {/* ступень-полка внутри выреза: бледная, чтобы вырез читался как вырез */}
+      <rect x={nx1 + 1.5} y={ny1 + 1.5} width={nx2 - nx1 - 3} height={ny2 - ny1 - 3} fill={COLORS.cutBrick} opacity="0.3" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" />
     </g>
   );
 }

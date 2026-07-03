@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT, BRICK_GAP } from "../../domain/constants";
-import { brickBoxes, brickSizeFor, brickWorldGeometry, boxWorldGeometry, notchBox } from "../../domain/geometry";
+import { brickBounds, brickBoxes, brickSizeFor, brickWorldGeometry, cellToWorld, notchBox, type BrickBox } from "../../domain/geometry";
 import { getToolColor } from "../../domain/tools";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 
@@ -32,35 +32,39 @@ export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, un
  */
 export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
   const color = getToolColor("rebate");
-  const boxes = brickBoxes(brick);
+  const outer = brickBounds(brick);
   const notch = notchBox(brick);
   const bounds = brickWorldGeometry(brick, grid);
   const isCurrent = brick.row === currentRow;
   const transparent = opacity < 1;
 
+  // Растворный шов ужимает только ВНЕШНИЕ грани кирпича; внутренние границы
+  // Г-частей остаются заподлицо — кирпич выглядит монолитом с вырезом,
+  // а не двумя кирпичами рядом.
+  const g = BRICK_GAP / 2;
+  const shave = (box: BrickBox): BrickBox => ({
+    x1: box.x1 + (box.x1 === outer.x1 ? g : 0),
+    x2: box.x2 - (box.x2 === outer.x2 ? g : 0),
+    y1: box.y1 + (box.y1 === outer.y1 ? g : 0),
+    y2: box.y2 - (box.y2 === outer.y2 ? g : 0)
+  });
+  const boxMesh = (box: BrickBox, height: number, bottomY: number, meshColor: string, key: number | string) => {
+    const center = cellToWorld((box.x1 + box.x2) / 2, (box.y1 + box.y2) / 2, grid);
+    return (
+      <mesh key={key} position={[center.x, bottomY + height / 2, center.z]} castShadow receiveShadow>
+        <boxGeometry args={[Math.max(0.06, box.x2 - box.x1), height, Math.max(0.06, box.y2 - box.y1)]} />
+        <meshStandardMaterial color={meshColor} roughness={0.85} metalness={0.02} transparent={transparent} opacity={opacity} />
+      </mesh>
+    );
+  };
+  const rowBottom = (brick.row - 1) * BRICK_LAYER_HEIGHT + BRICK_LAYER_HEIGHT * 0.04;
+  const fullHeight = BRICK_LAYER_HEIGHT * 0.92;
+
   return (
     <group>
-      {boxes.map((box, index) => {
-        const geometry = boxWorldGeometry(box, brick.row, grid);
-        return (
-          <mesh key={index} position={geometry.position} castShadow receiveShadow>
-            <boxGeometry args={geometry.scale} />
-            <meshStandardMaterial color={color} roughness={0.82} metalness={0.02} transparent={transparent} opacity={opacity} />
-          </mesh>
-        );
-      })}
-      {notch ? (() => {
-        const geometry = boxWorldGeometry(notch, brick.row, grid);
-        const fullHeight = geometry.scale[1];
-        const ledgeHeight = fullHeight * 0.45;
-        const ledgeY = geometry.position[1] - fullHeight / 2 + ledgeHeight / 2;
-        return (
-          <mesh position={[geometry.position[0], ledgeY, geometry.position[2]]} castShadow receiveShadow>
-            <boxGeometry args={[geometry.scale[0], ledgeHeight, geometry.scale[2]]} />
-            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.9} metalness={0.02} transparent={transparent} opacity={opacity} />
-          </mesh>
-        );
-      })() : null}
+      {brickBoxes(brick).map((box, index) => boxMesh(shave(box), fullHeight, rowBottom, color, index))}
+      {/* ступень среза в вырезе: заметно ниже тела, светлый «спил» */}
+      {notch ? boxMesh(shave(notch), fullHeight * 0.32, rowBottom, COLORS.cutBrick, "ledge") : null}
       {isCurrent && !transparent && (
         <mesh position={[bounds.position[0], bounds.position[1] + bounds.scale[1] / 2 + 0.014, bounds.position[2]]}>
           <boxGeometry args={[bounds.scale[0] + 0.035, 0.018, bounds.scale[2] + 0.035]} />

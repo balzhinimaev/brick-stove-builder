@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#14100c" />
+<title>Печь по порядовкам — заказчики для печников. Создайте 3D-проект печи, мы продадим вашу работу</title>
+<meta name="description" content="Бесплатный 3D-редактор печей по порядовкам для печников. Создайте проект — мы разместим его на витрине и приведём заказчиков. Первые 50 мастеров — бесплатно навсегда." />
+<meta property="og:title" content="Вы кладёте печи. Мы приводим заказчиков." />
+<meta property="og:description" content="Создайте 3D-проект печи в бесплатном редакторе — мы выставим его на витрину и будем продавать вашу работу." />
+<style>
+  :root {
+    --bg: #14100c;
+    --bg-2: #1c1611;
+    --bg-3: #241c15;
+    --line: #37291d;
+    --text: #f4ead9;
+    --muted: #b39d85;
+    --ember: #ff7b1c;
+    --ember-2: #ffb35c;
+    --brick: #b5432e;
+    --brick-2: #8f3423;
+    --ok: #7ac96b;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  a { color: var(--ember-2); text-decoration: none; }
+
+  /* ---------- header ---------- */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(20, 16, 12, .88); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; color: var(--text); letter-spacing: .2px; white-space: nowrap; }
+  .logo-mark {
+    width: 30px; height: 30px; border-radius: 7px; flex: none;
+    background: linear-gradient(135deg, var(--brick), var(--brick-2));
+    display: grid; place-items: center; font-size: 16px;
+  }
+  .nav a.btn { padding: 10px 18px; font-size: 14px; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-block; border: 0; cursor: pointer; border-radius: 10px;
+    padding: 15px 28px; min-height: 48px; font-size: 16px; font-weight: 700; color: #1b0e02;
+    background: linear-gradient(180deg, var(--ember-2), var(--ember));
+    box-shadow: 0 6px 24px rgba(255, 123, 28, .35);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(255, 123, 28, .5); }
+  .btn:active { transform: translateY(0); }
+  .btn[disabled] { opacity: .6; cursor: default; transform: none; }
+
+  /* ---------- hero ---------- */
+  .hero {
+    position: relative; overflow: hidden;
+    padding: 72px 0 84px;
+    background:
+      radial-gradient(700px 380px at 78% 18%, rgba(255, 123, 28, .14), transparent 65%),
+      radial-gradient(520px 300px at 12% 85%, rgba(181, 67, 46, .18), transparent 65%),
+      var(--bg);
+  }
+  .hero-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; }
+  .kicker {
+    display: inline-block; margin-bottom: 18px; padding: 7px 14px;
+    border: 1px solid rgba(255, 179, 92, .45); border-radius: 999px;
+    color: var(--ember-2); font-size: 13px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  }
+  h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.12; font-weight: 800; letter-spacing: -.5px; }
+  h1 em { font-style: normal; color: var(--ember-2); }
+  .sub { margin: 20px 0 28px; font-size: clamp(16px, 1.8vw, 19px); color: var(--muted); max-width: 54ch; }
+  .sub b { color: var(--text); }
+  .hero-points { list-style: none; display: flex; flex-wrap: wrap; gap: 10px 22px; margin-bottom: 8px; }
+  .hero-points li { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14.5px; }
+  .hero-points li::before { content: "✓"; color: var(--ok); font-weight: 800; }
+
+  /* ---------- lead card ---------- */
+  .lead-card {
+    background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 28px; box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+    scroll-margin-top: 80px; /* якорь #form не прячется под липкой шапкой */
+  }
+  .lead-card h3 { font-size: 21px; margin-bottom: 6px; }
+  .lead-card p { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+  .lead-form { display: grid; gap: 12px; }
+  .lead-form input {
+    width: 100%; padding: 14px 16px; font-size: 16px; color: var(--text);
+    background: #0f0c09; border: 1px solid var(--line); border-radius: 10px; outline: none;
+    transition: border-color .15s ease;
+  }
+  .lead-form input:focus { border-color: var(--ember); }
+  .lead-form input::placeholder { color: #7d6c58; }
+  .form-note { font-size: 12px; color: #8a7963; text-align: center; }
+  .form-note a { color: #a8956f; text-decoration: underline; }
+  .form-error { display: none; color: #ff8a7a; font-size: 14px; text-align: center; }
+  .form-done { display: none; text-align: center; padding: 26px 6px; }
+  .form-done .big { font-size: 42px; }
+  .form-done h4 { font-size: 20px; margin: 10px 0 6px; }
+  .form-done p { color: var(--muted); font-size: 14.5px; }
+  .hp { position: absolute !important; left: -9999px; opacity: 0; height: 0; overflow: hidden; }
+
+  .scarcity {
+    margin-top: 14px; display: flex; gap: 10px; align-items: center; justify-content: center;
+    font-size: 13.5px; color: var(--ember-2); font-weight: 600;
+  }
+  .scarcity .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ember); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  /* ---------- sections ---------- */
+  section { padding: 76px 0; }
+  section.alt { background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .sec-head { text-align: center; max-width: 640px; margin: 0 auto 48px; }
+  .sec-head h2 { font-size: clamp(26px, 3.4vw, 36px); font-weight: 800; letter-spacing: -.4px; }
+  .sec-head p { margin-top: 12px; color: var(--muted); font-size: 16.5px; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .card {
+    background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 26px;
+  }
+  .card .num {
+    width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--brick), var(--brick-2));
+    font-weight: 800; font-size: 18px; margin-bottom: 16px;
+  }
+  .card .ico { font-size: 30px; margin-bottom: 14px; }
+  .card h3 { font-size: 18px; margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: 14.5px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+  .split ul { list-style: none; display: grid; gap: 16px; }
+  .split li { display: flex; gap: 14px; }
+  .split li .mark { flex: none; width: 26px; height: 26px; border-radius: 50%; background: rgba(122, 201, 107, .15); color: var(--ok); display: grid; place-items: center; font-size: 14px; font-weight: 800; }
+  .split li b { display: block; margin-bottom: 2px; }
+  .split li span { color: var(--muted); font-size: 14.5px; }
+
+  /* stove svg */
+  .stove-visual { display: grid; place-items: center; }
+  .stove-visual svg { width: 100%; max-width: 380px; height: auto; filter: drop-shadow(0 20px 50px rgba(255, 123, 28, .18)); }
+
+  /* faq */
+  .faq { max-width: 720px; margin: 0 auto; display: grid; gap: 12px; }
+  details {
+    background: var(--bg-3); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px;
+  }
+  summary { cursor: pointer; font-weight: 700; font-size: 16px; list-style: none; position: relative; padding-right: 28px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--ember-2); font-size: 22px; font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+  details p { margin-top: 12px; color: var(--muted); font-size: 15px; }
+
+  /* final cta */
+  .final { text-align: center; }
+  .final .lead-card { max-width: 480px; margin: 36px auto 0; text-align: left; }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0; color: #7d6c58; font-size: 13.5px; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+  /* ---------- sticky mobile CTA ---------- */
+  .sticky-cta {
+    display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(20, 16, 12, 0), rgba(20, 16, 12, .94) 45%);
+    transform: translateY(115%); transition: transform .28s ease;
+    pointer-events: none;
+  }
+  .sticky-cta.show { transform: translateY(0); pointer-events: auto; }
+  .sticky-cta .btn { display: block; width: 100%; text-align: center; }
+
+  /* ---------- reveal on scroll (класс .reveal вешает JS — без JS всё видно сразу) ---------- */
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { opacity: 0; transform: translateY(16px); transition: opacity .55s ease, transform .55s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+  }
+
+  @media (max-width: 860px) {
+    .hero { padding: 36px 0 52px; }
+    .hero-grid, .split { grid-template-columns: 1fr; gap: 32px; }
+    .kicker { margin-bottom: 14px; font-size: 12px; }
+    .sub { margin: 16px 0 22px; }
+    .hero-points { gap: 8px 18px; }
+    .cards { grid-template-columns: 1fr; gap: 14px; }
+    /* карточки как строки списка в приложении: иконка слева, текст справа */
+    .card { display: grid; grid-template-columns: 44px 1fr; column-gap: 16px; row-gap: 4px; padding: 18px 20px; align-items: start; }
+    .card .ico, .card .num { grid-row: 1 / span 2; margin: 0; }
+    .card .ico { font-size: 27px; line-height: 1.3; }
+    .card h3 { font-size: 16.5px; }
+    .card h3, .card p { grid-column: 2; }
+    .stove-visual { order: -1; }
+    .stove-visual svg { max-width: 230px; }
+    section { padding: 52px 0; }
+    .sec-head { margin-bottom: 32px; }
+    .lead-card { padding: 22px 20px; }
+    .nav { height: 56px; }
+    .logo { font-size: 16px; }
+    /* CTA в шапке на мобильном не нужна — есть липкая кнопка внизу экрана */
+    .nav a.btn { display: none; }
+    summary { padding-top: 4px; padding-bottom: 4px; }
+    .sticky-cta { display: block; }
+    /* чтобы липкая кнопка не перекрывала футер и последнюю форму */
+    footer { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="logo"><span class="logo-mark">🔥</span> Печь по порядовкам</div>
+    <a class="btn" href="#form">Получить доступ</a>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="kicker">Ранний доступ для печников</span>
+      <h1>Вы кладёте печи.<br /><em>Мы приводим заказчиков.</em></h1>
+      <p class="sub">
+        Соберите 3D-проект своей печи по порядовкам в <b>бесплатном редакторе</b> —
+        мы выставим его на витрину и будем предлагать людям, которые ищут печника.
+        Заказчик выбрал вашу печь — <b>контакт достаётся вам</b>.
+      </p>
+      <ul class="hero-points">
+        <li>Редактор бесплатный</li>
+        <li>3D-порядовка и расчёт кирпича</li>
+        <li>Работает в браузере и на телефоне</li>
+      </ul>
+    </div>
+
+    <div class="lead-card" id="form">
+      <h3>Займите место на витрине</h3>
+      <p>Оставьте контакты — пришлём доступ к редактору и условия раннего доступа.</p>
+      <form class="lead-form" data-source="hero">
+        <input type="text" name="name" placeholder="Ваше имя" autocomplete="name" />
+        <input type="tel" name="phone" placeholder="Телефон *" required autocomplete="tel" inputmode="tel" />
+        <input type="email" name="email" placeholder="Email" autocomplete="email" inputmode="email" />
+        <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" />
+        <button class="btn" type="submit">Получить ранний доступ</button>
+        <div class="form-error"></div>
+        <div class="form-note">Нажимая кнопку, вы соглашаетесь на <a href="#" onclick="return false">обработку персональных данных</a>. Без спама.</div>
+      </form>
+      <div class="form-done">
+        <div class="big">🔥</div>
+        <h4>Заявка принята!</h4>
+        <p>Свяжемся с вами в ближайшее время и пришлём доступ к редактору.</p>
+      </div>
+      <div class="scarcity"><span class="dot"></span> Первые 50 мастеров — место на витрине бесплатно навсегда</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PAIN ================= -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Знакомая ситуация?</h2>
+      <p>Хорошие печники сидят без заказов не потому, что плохо кладут. А потому, что заказчик их не видит.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="ico">📉</div>
+        <h3>Заказы — только по сарафану</h3>
+        <p>Сезон закончился у соседей — закончился и у вас. Реклама дорогая, «Авито» завален посредниками.</p>
+      </div>
+      <div class="card">
+        <div class="ico">📷</div>
+        <h3>Портфолио — фотки в телефоне</h3>
+        <p>Заказчик не понимает по фотографиям, что вы умеете. Показать проект «в объёме» нечем.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🧮</div>
+        <h3>Расчёты на бумажке</h3>
+        <p>Сколько кирпича, сколько раствора, что по деньгам — каждый раз считаете заново вручную.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Как это работает</h2>
+      <p>Три шага от порядовки до заказчика.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>Создаёте проект печи</h3>
+        <p>В редакторе собираете печь ряд за рядом — как на настоящей кладке. 3D-модель и расчёт кирпича строятся автоматически.</p>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>Проект попадает на витрину</h3>
+        <p>Мы оформляем вашу печь в каталоге: 3D-вид, порядовка, материалы, ваш регион и ваша цена за работу.</p>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>Заказчик выбирает вас</h3>
+        <p>Человек ищет печь, находит вашу, жмёт «Хочу такую» — и мы передаём заказ вам. Напрямую, без посредников.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= EDITOR ================= -->
+<section>
+  <div class="wrap split">
+    <div>
+      <div class="sec-head" style="text-align:left; margin: 0 0 28px;">
+        <h2>Редактор, который понимает печника</h2>
+        <p>Не «программа для инженеров», а инструмент под реальную кладку.</p>
+      </div>
+      <ul>
+        <li><span class="mark">✓</span><div><b>Кладка по порядовкам</b><span>Ряд за рядом, целый кирпич, половинки, четверти — как в жизни.</span></div></li>
+        <li><span class="mark">✓</span><div><b>3D-модель сразу</b><span>Крутите печь на экране, показывайте заказчику со всех сторон.</span></div></li>
+        <li><span class="mark">✓</span><div><b>Автоматический расчёт материалов</b><span>Кирпич по видам, количество — смета для заказчика за минуту.</span></div></li>
+        <li><span class="mark">✓</span><div><b>Проекты в облаке</b><span>Начали на компьютере — показали с телефона на объекте.</span></div></li>
+      </ul>
+    </div>
+    <div class="stove-visual">
+      <svg viewBox="0 0 300 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="3D-модель кирпичной печи">
+        <defs>
+          <linearGradient id="fire" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0" stop-color="#ff7b1c"/><stop offset="1" stop-color="#ffd27a"/>
+          </linearGradient>
+          <linearGradient id="br" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#c14b33"/><stop offset="1" stop-color="#8f3423"/>
+          </linearGradient>
+        </defs>
+        <!-- труба -->
+        <g>
+          <rect x="118" y="10" width="64" height="70" rx="3" fill="url(#br)"/>
+          <line x1="118" y1="33" x2="182" y2="33" stroke="#14100c" stroke-width="3"/>
+          <line x1="118" y1="56" x2="182" y2="56" stroke="#14100c" stroke-width="3"/>
+          <line x1="150" y1="10" x2="150" y2="33" stroke="#14100c" stroke-width="3"/>
+          <line x1="134" y1="33" x2="134" y2="56" stroke="#14100c" stroke-width="3"/>
+          <line x1="166" y1="33" x2="166" y2="56" stroke="#14100c" stroke-width="3"/>
+          <line x1="150" y1="56" x2="150" y2="80" stroke="#14100c" stroke-width="3"/>
+        </g>
+        <!-- корпус -->
+        <g>
+          <rect x="60" y="80" width="180" height="250" rx="4" fill="url(#br)"/>
+          <!-- швы: горизонтальные -->
+          <g stroke="#14100c" stroke-width="3">
+            <line x1="60" y1="105" x2="240" y2="105"/><line x1="60" y1="130" x2="240" y2="130"/>
+            <line x1="60" y1="155" x2="240" y2="155"/><line x1="60" y1="180" x2="240" y2="180"/>
+            <line x1="60" y1="205" x2="240" y2="205"/><line x1="60" y1="230" x2="240" y2="230"/>
+            <line x1="60" y1="255" x2="240" y2="255"/><line x1="60" y1="280" x2="240" y2="280"/>
+            <line x1="60" y1="305" x2="240" y2="305"/>
+          </g>
+          <!-- швы: вертикальные вразбежку -->
+          <g stroke="#14100c" stroke-width="3">
+            <line x1="105" y1="80" x2="105" y2="105"/><line x1="150" y1="80" x2="150" y2="105"/><line x1="195" y1="80" x2="195" y2="105"/>
+            <line x1="82" y1="105" x2="82" y2="130"/><line x1="127" y1="105" x2="127" y2="130"/><line x1="172" y1="105" x2="172" y2="130"/><line x1="217" y1="105" x2="217" y2="130"/>
+            <line x1="105" y1="130" x2="105" y2="155"/><line x1="195" y1="130" x2="195" y2="155"/>
+            <line x1="82" y1="155" x2="82" y2="180"/><line x1="217" y1="155" x2="217" y2="180"/>
+            <line x1="105" y1="180" x2="105" y2="205"/><line x1="195" y1="180" x2="195" y2="205"/>
+            <line x1="82" y1="205" x2="82" y2="230"/><line x1="217" y1="205" x2="217" y2="230"/>
+            <line x1="105" y1="230" x2="105" y2="255"/><line x1="150" y1="230" x2="150" y2="255"/><line x1="195" y1="230" x2="195" y2="255"/>
+            <line x1="82" y1="255" x2="82" y2="280"/><line x1="127" y1="255" x2="127" y2="280"/><line x1="172" y1="255" x2="172" y2="280"/><line x1="217" y1="255" x2="217" y2="280"/>
+            <line x1="105" y1="280" x2="105" y2="305"/><line x1="195" y1="280" x2="195" y2="305"/>
+            <line x1="150" y1="305" x2="150" y2="330"/>
+          </g>
+          <!-- топка -->
+          <rect x="103" y="158" width="94" height="74" rx="6" fill="#0f0c09" stroke="#3a2b1e" stroke-width="3"/>
+          <path d="M150 222 c-16 -8 -22 -22 -14 -34 3 8 8 11 8 11 c-4 -14 2 -24 12 -30 c-3 10 1 15 6 20 c5 5 9 12 6 21 c5 -3 7 -8 8 -12 c7 14 -6 28 -26 24z" fill="url(#fire)"/>
+          <!-- дверца поддувала -->
+          <rect x="122" y="262" width="56" height="30" rx="4" fill="#0f0c09" stroke="#3a2b1e" stroke-width="3"/>
+        </g>
+        <!-- основание -->
+        <rect x="48" y="330" width="204" height="18" rx="3" fill="#5d4632"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BENEFITS ================= -->
+<section class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Что вы получаете как мастер</h2>
+      <p>Мы зарабатываем, только когда зарабатываете вы.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="ico">🏪</div>
+        <h3>Витрина работает за вас</h3>
+        <p>Ваши печи видят заказчики 24/7. Это портфолио, которое само приводит клиентов, — без затрат на рекламу.</p>
+      </div>
+      <div class="card">
+        <div class="ico">💰</div>
+        <h3>Цену называете вы</h3>
+        <p>Вы указываете стоимость работы под каждым проектом. Никаких «скидок за счёт мастера».</p>
+      </div>
+      <div class="card">
+        <div class="ico">🤝</div>
+        <h3>Заказы — напрямую</h3>
+        <p>Контакт заказчика передаём вам. В ранний доступ — без комиссии и без абонентской платы.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Частые вопросы</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>Сколько это стоит?</summary>
+        <p>Редактор бесплатный. Размещение на витрине для первых 50 мастеров — бесплатно навсегда. Дальше планируем брать небольшую комиссию только с реально полученных заказов.</p>
+      </details>
+      <details>
+        <summary>Я не разбираюсь в компьютерах. Справлюсь?</summary>
+        <p>Редактор проще, чем кажется: выбираете ряд, кладёте кирпичи мышкой или пальцем. Если вы можете выложить порядовку на бумаге — сможете и здесь. Поможем разобраться на старте.</p>
+      </details>
+      <details>
+        <summary>Кому принадлежит мой проект?</summary>
+        <p>Вам. Мы размещаем его на витрине только с вашего согласия и указываем вас как автора. Захотите убрать — уберём.</p>
+      </details>
+      <details>
+        <summary>Из каких я должен быть городов?</summary>
+        <p>Из любых. Заказчики ищут печника в своём регионе — при размещении вы указываете, где работаете, и мы показываем ваши печи местным клиентам.</p>
+      </details>
+      <details>
+        <summary>Что будет после того, как я оставлю заявку?</summary>
+        <p>Пришлём ссылку на редактор и короткую инструкцию, свяжемся по телефону, чтобы ответить на вопросы, и закрепим за вами место в первой полусотне мастеров.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FINAL CTA ================= -->
+<section class="alt final">
+  <div class="wrap">
+    <div class="sec-head" style="margin-bottom: 0;">
+      <h2>Пока вы думаете — витрину занимают другие</h2>
+      <p>Мест с бесплатным размещением навсегда — только 50. Оставьте контакты сейчас, это ни к чему не обязывает.</p>
+    </div>
+    <div class="lead-card">
+      <h3>Получить ранний доступ</h3>
+      <p>Доступ к редактору + место на витрине для первых 50 мастеров.</p>
+      <form class="lead-form" data-source="footer">
+        <input type="text" name="name" placeholder="Ваше имя" autocomplete="name" />
+        <input type="tel" name="phone" placeholder="Телефон *" required autocomplete="tel" inputmode="tel" />
+        <input type="email" name="email" placeholder="Email" autocomplete="email" inputmode="email" />
+        <input class="hp" type="text" name="website" tabindex="-1" autocomplete="off" />
+        <button class="btn" type="submit">Занять место на витрине</button>
+        <div class="form-error"></div>
+        <div class="form-note">Нажимая кнопку, вы соглашаетесь на обработку персональных данных.</div>
+      </form>
+      <div class="form-done">
+        <div class="big">🔥</div>
+        <h4>Заявка принята!</h4>
+        <p>Свяжемся с вами в ближайшее время и пришлём доступ к редактору.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>© <span id="year"></span> Печь по порядовкам</div>
+    <div>Редактор печей для мастеров · <a href="./">Открыть редактор</a></div>
+  </div>
+</footer>
+
+<!-- Липкая CTA для мобильных: всегда в зоне большого пальца, прячется, когда форма на экране -->
+<div class="sticky-cta" id="stickyCta">
+  <a class="btn" href="#form">🔥 Занять место на витрине</a>
+</div>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+
+  // Липкая CTA на мобильных: показываем, только когда ни одна форма не видна на экране.
+  const stickyCta = document.getElementById("stickyCta");
+  const visibleForms = new Set();
+  const ctaObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) visibleForms.add(entry.target);
+      else visibleForms.delete(entry.target);
+    }
+    stickyCta.classList.toggle("show", visibleForms.size === 0);
+  }, { threshold: 0.25 });
+  for (const card of document.querySelectorAll(".lead-card")) ctaObserver.observe(card);
+
+  // Плавное появление блоков при скролле (hero не трогаем — он должен быть виден мгновенно).
+  const revealObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("in");
+        revealObserver.unobserve(entry.target);
+      }
+    }
+  }, { threshold: 0.15, rootMargin: "0px 0px -40px 0px" });
+  for (const el of document.querySelectorAll("section .card, section details, .split li")) {
+    el.classList.add("reveal");
+    revealObserver.observe(el);
+  }
+
+  // UTM из адресной строки — сохраняем на время визита, чтобы не потерять при переходах по якорям.
+  const params = new URLSearchParams(location.search);
+  const utmKeys = ["source", "medium", "campaign", "content", "term"];
+  const utm = {};
+  for (const key of utmKeys) {
+    const fresh = params.get("utm_" + key);
+    if (fresh) sessionStorage.setItem("utm_" + key, fresh);
+    utm[key] = fresh || sessionStorage.getItem("utm_" + key) || "";
+  }
+
+  for (const form of document.querySelectorAll(".lead-form")) {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const btn = form.querySelector("button");
+      const errorBox = form.querySelector(".form-error");
+      errorBox.style.display = "none";
+      btn.disabled = true;
+      btn.textContent = "Отправляем…";
+      try {
+        // Относительный путь: работает и напрямую (/landing), и за nginx-префиксом (/brick-stove-builder/landing).
+        const response = await fetch("api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name.value,
+            phone: form.phone.value,
+            email: form.email.value,
+            website: form.website.value,
+            source: "landing:" + (form.dataset.source || "unknown"),
+            utm
+          })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "Не получилось отправить. Попробуйте ещё раз.");
+        form.style.display = "none";
+        form.parentElement.querySelector(".form-done").style.display = "block";
+        // Заявка отправлена — призыв внизу экрана больше не нужен.
+        const cta = document.getElementById("stickyCta");
+        cta.classList.remove("show");
+        cta.style.display = "none";
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = form.dataset.source === "hero" ? "Получить ранний доступ" : "Занять место на витрине";
+      }
+    });
+  }
+</script>
+</body>
+</html>

@@ -13,6 +13,12 @@ services:
       # Set a stable secret so auth tokens survive restarts. Provide it via the
       # host environment or a .env file (never commit the real value).
       AUTH_SECRET: ${AUTH_SECRET:-change-me-to-a-long-random-string}
+      # Ключ для выгрузки лидов через GET /api/leads (заголовок x-leads-key).
+      # Если не задан — экспорт отключён, приём заявок работает всегда.
+      LEADS_KEY: ${LEADS_KEY:-}
+      # Telegram-уведомления о новых заявках (если пусто — просто не шлём).
+      TG_BOT_TOKEN: ${TG_BOT_TOKEN:-}
+      TG_CHAT_IDS: ${TG_CHAT_IDS:-}
     ports:
       - "127.0.0.1:4174:4174"
     depends_on:

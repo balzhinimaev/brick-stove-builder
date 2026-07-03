@@ -14,6 +14,13 @@ export function normalizeProject(project) {
     rows,
     accent: plain.accent || "#C1440E",
     ownerLogin: plain.ownerLogin,
+    showcase: {
+      published: Boolean(plain.showcase?.published),
+      description: plain.showcase?.description || "",
+      price: plain.showcase?.price ?? null,
+      region: plain.showcase?.region || "",
+      publishedAt: plain.showcase?.publishedAt ?? null
+    },
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt
   };

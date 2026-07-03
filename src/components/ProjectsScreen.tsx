@@ -3,7 +3,7 @@ import { COLORS } from "../theme/colors";
 import type { Locale, Translate } from "../i18n";
 import type { GridSpec, PlacedBrick, ReadyProject } from "../domain/types";
 import type { PublishFields } from "../api/client";
-import { brickBoxes, gridFromParameters } from "../domain/geometry";
+import { brickBoxes, gridFromParameters, isOverlayKind } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
 import { getToolColor } from "../domain/tools";
 import { Pill, SectionTitle } from "./ui";
@@ -193,7 +193,7 @@ function ProjectRowMap({ grid, bricks }: { grid: GridSpec; bricks: PlacedBrick[]
       <rect x="1" y="1" width={width - 2} height={height - 2} rx="12" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="1.5" opacity="0.26" />
       {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={`prx-${x}`} x1={pad + x * cell} y1={pad} x2={pad + x * cell} y2={pad + grid.rows * cell} stroke={COLORS.gridLine} strokeWidth="0.8" />)}
       {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={`pry-${y}`} x1={pad} y1={pad + y * cell} x2={pad + grid.cols * cell} y2={pad + y * cell} stroke={COLORS.gridLine} strokeWidth="0.8" />)}
-      {bricks.flatMap((brick) =>
+      {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).flatMap((brick) =>
         brickBoxes(brick).map((box, index) => (
           <rect key={`${brick.id}-${index}`} x={pad + box.x1 * cell + 1} y={pad + box.y1 * cell + 1} width={(box.x2 - box.x1) * cell - 2} height={(box.y2 - box.y1) * cell - 2} rx="3" fill={getToolColor(brick.kind)} stroke={COLORS.charcoal} strokeWidth="0.8" />
         ))

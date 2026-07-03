@@ -35,7 +35,7 @@ export function ThreeStack({
   grid: GridSpec;
   bricks: PlacedBrick[];
   currentRow: number;
-  placeAt: (x: number, y: number) => void;
+  placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   t: Translate;
   camera: CameraState;
   activeTool: ToolKind;
@@ -118,7 +118,7 @@ function PlacementCells({
 }: {
   grid: GridSpec;
   currentRow: number;
-  placeAt: (x: number, y: number) => void;
+  placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   hoverCell: HoverCell;
   setHoverCell: React.Dispatch<React.SetStateAction<HoverCell>>;
   activeTool: ToolKind;
@@ -135,9 +135,13 @@ function PlacementCells({
   // Точка пересечения луча с плоскостью → локальные координаты → узел сетки по шагу.
   const cellFromEvent = (event: ThreeEvent<MouseEvent>) => {
     const local = event.object.worldToLocal(event.point.clone());
+    const rawX = local.x + grid.cols / 2;
+    const rawY = local.z + grid.rows / 2;
     return {
-      x: snapToStep(local.x + grid.cols / 2, snapStep, grid.cols),
-      y: snapToStep(local.z + grid.rows / 2, snapStep, grid.rows)
+      x: snapToStep(rawX, snapStep, grid.cols),
+      y: snapToStep(rawY, snapStep, grid.rows),
+      rawX,
+      rawY
     };
   };
 
@@ -183,7 +187,7 @@ function PlacementCells({
         onClick={(event) => {
           event.stopPropagation();
           const cell = cellFromEvent(event);
-          placeAt(cell.x, cell.y);
+          placeAt(cell.x, cell.y, cell.rawX, cell.rawY);
         }}
       >
         <boxGeometry args={[grid.cols, 0.012, grid.rows]} />

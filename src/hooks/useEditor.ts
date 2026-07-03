@@ -17,9 +17,11 @@ export function useEditor() {
   const materials = useMemo(() => estimateMaterials(allBricks, state.parameters), [allBricks, state.parameters]);
 
   const placeAt = useCallback(
-    (x: number, y: number) => {
+    (x: number, y: number, exactX?: number, exactY?: number) => {
       if (state.activeTool === "eraser") {
-        dispatch({ type: "erase", x, y });
+        // Ластик бьёт по фактической точке клика, а не по снапнутому узлу:
+        // иначе обрезки в «дальней» части ячейки недостижимы при шаге 1.
+        dispatch({ type: "erase", x: exactX ?? x, y: exactY ?? y });
         return;
       }
       if (state.activeTool === "grate") {

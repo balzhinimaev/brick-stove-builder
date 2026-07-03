@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import type { Translate } from "../i18n";
 import type { GridSpec, MaterialsEstimate, Parameters, PlacedBrick } from "../domain/types";
-import { brickBoxes } from "../domain/geometry";
+import { brickBoxes, isOverlayKind } from "../domain/geometry";
 import { getToolColor } from "../domain/tools";
 
 /**
@@ -97,7 +97,7 @@ function PrintRowMap({ grid, bricks }: { grid: GridSpec; bricks: PlacedBrick[] }
       {Array.from({ length: grid.rows + 1 }).map((_, y) => (
         <line key={`y${y}`} x1={1} y1={1 + y * cell} x2={1 + grid.cols * cell} y2={1 + y * cell} stroke="#ddd" strokeWidth="0.6" />
       ))}
-      {bricks.flatMap((brick) =>
+      {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).flatMap((brick) =>
         brickBoxes(brick).map((box, index) => (
           <rect
             key={`${brick.id}-${index}`}

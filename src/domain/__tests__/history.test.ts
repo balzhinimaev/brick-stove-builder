@@ -63,4 +63,17 @@ describe("historyReducer", () => {
     expect(state.past).toHaveLength(0);
     expect(state.future).toHaveLength(0);
   });
+
+  it("undo keeps snap step, notch corner and picked custom brick", () => {
+    let state = fresh();
+    state = historyReducer(state, { type: "place", bricks: [brick(0, 2)] });
+    state = historyReducer(state, { type: "setSnapStep", step: 0.5 });
+    state = historyReducer(state, { type: "setNotchCorner", corner: "sw" });
+    state = historyReducer(state, { type: "pickCustomBrick", spec: { name: "трёхчетвертка", w: 1.52, h: 0.96, notch: null } });
+    state = historyReducer(state, { type: "undo" });
+    expect(state.present.snapStep).toBe(0.5);
+    expect(state.present.notchCorner).toBe("sw");
+    expect(state.present.customBrick?.name).toBe("трёхчетвертка");
+    expect(state.present.rows[2] ?? []).toHaveLength(0); // документ откатился
+  });
 });

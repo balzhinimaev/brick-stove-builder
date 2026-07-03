@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from "react";
 import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
 import type { BrickKind, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../domain/types";
-import { brickBounds, footprintSizeOf, isInsideGrid, notchBox, snapToStep } from "../domain/geometry";
+import { brickBounds, footprintSizeOf, isInsideGrid, isOverlayKind, notchBox, snapToStep } from "../domain/geometry";
 import { getToolColor } from "../domain/tools";
 
 const CELL = 34;
@@ -27,7 +27,7 @@ export function PlanGrid({
   notchCorner: NotchCorner;
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
-  placeAt: (x: number, y: number) => void;
+  placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   t: Translate;
 }) {
   const width = grid.cols * CELL + PAD * 2;
@@ -63,9 +63,13 @@ export function PlanGrid({
   // привязывается к текущему шагу (целая ячейка или полячейки).
   const cellFromEvent = (event: React.MouseEvent<SVGRectElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
+    const rawX = (event.clientX - box.left) / CELL;
+    const rawY = (event.clientY - box.top) / CELL;
     return {
-      x: snapToStep((event.clientX - box.left) / CELL, snapStep, grid.cols),
-      y: snapToStep((event.clientY - box.top) / CELL, snapStep, grid.rows)
+      x: snapToStep(rawX, snapStep, grid.cols),
+      y: snapToStep(rawY, snapStep, grid.rows),
+      rawX,
+      rawY
     };
   };
   const overlay = (
@@ -82,7 +86,7 @@ export function PlanGrid({
       }}
       onClick={(event) => {
         const cell = cellFromEvent(event);
-        placeAt(cell.x, cell.y);
+        placeAt(cell.x, cell.y, cell.rawX, cell.rawY);
       }}
     />
   );
@@ -97,7 +101,8 @@ export function PlanGrid({
         {lines.horizontal}
         {lines.xTicks}
         {lines.yTicks}
-        {bricks.map((brick) => <Brick2D key={brick.id} brick={brick} cell={CELL} pad={PAD} />)}
+        {/* накладные элементы (плита) рисуются последними — они лежат поверх кладки */}
+        {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).map((brick) => <Brick2D key={brick.id} brick={brick} cell={CELL} pad={PAD} />)}
 
         {hoverCell ? <rect x={PAD + hoverCell.x * CELL + 1.5} y={PAD + HEADER + hoverCell.y * CELL + 1.5} width={CELL * snapStep - 3} height={CELL * snapStep - 3} rx={snapStep === 1 ? 8 : 5} fill="rgba(143,175,118,0.18)" stroke="rgba(95,126,77,0.75)" strokeWidth="1.5" /> : null}
 

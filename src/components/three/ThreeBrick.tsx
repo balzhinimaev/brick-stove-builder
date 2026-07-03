@@ -84,8 +84,11 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
   const geometry = brickWorldGeometry(brick, grid);
   const size = brickSizeFor("plate", brick.orientation);
   const plateHeight = BRICK_LAYER_HEIGHT * 0.14;
-  const topY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
-  const plateY = topY - plateHeight / 2;
+  const rowTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
+  // Плита лежит НА ряду: низ панели на верхе кирпичей (лёгкая посадка от щели),
+  // поэтому кирпичи под ней не пересекают её объём.
+  const plateY = rowTopY + plateHeight / 2 - 0.008;
+  const topY = plateY + plateHeight / 2;
   const isCurrent = brick.row === currentRow;
   const transparent = opacity < 1;
   const longX = brick.orientation === "h";

@@ -53,7 +53,7 @@ export type BuilderScreenProps = {
   userLogin: string;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
-  placeAt: (x: number, y: number) => void;
+  placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   addRow: () => void;
   deleteCurrentRow: () => void;
   copyPreviousRow: () => void;
@@ -91,6 +91,9 @@ export function BuilderScreen(props: BuilderScreenProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
+      // Не перехватываем undo, пока пользователь печатает (имя в резаке и т.п.)
+      const target = event.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
       const key = event.key.toLowerCase();
       if (key === "z" && event.shiftKey) {
         event.preventDefault();

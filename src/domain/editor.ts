@@ -261,6 +261,9 @@ function restoreDocument(snapshot: EditorState, view: EditorState): EditorState 
     ...snapshot,
     activeTool: view.activeTool,
     orientation: view.orientation,
+    notchCorner: view.notchCorner,
+    snapStep: view.snapStep,
+    customBrick: view.customBrick,
     viewMode: view.viewMode,
     camera: view.camera
   };

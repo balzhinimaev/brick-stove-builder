@@ -10,9 +10,14 @@
     "server": "node server/index.js",
     "start": "node server/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "cap:sync": "npm run build && cap sync android",
+    "android:apk": "npm run cap:sync && cd android && ./gradlew assembleDebug",
+    "android:open": "cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",
     "cors": "^2.8.6",
@@ -24,6 +29,7 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
     "@tailwindcss/vite": "^4.2.4",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

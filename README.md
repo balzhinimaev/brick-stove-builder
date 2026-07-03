@@ -110,6 +110,28 @@ Set `AUTH_SECRET` to a long random value in production. Without it the server
 starts with a random per-restart secret and logs a warning — fine for local dev,
 but every issued token is invalidated on restart.
 
+## Android app (Capacitor)
+
+The SPA is packaged into a native Android WebView app with Capacitor
+(`capacitor.config.ts`, native project in `android/`).
+
+Before building a release, point the app at your deployed backend — a phone
+cannot use the relative `/api`. Set `VITE_API_BASE` in `.env.production`
+(e.g. `https://your-domain.tld/brick-stove-builder/api`).
+
+Build a debug APK (needs a JDK 21 and the Android SDK with platform 36):
+
+```bash
+export JAVA_HOME=/path/to/jdk-21
+export ANDROID_SDK_ROOT=/path/to/Android/Sdk   # or android/local.properties: sdk.dir=…
+npm run android:apk
+# -> android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+`npm run cap:sync` rebuilds the web bundle and copies it into the native project;
+`npm run android:open` opens the project in Android Studio (recommended for
+signed release builds / store uploads).
+
 ## Current features
 
 - RU/EN/LT UI translations

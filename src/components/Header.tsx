@@ -12,7 +12,8 @@ export function Header({
   lockedCount,
   userLogin,
   onSwitchAccount,
-  autosaveState
+  autosaveState,
+  pendingCount
 }: {
   locale: Locale;
   setLocale: (locale: Locale) => void;
@@ -23,6 +24,7 @@ export function Header({
   userLogin: string;
   onSwitchAccount: () => void;
   autosaveState: AutosaveState;
+  pendingCount: number;
 }) {
   const autosaveLabel =
     autosaveState === "saving" ? t("saving")
@@ -38,9 +40,10 @@ export function Header({
           <h1 className="truncate text-[20px] font-black leading-6 tracking-tight">{t("projectName")}</h1>
           <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none]">
             <Pill>{t("totalPlaced")}: {placedCount}</Pill>
-            <Pill>{t("rowsRail")}: {lockedCount}</Pill>
+            <Pill>{t("rowCompleted")}: {lockedCount}</Pill>
             <Pill>{t("brickSize")}</Pill>
             {userLogin && autosaveLabel ? <Pill>{autosaveLabel}</Pill> : null}
+            {pendingCount > 0 ? <span className="shrink-0 rounded-full bg-[#9b2c2c]/15 px-2.5 py-1 text-[11px] font-extrabold text-[#9b2c2c]">⏳ {t("pendingSync")}: {pendingCount}</span> : null}
           </div>
         </div>
         <div className="flex flex-col gap-1">

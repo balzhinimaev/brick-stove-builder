@@ -5,10 +5,8 @@ import { READY_PROJECTS } from "../domain/projects";
 import { uniqueId } from "../lib/id";
 import { useI18n, type Locale } from "../i18n";
 import {
-  deleteSavedProject as deleteSavedProjectApi,
   publishProject as publishProjectApi,
   unpublishProject as unpublishProjectApi,
-  updateSavedProject as updateSavedProjectApi,
   type PublishFields
 } from "../api/client";
 import type { ReadyProject, Screen } from "../domain/types";
@@ -32,17 +30,30 @@ export function useStudioState() {
 
   const editor = useEditor();
   const session = useSession(t);
-  const { savedProjects, saveProject, replaceProject, removeProject } = useSavedProjects(session.session);
   /**
    * Какой СВОЙ сохранённый проект сейчас открыт в редакторе. Пока он задан,
    * «Сохранить проект» обновляет документ вместо создания дубля.
    * Живёт в studio-слое, а не в editor-редьюсере: ядро редактора про это не знает.
    */
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const { savedProjects, pendingCount, saveProject, updateProject, replaceProject, removeProject } = useSavedProjects(
+    session.session,
+    // офлайн-созданный проект после синка получает серверный id
+    (idMap) => setCurrentProjectId((current) => (current && idMap[current] ? idMap[current] : current)),
+    session.invalidateSession
+  );
   const autosaveState = useAutosaveDraft(
     session.session,
     { parameters: editor.parameters, rowCount: editor.rowCount, currentRow: editor.currentRow, lockedRows: editor.lockedRows, rows: editor.rows },
-    editor.loadDraft
+    // Черновик молча заменяет только нетронутый редактор: если пользователь
+    // уже что-то строил (например, час работал анонимно и вошёл, чтобы
+    // сохранить), — спрашиваем. Отказ безопасен: текущая работа получит
+    // свежую метку автосейва и станет черновиком сама.
+    (draft) => {
+      if (editor.canUndo && !window.confirm(t("draftReplaceConfirm"))) return false;
+      editor.loadDraft(draft);
+      return true;
+    }
   );
 
   const allProjects = useMemo(() => [...READY_PROJECTS, ...savedProjects], [savedProjects]);
@@ -77,31 +88,34 @@ export function useStudioState() {
       rowCount: editor.rowCount,
       lockedRows: editor.lockedRows,
       rows: cloneRows(editor.rows),
-      accent: editingOwn?.accent ?? COLORS.brickOrange
+      accent: editingOwn?.accent ?? COLORS.brickOrange,
+      // локальная копия сразу «своя» — офлайн-сохранение попадает в «Мои проекты»
+      ownerLogin: session.session.login
     };
 
-    try {
-      if (editingOwn) {
-        replaceProject(await updateSavedProjectApi(editingOwn.id, project, session.session.token));
-      } else {
-        const saved = await saveProject(project, session.session.token);
-        setCurrentProjectId(saved.id);
+    // офлайн не мешает: без сети операция встаёт в очередь и синкнется сама;
+    // null — постоянный отказ сервера (или разлогин), сохранение не удалось
+    if (editingOwn) {
+      const saved = await updateProject(editingOwn.id, project, session.session.token);
+      if (!saved) {
+        window.alert(t("apiUnavailable"));
+        return;
       }
-      setScreen("projects");
-    } catch {
-      window.alert(t("apiUnavailable"));
+    } else {
+      const saved = await saveProject(project, session.session.token);
+      if (!saved) {
+        window.alert(t("apiUnavailable"));
+        return;
+      }
+      setCurrentProjectId(saved.id);
     }
+    setScreen("projects");
   };
 
   const deleteProject = async (project: ReadyProject) => {
     if (!session.session) return;
-    try {
-      await deleteSavedProjectApi(project.id, session.session.token);
-      removeProject(project.id);
-      if (currentProjectId === project.id) setCurrentProjectId(null);
-    } catch {
-      window.alert(t("apiUnavailable"));
-    }
+    await removeProject(project.id, session.session.token);
+    if (currentProjectId === project.id) setCurrentProjectId(null);
   };
 
   const publishSavedProject = async (project: ReadyProject, fields: PublishFields) => {
@@ -190,6 +204,7 @@ export function useStudioState() {
     },
     // projects
     savedProjects,
+    pendingCount,
     allProjects,
     currentProjectId,
     saveCurrentProject,

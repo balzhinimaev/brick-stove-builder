@@ -181,7 +181,11 @@ const ru = {
   doorWidth: "Ширина, мм",
   doorHeight: "Высота, мм",
   doors: "Дверцы",
-  cutterBlueprint: "Чертёж"
+  cutterBlueprint: "Чертёж",
+  pendingSync: "ждут сети",
+  sessionExpired: "Сессия истекла — войдите заново.",
+  draftReplaceConfirm: "Загрузить сохранённый черновик? Текущая кладка в редакторе будет заменена.",
+  vents: "Вентканалы"
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -364,7 +368,11 @@ const en: Record<TranslationKey, string> = {
   doorWidth: "Width, mm",
   doorHeight: "Height, mm",
   doors: "Doors",
-  cutterBlueprint: "Blueprint"
+  cutterBlueprint: "Blueprint",
+  pendingSync: "awaiting network",
+  sessionExpired: "Session expired — please sign in again.",
+  draftReplaceConfirm: "Load the saved draft? The current masonry in the editor will be replaced.",
+  vents: "Vent channels"
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -545,7 +553,11 @@ const lt: Record<TranslationKey, string> = {
   doorWidth: "Plotis, mm",
   doorHeight: "Aukštis, mm",
   doors: "Durelės",
-  cutterBlueprint: "Brėžinys"
+  cutterBlueprint: "Brėžinys",
+  pendingSync: "laukia tinklo",
+  sessionExpired: "Sesija baigėsi — prisijunkite iš naujo.",
+  draftReplaceConfirm: "Įkelti išsaugotą juodraštį? Dabartinis mūras redaktoriuje bus pakeistas.",
+  vents: "Ventiliacijos kanalai"
 };
 
 export const translations = { ru, en, lt } as const;

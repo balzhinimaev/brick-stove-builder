@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadLocalDraft, saveLocalDraft, type LocalDraft } from "../storage/draft";
 import { fetchRemoteDraft, pushRemoteDraft, type Session } from "../api/client";
 import type { DraftSnapshot } from "../domain/editor";
@@ -12,31 +12,44 @@ const AUTOSAVE_DEBOUNCE_MS = 900;
  * устройствами). При входе сначала грузится локальный, затем, если серверный
  * свежее по updatedAt (клиентская метка), — он заменяет локальный. Ошибки
  * сервера черновик не ломают: локальный слой самодостаточен.
+ *
+ * Пока первичная загрузка не завершилась, автосохранение молчит: иначе
+ * дефолтный пустой редактор со свежей меткой времени затёр бы настоящий
+ * черновик и локально, и на сервере (медленная сеть > дебаунс). Сервер со
+ * своей стороны отбрасывает устаревшие пуши (409 stale) — это не ошибка.
  */
-export function useAutosaveDraft(session: Session | null, snapshot: DraftSnapshot, onLoadDraft: (draft: DraftSnapshot) => void): AutosaveState {
+export function useAutosaveDraft(session: Session | null, snapshot: DraftSnapshot, onLoadDraft: (draft: DraftSnapshot) => boolean): AutosaveState {
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
+  const hydrated = useRef(false);
+  // Свежий колбэк для отложенного ответа сервера (замыкание эффекта успевает
+  // устареть, а решение «заменять ли редактор» зависит от текущего состояния).
+  const onLoadDraftRef = useRef(onLoadDraft);
+  onLoadDraftRef.current = onLoadDraft;
 
   useEffect(() => {
+    hydrated.current = false;
     if (!session) return;
     const local = loadLocalDraft(session.login);
-    if (local) {
-      onLoadDraft(local);
+    if (local && onLoadDraftRef.current(local)) {
       setAutosaveState("saved");
     }
 
     let active = true;
     fetchRemoteDraft(session.token)
       .then((remote) => {
+        // Автосейв до гидратации молчит, так что local не мог измениться.
         if (!active || !remote) return;
-        // Локальный мог обновиться, пока летел запрос, — перечитываем.
-        const freshLocal = loadLocalDraft(session.login);
-        if (!freshLocal || remote.updatedAt > freshLocal.updatedAt) {
-          onLoadDraft(remote);
+        // Отказ пользователя = черновик не принят: локальную копию не трогаем,
+        // текущая работа перепишет её со свежей меткой.
+        if ((!local || remote.updatedAt > local.updatedAt) && onLoadDraftRef.current(remote)) {
           saveLocalDraft(session.login, remote);
           setAutosaveState("saved");
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (active) hydrated.current = true;
+      });
     return () => {
       active = false;
     };
@@ -45,7 +58,7 @@ export function useAutosaveDraft(session: Session | null, snapshot: DraftSnapsho
   }, [session?.login]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session || !hydrated.current) return;
     setAutosaveState("saving");
     const timer = window.setTimeout(() => {
       const draft: LocalDraft = { ...snapshot, updatedAt: Date.now() };
@@ -57,6 +70,7 @@ export function useAutosaveDraft(session: Session | null, snapshot: DraftSnapsho
         return;
       }
       // Сервер — фоном; его недоступность не мешает локальному автосохранению.
+      // stale-ответ игнорируем: значит, другое устройство успело записать новее.
       void pushRemoteDraft(draft, session.token).catch(() => {});
     }, AUTOSAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);

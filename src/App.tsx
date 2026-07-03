@@ -27,6 +27,7 @@ export default function App() {
           userLogin={userLogin}
           onSwitchAccount={studio.switchAccount}
           autosaveState={studio.autosaveState}
+          pendingCount={studio.pendingCount}
         />
         <MobileTabs screen={screen} setScreen={studio.setScreen} t={t} />
         {screen === "showcase" ? (

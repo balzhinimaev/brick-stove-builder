@@ -59,6 +59,15 @@ export function useSession(t: Translate) {
     setAuthPassword("");
   };
 
+  /** Сервер ответил 401: токен протух/отозван — честно разлогиниваем. */
+  const invalidateSession = () => {
+    // Несколько параллельных 401 не должны показать несколько alert'ов.
+    if (!loadSession()) return;
+    clearSession();
+    setSession(null);
+    window.alert(t("sessionExpired"));
+  };
+
   return {
     session,
     userLogin: session?.login ?? "",
@@ -69,6 +78,7 @@ export function useSession(t: Translate) {
     authPassword,
     setAuthPassword,
     submitAuth,
-    switchAccount
+    switchAccount,
+    invalidateSession
   };
 }

@@ -81,6 +81,8 @@ export default function App() {
             setSnapStep={studio.setSnapStep}
             customBrick={studio.customBrick}
             pickCustomBrick={studio.pickCustomBrick}
+            plateSpec={studio.plateSpec}
+            setPlateSize={studio.setPlateSize}
             userLogin={userLogin}
             viewMode={studio.viewMode}
             setViewMode={studio.setViewMode}

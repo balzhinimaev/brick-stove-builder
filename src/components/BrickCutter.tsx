@@ -89,6 +89,12 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
 
         <div className="overflow-x-auto rounded-[18px] bg-[#F5E6C8] p-2">
           <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+            <defs>
+              {/* штриховка отпиливаемых зон */}
+              <pattern id="cutHatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="0" y2="7" stroke="#9b2c2c" strokeWidth="1.4" opacity="0.5" />
+              </pattern>
+            </defs>
             {/* линейки: см-подписи, деления 10 и 5 мм */}
             {Array.from({ length: BLANK_L / STEP_MM + 1 }, (_, i) => i * STEP_MM).map((mm) => {
               const big = mm % 50 === 0;
@@ -113,15 +119,42 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
 
             {/* заготовка 250×120 пунктиром */}
             <rect x={mx(0)} y={my(0)} width={BLANK_L * SCALE} height={BLANK_W * SCALE} fill="#fff" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="5 4" opacity="0.5" />
+            {/* отпиливаемые зоны — штриховкой */}
+            {lengthMm < BLANK_L && <rect x={mx(lengthMm)} y={my(0)} width={(BLANK_L - lengthMm) * SCALE} height={BLANK_W * SCALE} fill="url(#cutHatch)" />}
+            {widthMm < BLANK_W && <rect x={mx(0)} y={my(widthMm)} width={lengthMm * SCALE} height={(BLANK_W - widthMm) * SCALE} fill="url(#cutHatch)" />}
             {/* результат */}
             <path d={bodyPath} fill={COLORS.customBrick} stroke={COLORS.charcoal} strokeWidth="2" strokeLinejoin="round" opacity="0.92" />
-            {/* полка в вырезе */}
-            {corner !== "none" && ledge ? (() => {
-              const nl = clampedNotchLen * SCALE;
-              const nw = clampedNotchWid * SCALE;
-              const x = corner === "nw" || corner === "sw" ? mx(0) : mx(lengthMm) - nl;
-              const y = corner === "nw" || corner === "ne" ? my(0) : my(widthMm) - nw;
-              return <rect x={x + 2} y={y + 2} width={nl - 4} height={nw - 4} fill={COLORS.cutBrick} opacity="0.35" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" />;
+            {/* вырез угла: штриховка, полка и РАЗМЕРНЫЕ ЛИНИИ с текущими мм */}
+            {corner !== "none" ? (() => {
+              const west = corner === "nw" || corner === "sw";
+              const north = corner === "nw" || corner === "ne";
+              const nx1 = west ? 0 : lengthMm - clampedNotchLen;
+              const nx2 = west ? clampedNotchLen : lengthMm;
+              const ny1 = north ? 0 : widthMm - clampedNotchWid;
+              const ny2 = north ? clampedNotchWid : widthMm;
+              // размерная линия «по длине» — с внутренней стороны выреза
+              const dimY = north ? my(ny2) + 11 : my(ny1) - 11;
+              // размерная линия «по ширине» — сбоку от выреза, внутрь кирпича
+              const dimX = west ? mx(nx2) + 11 : mx(nx1) - 11;
+              const dim = "#7a1f1f";
+              return (
+                <g>
+                  <rect x={mx(nx1)} y={my(ny1)} width={(nx2 - nx1) * SCALE} height={(ny2 - ny1) * SCALE} fill="url(#cutHatch)" />
+                  {ledge && <rect x={mx(nx1) + 2} y={my(ny1) + 2} width={(nx2 - nx1) * SCALE - 4} height={(ny2 - ny1) * SCALE - 4} fill={COLORS.cutBrick} opacity="0.35" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" />}
+                  {/* по длине */}
+                  <line x1={mx(nx1)} y1={dimY} x2={mx(nx2)} y2={dimY} stroke={dim} strokeWidth="1.4" />
+                  <line x1={mx(nx1)} y1={dimY - 4} x2={mx(nx1)} y2={dimY + 4} stroke={dim} strokeWidth="1.4" />
+                  <line x1={mx(nx2)} y1={dimY - 4} x2={mx(nx2)} y2={dimY + 4} stroke={dim} strokeWidth="1.4" />
+                  <text x={(mx(nx1) + mx(nx2)) / 2} y={dimY + (north ? 12 : -6)} textAnchor="middle" fontSize="10" fontWeight="900" fill={dim}>{clampedNotchLen} мм</text>
+                  {/* по ширине */}
+                  <line x1={dimX} y1={my(ny1)} x2={dimX} y2={my(ny2)} stroke={dim} strokeWidth="1.4" />
+                  <line x1={dimX - 4} y1={my(ny1)} x2={dimX + 4} y2={my(ny1)} stroke={dim} strokeWidth="1.4" />
+                  <line x1={dimX - 4} y1={my(ny2)} x2={dimX + 4} y2={my(ny2)} stroke={dim} strokeWidth="1.4" />
+                  <text x={dimX + (west ? 6 : -6)} y={(my(ny1) + my(ny2)) / 2 + 3} textAnchor={west ? "start" : "end"} fontSize="10" fontWeight="900" fill={dim}>{clampedNotchWid} мм</text>
+                  {/* маркер выбранного угла */}
+                  <circle cx={mx(west ? 0 : lengthMm)} cy={my(north ? 0 : widthMm)} r="5" fill={dim} opacity="0.85" />
+                </g>
+              );
             })() : null}
             {/* размеры результата */}
             <text x={mx(lengthMm / 2)} y={my(widthMm) + 12} textAnchor="middle" fontSize="11" fontWeight="900" fill={COLORS.charcoal}>{lengthMm} мм</text>

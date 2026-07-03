@@ -193,3 +193,17 @@ describe("custom brick (резак)", () => {
     void seat;
   });
 });
+
+describe("plate size (настраиваемый размер)", () => {
+  it("footprintSizeOf берёт габарит из custom у любого элемента", () => {
+    const spec = { name: "Плита 410×340", w: 410 / 125, h: 340 / 125, notch: null };
+    const plate: PlacedBrick = { id: "p", row: 1, x: 0, y: 0, kind: "plate", orientation: "h", custom: spec };
+    const b = brickBounds(plate);
+    expect(b.x2).toBeCloseTo(410 / 125);
+    expect(b.y2).toBeCloseTo(340 / 125);
+    const rotated = brickBounds({ ...plate, orientation: "v" });
+    expect(rotated.x2).toBeCloseTo(340 / 125);
+    // старые плиты без custom — типовой габарит 5×3
+    expect(brickBounds({ ...plate, custom: undefined }).x2).toBe(5);
+  });
+});

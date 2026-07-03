@@ -34,6 +34,8 @@ export type EditorState = {
   snapStep: SnapStep;
   /** Выбранный в палитре кирпич из резака (активен при activeTool === "custom"). */
   customBrick: CustomBrickSpec | null;
+  /** Размер варочной плиты (мм → ячейки), применяется при установке плиты. */
+  plateSpec: CustomBrickSpec;
   viewMode: ViewMode;
   camera: CameraState;
 };
@@ -53,6 +55,7 @@ export type EditorAction =
   | { type: "setNotchCorner"; corner: NotchCorner }
   | { type: "setSnapStep"; step: SnapStep }
   | { type: "pickCustomBrick"; spec: CustomBrickSpec }
+  | { type: "setPlateSize"; lengthMm: number; widthMm: number }
   | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
   | { type: "reset" }
@@ -74,6 +77,21 @@ export type EditorAction =
 const CAMERA_ZOOM_MIN = 0.65;
 const CAMERA_ZOOM_MAX = 1.55;
 
+/** 1 ячейка сетки = 125 мм. */
+const MM_PER_CELL = 125;
+
+export function plateSpecFromMm(lengthMm: number, widthMm: number): CustomBrickSpec {
+  return {
+    name: `Плита ${lengthMm}×${widthMm}`,
+    w: lengthMm / MM_PER_CELL,
+    h: widthMm / MM_PER_CELL,
+    notch: null
+  };
+}
+
+/** Двухконфорочная 710×410 — самый ходовой типоразмер. */
+export const DEFAULT_PLATE = plateSpecFromMm(710, 410);
+
 export function initialEditorState(): EditorState {
   return {
     parameters: DEFAULT_PARAMETERS,
@@ -87,6 +105,7 @@ export function initialEditorState(): EditorState {
     notchCorner: "ne",
     snapStep: 1,
     customBrick: null,
+    plateSpec: DEFAULT_PLATE,
     viewMode: "3d",
     camera: DEFAULT_CAMERA
   };
@@ -114,6 +133,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, snapStep: action.step };
     case "pickCustomBrick":
       return { ...state, activeTool: "custom", customBrick: action.spec };
+    case "setPlateSize":
+      return { ...state, plateSpec: plateSpecFromMm(action.lengthMm, action.widthMm) };
     case "setViewMode":
       return { ...state, viewMode: action.mode };
 
@@ -264,6 +285,7 @@ function restoreDocument(snapshot: EditorState, view: EditorState): EditorState 
     notchCorner: view.notchCorner,
     snapStep: view.snapStep,
     customBrick: view.customBrick,
+    plateSpec: view.plateSpec,
     viewMode: view.viewMode,
     camera: view.camera
   };

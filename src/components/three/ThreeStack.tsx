@@ -30,7 +30,8 @@ export function ThreeStack({
   orientation,
   notchCorner,
   snapStep,
-  customBrick
+  customBrick,
+  plateSpec
 }: {
   grid: GridSpec;
   bricks: PlacedBrick[];
@@ -43,6 +44,7 @@ export function ThreeStack({
   notchCorner: NotchCorner;
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
+  plateSpec: CustomBrickSpec;
 }) {
   const [hoverCell3d, setHoverCell3d] = useState<HoverCell>(null);
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
@@ -72,7 +74,7 @@ export function ThreeStack({
           <ThreeGrid grid={grid} gridY={gridY} />
           <DimensionLabels grid={grid} gridY={gridY} unit={unit} />
           {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} unit={unit} />)}
-          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} unit={unit} />
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} unit={unit} />
         </group>
       </Canvas>
     </div>
@@ -114,6 +116,7 @@ function PlacementCells({
   notchCorner,
   snapStep,
   customBrick,
+  plateSpec,
   unit
 }: {
   grid: GridSpec;
@@ -126,6 +129,7 @@ function PlacementCells({
   notchCorner: NotchCorner;
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
+  plateSpec: CustomBrickSpec;
   unit: string;
 }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
@@ -149,7 +153,7 @@ function PlacementCells({
     <group>
       {hoverCell ? (() => {
         if (previewKind === "custom" && !customBrick) return null;
-        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : undefined } as PlacedBrick;
+        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : undefined } as PlacedBrick;
         const geom = brickWorldGeometry(draft, grid);
         const fits = activeTool === "eraser" ? true : isInsideGrid(draft, grid);
         const color = activeTool === "eraser" ? "#c94f4f" : getToolColor(previewKind);

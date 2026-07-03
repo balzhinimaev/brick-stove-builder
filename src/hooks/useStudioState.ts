@@ -148,6 +148,8 @@ export function useStudioState() {
     setSnapStep: editor.setSnapStep,
     customBrick: editor.customBrick,
     pickCustomBrick: editor.pickCustomBrick,
+    plateSpec: editor.plateSpec,
+    setPlateSize: editor.setPlateSize,
     viewMode: editor.viewMode,
     setViewMode: editor.setViewMode,
     camera: editor.camera,

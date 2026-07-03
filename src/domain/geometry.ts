@@ -32,9 +32,13 @@ export function brickSizeFor(kind: BrickFootprint["kind"], orientation: Orientat
 
 const DEFAULT_NOTCH: NotchCorner = "ne";
 
-/** Размер следа с учётом кастомной формы из резака. */
+/**
+ * Размер следа с учётом кастомной формы: у «резаных» кирпичей — форма из
+ * резака, у плиты — выбранный размер в мм. Элемент без custom берёт типовой
+ * габарит своего вида.
+ */
 export function footprintSizeOf(brick: BrickFootprint): BrickSize {
-  if (brick.kind === "custom" && brick.custom) {
+  if (brick.custom) {
     return brick.orientation === "h"
       ? { w: brick.custom.w, h: brick.custom.h }
       : { w: brick.custom.h, h: brick.custom.w };

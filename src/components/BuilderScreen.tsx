@@ -50,6 +50,8 @@ export type BuilderScreenProps = {
   setSnapStep: (step: SnapStep) => void;
   customBrick: CustomBrickSpec | null;
   pickCustomBrick: (spec: CustomBrickSpec) => void;
+  plateSpec: CustomBrickSpec;
+  setPlateSize: (lengthMm: number, widthMm: number) => void;
   userLogin: string;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -79,7 +81,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   const {
     t, grid, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool,
     orientation, setOrientation, notchCorner, setNotchCorner, snapStep, setSnapStep,
-    customBrick, pickCustomBrick, userLogin, viewMode, setViewMode, placeAt, addRow, deleteCurrentRow,
+    customBrick, pickCustomBrick, plateSpec, setPlateSize, userLogin, viewMode, setViewMode, placeAt, addRow, deleteCurrentRow,
     copyPreviousRow, fillCurrentRow, clearCurrentRow, lockRow, unlockRow, canUndo, canRedo,
     undo, redo, parameters, materials, camera, cameraZoom, cameraRotate,
     cameraPan, cameraReset, saveCurrentProject
@@ -142,6 +144,8 @@ export function BuilderScreen(props: BuilderScreenProps) {
             onPickCustom={pickCustomBrick}
             onRemoveCustom={removeCustomBrick}
             onOpenCutter={() => setCutterOpen(true)}
+            plateSpec={plateSpec}
+            setPlateSize={setPlateSize}
           />
           {cutterOpen && (
             <BrickCutter
@@ -159,11 +163,11 @@ export function BuilderScreen(props: BuilderScreenProps) {
         <section className="space-y-3">
           <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10 min-h-[620px] xl:min-h-[min(70dvh,900px)]">
             {viewMode === "2d"
-              ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} placeAt={placeAt} t={t} />
+              ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} placeAt={placeAt} t={t} />
               : (
                 <ErrorBoundary fallback={<CanvasFallback>{t("aria3d")}</CanvasFallback>}>
                   <Suspense fallback={<CanvasFallback>{t("view3d")}…</CanvasFallback>}>
-                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} />
+                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} />
                   </Suspense>
                 </ErrorBoundary>
               )}
@@ -221,7 +225,7 @@ function MobileRowRail({ rowCount, currentRow, lockedRows, setCurrentRow, t, add
   );
 }
 
-function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void }) {
+function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter, plateSpec, setPlateSize }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number) => void }) {
   return (
     <section className="space-y-2">
       <div className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
@@ -279,6 +283,7 @@ function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, no
         <Segmented title={t("viewMode")} options={[{ key: "2d", label: t("view2d") }, { key: "3d", label: t("view3d") }]} value={viewMode} onChange={(value) => setViewMode(value as ViewMode)} />
         <Segmented title={t("snapTitle")} options={[{ key: "1", label: t("snapWhole") }, { key: "0.5", label: t("snapHalf") }]} value={String(snapStep)} onChange={(value) => setSnapStep(Number(value) as SnapStep)} />
       </div>
+      {activeTool === "plate" && <PlateSizePanel t={t} plateSpec={plateSpec} setPlateSize={setPlateSize} />}
       {activeTool === "rebate" && (
         <Segmented
           title={t("notchCornerTitle")}
@@ -297,6 +302,45 @@ function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, no
         />
       )}
     </section>
+  );
+}
+
+const PLATE_PRESETS: Array<[number, number]> = [
+  [410, 340],
+  [585, 340],
+  [710, 410]
+];
+
+/** Размер варочной плиты: типовые чугунные + произвольный с шагом 5 мм. */
+function PlateSizePanel({ t, plateSpec, setPlateSize }: { t: Translate; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number) => void }) {
+  const lengthMm = Math.round(plateSpec.w * 125);
+  const widthMm = Math.round(plateSpec.h * 125);
+  const slider = (value: number, min: number, max: number, onChange: (v: number) => void) => (
+    <div className="flex items-center gap-2">
+      <input type="range" min={min} max={max} step={5} value={value} onChange={(e) => onChange(Number(e.target.value))} className="h-2 flex-1 accent-[#C1440E]" />
+      <span className="w-14 shrink-0 rounded-lg bg-white px-1.5 py-0.5 text-right text-xs font-black">{value}</span>
+    </div>
+  );
+  return (
+    <div className="rounded-[22px] border border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
+      <div className="mb-2 px-1 text-[11px] font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("plateSizeTitle")}</div>
+      <div className="mb-2 grid grid-cols-3 gap-1.5">
+        {PLATE_PRESETS.map(([l, w]) => {
+          const active = l === lengthMm && w === widthMm;
+          return (
+            <button key={`${l}x${w}`} onClick={() => setPlateSize(l, w)} aria-pressed={active} className={`min-h-9 rounded-2xl px-1 text-[11px] font-black ${active ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>
+              {l}×{w}
+            </button>
+          );
+        })}
+      </div>
+      <div className="space-y-1.5 px-1">
+        <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterLength")}</div>
+        {slider(lengthMm, 300, 1000, (v) => setPlateSize(v, widthMm))}
+        <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterWidth")}</div>
+        {slider(widthMm, 250, 750, (v) => setPlateSize(lengthMm, v))}
+      </div>
+    </div>
   );
 }
 

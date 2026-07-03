@@ -162,12 +162,13 @@ const ru = {
   cutterLength: "Длина, мм",
   cutterWidth: "Ширина, мм",
   cutterCorner: "Вырез угла",
-  cutterNotchLen: "Вырез: по длине, мм",
-  cutterNotchWid: "Вырез: по ширине, мм",
+  cutterNotchLen: "Вырез от угла по длине — любое расстояние, мм",
+  cutterNotchWid: "Вырез от угла по ширине — любое расстояние, мм",
   cutterLedge: "Оставить полку в вырезе (посадка под колосник/плиту)",
   cutterName: "Название (например «трёхчетвертка»)",
   cutterSave: "В палитру",
-  cutterPalette: "Нарезанные кирпичи"
+  cutterPalette: "Нарезанные кирпичи",
+  plateSizeTitle: "Размер плиты, мм"
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -331,12 +332,13 @@ const en: Record<TranslationKey, string> = {
   cutterLength: "Length, mm",
   cutterWidth: "Width, mm",
   cutterCorner: "Corner cut",
-  cutterNotchLen: "Cut: along length, mm",
-  cutterNotchWid: "Cut: along width, mm",
+  cutterNotchLen: "Corner cut along length — any distance, mm",
+  cutterNotchWid: "Corner cut along width — any distance, mm",
   cutterLedge: "Keep a ledge in the cut (grate/plate seat)",
   cutterName: "Name (e.g. \"three-quarter\")",
   cutterSave: "Add to palette",
-  cutterPalette: "Cut bricks"
+  cutterPalette: "Cut bricks",
+  plateSizeTitle: "Plate size, mm"
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -498,12 +500,13 @@ const lt: Record<TranslationKey, string> = {
   cutterLength: "Ilgis, mm",
   cutterWidth: "Plotis, mm",
   cutterCorner: "Kampo išpjova",
-  cutterNotchLen: "Išpjova: pagal ilgį, mm",
-  cutterNotchWid: "Išpjova: pagal plotį, mm",
+  cutterNotchLen: "Kampo išpjova pagal ilgį — bet koks atstumas, mm",
+  cutterNotchWid: "Kampo išpjova pagal plotį — bet koks atstumas, mm",
   cutterLedge: "Palikti lentynėlę išpjovoje",
   cutterName: "Pavadinimas",
   cutterSave: "Į paletę",
-  cutterPalette: "Pjaustytos plytos"
+  cutterPalette: "Pjaustytos plytos",
+  plateSizeTitle: "Plokštės dydis, mm"
 };
 
 export const translations = { ru, en, lt } as const;

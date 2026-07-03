@@ -17,6 +17,7 @@ export function PlanGrid({
   notchCorner,
   snapStep,
   customBrick,
+  plateSpec,
   placeAt,
   t
 }: {
@@ -27,18 +28,20 @@ export function PlanGrid({
   notchCorner: NotchCorner;
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
+  plateSpec: CustomBrickSpec;
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   t: Translate;
 }) {
   const width = grid.cols * CELL + PAD * 2;
   const height = grid.rows * CELL + PAD * 2 + HEADER;
+  const ghostCustom = activeTool === "plate" ? plateSpec : activeTool === "custom" ? customBrick : null;
   const ghost = activeTool === "eraser" || (activeTool === "custom" && !customBrick)
     ? null
-    : footprintSizeOf({ x: 0, y: 0, kind: activeTool as BrickKind, orientation, custom: customBrick ?? undefined });
+    : footprintSizeOf({ x: 0, y: 0, kind: activeTool as BrickKind, orientation, custom: ghostCustom ?? undefined });
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const unit = t("unitCm");
 
-  const hoverGhostFits = hoverCell && ghost ? isInsideGrid({ ...hoverCell, kind: activeTool as BrickKind, orientation, custom: customBrick ?? undefined }, grid) : false;
+  const hoverGhostFits = hoverCell && ghost ? isInsideGrid({ ...hoverCell, kind: activeTool as BrickKind, orientation, custom: ghostCustom ?? undefined }, grid) : false;
   const hoverGhostX = hoverCell ? PAD + hoverCell.x * CELL + 3 : 0;
   const hoverGhostY = hoverCell ? PAD + HEADER + hoverCell.y * CELL + 3 : 0;
 
@@ -111,7 +114,7 @@ export function PlanGrid({
             {activeTool === "grate"
               ? <Grate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} orientation={orientation} opacity={0.72} />
               : activeTool === "plate"
-              ? <Plate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} orientation={orientation} opacity={0.72} />
+              ? <Plate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} burners={plateBurners(ghost.w, ghost.h)} opacity={0.72} />
               : activeTool === "rebate"
               ? <Rebate2D brick={{ id: "ghost", row: 0, x: hoverCell.x, y: hoverCell.y, kind: "rebate", orientation, notchCorner }} cell={CELL} pad={PAD} opacity={0.5} />
               : activeTool === "custom" && customBrick?.notch
@@ -143,7 +146,7 @@ const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick
 
   if (brick.kind === "grate") return <Grate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
   if (brick.kind === "rebate" || (brick.kind === "custom" && brick.custom?.notch)) return <Rebate2D brick={brick} cell={cell} pad={pad} />;
-  if (brick.kind === "plate") return <Plate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
+  if (brick.kind === "plate") return <Plate2D x={x} y={y} w={w} h={h} burners={plateBurners(size.w, size.h)} />;
 
   return (
     <g>
@@ -216,19 +219,21 @@ function Rebate2D({ brick, cell, pad, opacity = 1 }: { brick: PlacedBrick; cell:
   );
 }
 
-/** Варочная плита на плане: тёмная панель с двумя конфорками. */
-function Plate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: number; w: number; h: number; orientation: Orientation; opacity?: number }) {
-  const longX = orientation === "h";
-  const cx1 = longX ? x + w * 0.28 : x + w / 2;
-  const cy1 = longX ? y + h / 2 : y + h * 0.28;
-  const cx2 = longX ? x + w * 0.72 : x + w / 2;
-  const cy2 = longX ? y + h / 2 : y + h * 0.72;
+/** Варочная плита на плане: тёмная панель, 1 или 2 конфорки по длине. */
+function Plate2D({ x, y, w, h, burners = 2, opacity = 1 }: { x: number; y: number; w: number; h: number; burners?: number; opacity?: number }) {
+  const longX = w >= h;
+  const centers: Array<[number, number]> =
+    burners >= 2
+      ? longX
+        ? [[x + w * 0.28, y + h / 2], [x + w * 0.72, y + h / 2]]
+        : [[x + w / 2, y + h * 0.28], [x + w / 2, y + h * 0.72]]
+      : [[x + w / 2, y + h / 2]];
   const r = Math.min(w, h) * 0.24;
   return (
     <g opacity={opacity}>
       <rect x={x + 3} y={y + 4} width={w} height={h} rx="8" fill="rgba(61,43,31,0.18)" />
       <rect x={x} y={y} width={w} height={h} rx="8" fill="#33383E" stroke={COLORS.charcoal} strokeWidth="2" />
-      {[[cx1, cy1], [cx2, cy2]].map(([cx, cy], index) => (
+      {centers.map(([cx, cy], index) => (
         <g key={index}>
           <circle cx={cx} cy={cy} r={r} fill="#26292d" stroke="#1e2124" strokeWidth="2.5" />
           <circle cx={cx} cy={cy} r={r * 0.55} fill="none" stroke="#1e2124" strokeWidth="1.5" />
@@ -237,6 +242,11 @@ function Plate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: numbe
       <text x={x + w / 2} y={y + h - 7} textAnchor="middle" fontSize="11" fontWeight="900" fill="#e6d7bd">Плита</text>
     </g>
   );
+}
+
+/** 1 или 2 конфорки в зависимости от длины плиты (порог 550 мм). */
+function plateBurners(wCells: number, hCells: number): number {
+  return Math.max(wCells, hCells) * 125 >= 550 ? 2 : 1;
 }
 
 function Grate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: number; w: number; h: number; orientation: Orientation; opacity?: number }) {

@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT, BRICK_GAP } from "../../domain/constants";
-import { brickBounds, brickBoxes, brickSizeFor, brickWorldGeometry, cellToWorld, notchBox, type BrickBox } from "../../domain/geometry";
+import { brickBounds, brickBoxes, brickSizeFor, brickWorldGeometry, cellToWorld, footprintSizeOf, notchBox, type BrickBox } from "../../domain/geometry";
 import { getToolColor } from "../../domain/tools";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 
@@ -82,7 +82,7 @@ export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: Gr
  */
 export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
   const geometry = brickWorldGeometry(brick, grid);
-  const size = brickSizeFor("plate", brick.orientation);
+  const size = footprintSizeOf(brick);
   const plateHeight = BRICK_LAYER_HEIGHT * 0.14;
   const rowTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
   // Плита лежит НА ряду: низ панели на верхе кирпичей (лёгкая посадка от щели),
@@ -91,12 +91,17 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
   const topY = plateY + plateHeight / 2;
   const isCurrent = brick.row === currentRow;
   const transparent = opacity < 1;
-  const longX = brick.orientation === "h";
-  // две конфорки по длинной оси
-  const burnerOffset = (longX ? size.w : size.h) / 4;
-  const burners: Array<[number, number]> = longX
-    ? [[-burnerOffset, 0], [burnerOffset, 0]]
-    : [[0, -burnerOffset], [0, burnerOffset]];
+  const longX = size.w >= size.h;
+  const longSide = Math.max(size.w, size.h);
+  // короткие плиты — одноконфорочные; конфорки вдоль длинной оси
+  const twoBurners = longSide * 125 >= 550;
+  const burnerOffset = longSide / 4;
+  const burners: Array<[number, number]> = twoBurners
+    ? longX
+      ? [[-burnerOffset, 0], [burnerOffset, 0]]
+      : [[0, -burnerOffset], [0, burnerOffset]]
+    : [[0, 0]];
+  const burnerR = Math.min(0.72, Math.min(size.w, size.h) * 0.27);
 
   return (
     <group>
@@ -107,11 +112,11 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
       {burners.map(([dx, dz], index) => (
         <group key={index} position={[geometry.position[0] + dx, topY + 0.006, geometry.position[2] + dz]}>
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.62, 0.72, 32]} />
+            <ringGeometry args={[burnerR * 0.86, burnerR, 32]} />
             <meshStandardMaterial color="#1e2124" roughness={0.4} metalness={0.6} transparent={transparent} opacity={opacity} />
           </mesh>
           <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.5, 32]} />
+            <circleGeometry args={[burnerR * 0.7, 32]} />
             <meshStandardMaterial color="#26292d" roughness={0.5} metalness={0.5} transparent={transparent} opacity={opacity} />
           </mesh>
         </group>
@@ -122,8 +127,8 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
           <meshBasicMaterial color={COLORS.sage} transparent opacity={0.18} />
         </mesh>
       )}
-      <Text position={[geometry.position[0], topY + 0.05, geometry.position[2] + (longX ? size.h : size.w) / 2 - 0.35]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#e6d7bd" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
-        {brick.orientation === "h" ? "Плита 625×375 мм" : "Плита 375×625 мм"}
+      <Text position={[geometry.position[0], topY + 0.05, geometry.position[2] + size.h / 2 - 0.35]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#e6d7bd" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
+        {`Плита ${Math.round(size.w * 125)}×${Math.round(size.h * 125)} мм`}
       </Text>
     </group>
   );

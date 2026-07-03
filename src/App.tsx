@@ -4,6 +4,7 @@ import { MobileTabs } from "./components/MobileTabs";
 import { AuthScreen } from "./components/AuthScreen";
 import { ParametersScreen } from "./components/ParametersScreen";
 import { ProjectsScreen } from "./components/ProjectsScreen";
+import { ShowcaseScreen } from "./components/ShowcaseScreen";
 import { BuilderScreen } from "./components/BuilderScreen";
 
 export default function App() {
@@ -28,7 +29,10 @@ export default function App() {
           autosaveState={studio.autosaveState}
         />
         <MobileTabs screen={screen} setScreen={studio.setScreen} t={t} />
-        {!userLogin ? (
+        {screen === "showcase" ? (
+          // Витрина публичная: заказчики смотрят печи без регистрации.
+          <ShowcaseScreen locale={locale} t={t} />
+        ) : !userLogin ? (
           <AuthScreen
             mode={studio.authMode}
             setMode={studio.setAuthMode}
@@ -48,7 +52,16 @@ export default function App() {
             lockedRows={studio.lockedRows}
           />
         ) : screen === "projects" ? (
-          <ProjectsScreen locale={locale} t={t} projects={studio.allProjects} onLoad={studio.loadProject} />
+          <ProjectsScreen
+            locale={locale}
+            t={t}
+            projects={studio.allProjects}
+            onLoad={studio.loadProject}
+            userLogin={userLogin}
+            onPublish={studio.publishSavedProject}
+            onUnpublish={studio.unpublishSavedProject}
+            onDelete={studio.deleteProject}
+          />
         ) : (
           <BuilderScreen
             t={t}
@@ -62,14 +75,24 @@ export default function App() {
             setActiveTool={studio.setActiveTool}
             orientation={studio.orientation}
             setOrientation={studio.setOrientation}
+            notchCorner={studio.notchCorner}
+            setNotchCorner={studio.setNotchCorner}
+            snapStep={studio.snapStep}
+            setSnapStep={studio.setSnapStep}
             viewMode={studio.viewMode}
             setViewMode={studio.setViewMode}
             placeAt={studio.placeAt}
             addRow={studio.addRow}
+            deleteCurrentRow={studio.deleteCurrentRow}
             copyPreviousRow={studio.copyPreviousRow}
+            fillCurrentRow={studio.fillCurrentRow}
             clearCurrentRow={studio.clearCurrentRow}
             lockRow={studio.lockRow}
             unlockRow={studio.unlockRow}
+            canUndo={studio.canUndo}
+            canRedo={studio.canRedo}
+            undo={studio.undo}
+            redo={studio.redo}
             parameters={studio.parameters}
             materials={studio.materials}
             camera={studio.camera}

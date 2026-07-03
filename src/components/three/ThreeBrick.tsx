@@ -2,12 +2,14 @@ import { memo } from "react";
 import { Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT, BRICK_GAP } from "../../domain/constants";
-import { brickSizeFor, brickWorldGeometry } from "../../domain/geometry";
+import { brickBoxes, brickSizeFor, brickWorldGeometry, boxWorldGeometry, notchBox } from "../../domain/geometry";
 import { getToolColor } from "../../domain/tools";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 
 export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, unit }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; unit: string }) {
   if (brick.kind === "grate") return <ThreeGrate grid={grid} brick={brick} currentRow={currentRow} unit={unit} />;
+  if (brick.kind === "rebate") return <ThreeRebate grid={grid} brick={brick} currentRow={currentRow} />;
+  if (brick.kind === "plate") return <ThreePlate grid={grid} brick={brick} currentRow={currentRow} />;
 
   const geometry = brickWorldGeometry(brick, grid);
   const color = getToolColor(brick.kind);
@@ -22,6 +24,102 @@ export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, un
     </group>
   );
 });
+
+/**
+ * Кирпич с выбранной четвертью: Г-образное тело (два бокса на полную высоту
+ * ряда) + посадочная полка в вырезе на ~45% высоты. На полку ложится колосник,
+ * плита или кирпич следующего элемента — вырез в коллизиях свободен.
+ */
+export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
+  const color = getToolColor("rebate");
+  const boxes = brickBoxes(brick);
+  const notch = notchBox(brick);
+  const bounds = brickWorldGeometry(brick, grid);
+  const isCurrent = brick.row === currentRow;
+  const transparent = opacity < 1;
+
+  return (
+    <group>
+      {boxes.map((box, index) => {
+        const geometry = boxWorldGeometry(box, brick.row, grid);
+        return (
+          <mesh key={index} position={geometry.position} castShadow receiveShadow>
+            <boxGeometry args={geometry.scale} />
+            <meshStandardMaterial color={color} roughness={0.82} metalness={0.02} transparent={transparent} opacity={opacity} />
+          </mesh>
+        );
+      })}
+      {notch ? (() => {
+        const geometry = boxWorldGeometry(notch, brick.row, grid);
+        const fullHeight = geometry.scale[1];
+        const ledgeHeight = fullHeight * 0.45;
+        const ledgeY = geometry.position[1] - fullHeight / 2 + ledgeHeight / 2;
+        return (
+          <mesh position={[geometry.position[0], ledgeY, geometry.position[2]]} castShadow receiveShadow>
+            <boxGeometry args={[geometry.scale[0], ledgeHeight, geometry.scale[2]]} />
+            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.9} metalness={0.02} transparent={transparent} opacity={opacity} />
+          </mesh>
+        );
+      })() : null}
+      {isCurrent && !transparent && (
+        <mesh position={[bounds.position[0], bounds.position[1] + bounds.scale[1] / 2 + 0.014, bounds.position[2]]}>
+          <boxGeometry args={[bounds.scale[0] + 0.035, 0.018, bounds.scale[2] + 0.035]} />
+          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.23} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+/**
+ * Варочная плита: тонкая чугунная панель заподлицо с верхом ряда, две
+ * конфорки. Края визуально ложатся на полки четвертей соседних кирпичей.
+ */
+export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
+  const geometry = brickWorldGeometry(brick, grid);
+  const size = brickSizeFor("plate", brick.orientation);
+  const plateHeight = BRICK_LAYER_HEIGHT * 0.14;
+  const topY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
+  const plateY = topY - plateHeight / 2;
+  const isCurrent = brick.row === currentRow;
+  const transparent = opacity < 1;
+  const longX = brick.orientation === "h";
+  // две конфорки по длинной оси
+  const burnerOffset = (longX ? size.w : size.h) / 4;
+  const burners: Array<[number, number]> = longX
+    ? [[-burnerOffset, 0], [burnerOffset, 0]]
+    : [[0, -burnerOffset], [0, burnerOffset]];
+
+  return (
+    <group>
+      <mesh position={[geometry.position[0], plateY, geometry.position[2]]} castShadow receiveShadow>
+        <boxGeometry args={[size.w - 0.06, plateHeight, size.h - 0.06]} />
+        <meshStandardMaterial color={COLORS.plate} roughness={0.45} metalness={0.55} transparent={transparent} opacity={opacity} />
+      </mesh>
+      {burners.map(([dx, dz], index) => (
+        <group key={index} position={[geometry.position[0] + dx, topY + 0.006, geometry.position[2] + dz]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[0.62, 0.72, 32]} />
+            <meshStandardMaterial color="#1e2124" roughness={0.4} metalness={0.6} transparent={transparent} opacity={opacity} />
+          </mesh>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.5, 32]} />
+            <meshStandardMaterial color="#26292d" roughness={0.5} metalness={0.5} transparent={transparent} opacity={opacity} />
+          </mesh>
+        </group>
+      ))}
+      {isCurrent && !transparent && (
+        <mesh position={[geometry.position[0], topY + 0.03, geometry.position[2]]}>
+          <boxGeometry args={[size.w + 0.05, 0.012, size.h + 0.05]} />
+          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.18} />
+        </mesh>
+      )}
+      <Text position={[geometry.position[0], topY + 0.05, geometry.position[2] + (longX ? size.h : size.w) / 2 - 0.35]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#e6d7bd" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
+        {brick.orientation === "h" ? "Плита 625×375 мм" : "Плита 375×625 мм"}
+      </Text>
+    </group>
+  );
+}
 
 export function ThreeGrate({ grid, brick, currentRow, opacity = 1, unit }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number; unit: string }) {
   const geometry = brickWorldGeometry(brick, grid);

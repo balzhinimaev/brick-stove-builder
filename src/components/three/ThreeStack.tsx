@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera, Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT } from "../../domain/constants";
-import { brickWorldGeometry, cellToWorld, isInsideGrid } from "../../domain/geometry";
+import { brickWorldGeometry, cellToWorld, isInsideGrid, snapToStep } from "../../domain/geometry";
 import { getToolColor } from "../../domain/tools";
 import type { Translate } from "../../i18n";
-import type { BrickKind, CameraState, GridSpec, Orientation, PlacedBrick, ToolKind } from "../../domain/types";
-import { ThreeBrick, ThreeGrate } from "./ThreeBrick";
+import type { BrickKind, CameraState, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../../domain/types";
+import { ThreeBrick, ThreeGrate, ThreePlate, ThreeRebate } from "./ThreeBrick";
 
 type HoverCell = { x: number; y: number } | null;
 
@@ -27,7 +27,9 @@ export function ThreeStack({
   t,
   camera,
   activeTool,
-  orientation
+  orientation,
+  notchCorner,
+  snapStep
 }: {
   grid: GridSpec;
   bricks: PlacedBrick[];
@@ -37,6 +39,8 @@ export function ThreeStack({
   camera: CameraState;
   activeTool: ToolKind;
   orientation: Orientation;
+  notchCorner: NotchCorner;
+  snapStep: SnapStep;
 }) {
   const [hoverCell3d, setHoverCell3d] = useState<HoverCell>(null);
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
@@ -66,7 +70,7 @@ export function ThreeStack({
           <ThreeGrid grid={grid} gridY={gridY} />
           <DimensionLabels grid={grid} gridY={gridY} unit={unit} />
           {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} unit={unit} />)}
-          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} unit={unit} />
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} unit={unit} />
         </group>
       </Canvas>
     </div>
@@ -105,6 +109,8 @@ function PlacementCells({
   setHoverCell,
   activeTool,
   orientation,
+  notchCorner,
+  snapStep,
   unit
 }: {
   grid: GridSpec;
@@ -114,16 +120,27 @@ function PlacementCells({
   setHoverCell: React.Dispatch<React.SetStateAction<HoverCell>>;
   activeTool: ToolKind;
   orientation: Orientation;
+  notchCorner: NotchCorner;
+  snapStep: SnapStep;
   unit: string;
 }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
   const previewKind: BrickKind = activeTool === "eraser" ? "cut" : activeTool;
   const previewOrientation: Orientation = activeTool === "eraser" ? "h" : orientation;
 
+  // Точка пересечения луча с плоскостью → локальные координаты → узел сетки по шагу.
+  const cellFromEvent = (event: ThreeEvent<MouseEvent>) => {
+    const local = event.object.worldToLocal(event.point.clone());
+    return {
+      x: snapToStep(local.x + grid.cols / 2, snapStep, grid.cols),
+      y: snapToStep(local.z + grid.rows / 2, snapStep, grid.rows)
+    };
+  };
+
   return (
     <group>
       {hoverCell ? (() => {
-        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation } as PlacedBrick;
+        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined } as PlacedBrick;
         const geom = brickWorldGeometry(draft, grid);
         const fits = activeTool === "eraser" ? true : isInsideGrid({ x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation }, grid);
         const color = activeTool === "eraser" ? "#c94f4f" : getToolColor(previewKind);
@@ -132,6 +149,10 @@ function PlacementCells({
           <group>
             {previewKind === "grate"
               ? <ThreeGrate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} unit={unit} />
+              : previewKind === "rebate"
+              ? <ThreeRebate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
+              : previewKind === "plate"
+              ? <ThreePlate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
               : (
                 <mesh position={[geom.position[0], gridY + geom.scale[1] / 2, geom.position[2]]}>
                   <boxGeometry args={[geom.scale[0], Math.max(0.06, geom.scale[1] * 0.65), geom.scale[2]]} />
@@ -143,22 +164,26 @@ function PlacementCells({
         );
       })() : null}
 
-      {Array.from({ length: grid.rows }).flatMap((_, y) => Array.from({ length: grid.cols }).map((__, x) => {
-        const world = cellToWorld(x + 0.5, y + 0.5, grid);
-        return (
-          <mesh
-            key={`cell-${x}-${y}`}
-            position={[world.x, gridY, world.z]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            onPointerOver={(event) => { event.stopPropagation(); setHoverCell({ x, y }); document.body.style.cursor = "pointer"; }}
-            onPointerOut={() => { setHoverCell(null); document.body.style.cursor = "default"; }}
-            onClick={(event) => { event.stopPropagation(); placeAt(x, y); }}
-          >
-            <planeGeometry args={[0.96, 0.96]} />
-            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          </mesh>
-        );
-      }))}
+      {/* Единая невидимая плоскость приёма кликов: одна вместо cols×rows плоскостей,
+          координата снапится к текущему шагу (целая ячейка или полячейки). */}
+      <mesh
+        position={[0, gridY, 0]}
+        onPointerMove={(event) => {
+          event.stopPropagation();
+          const cell = cellFromEvent(event);
+          setHoverCell((prev) => (prev && prev.x === cell.x && prev.y === cell.y ? prev : cell));
+          document.body.style.cursor = "pointer";
+        }}
+        onPointerOut={() => { setHoverCell(null); document.body.style.cursor = "default"; }}
+        onClick={(event) => {
+          event.stopPropagation();
+          const cell = cellFromEvent(event);
+          placeAt(cell.x, cell.y);
+        }}
+      >
+        <boxGeometry args={[grid.cols, 0.012, grid.rows]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
     </group>
   );
 }

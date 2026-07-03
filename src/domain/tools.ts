@@ -6,10 +6,12 @@ const TOOL_COLORS: Record<ToolKind | BrickKind, string> = {
   standard: COLORS.brickOrange,
   cut: COLORS.cutBrick,
   trim: COLORS.cutBrick,
+  rebate: COLORS.rebate,
   firebrick: COLORS.firebrick,
   vent: COLORS.vent,
   cleanout: COLORS.cleanout,
   grate: COLORS.grate,
+  plate: COLORS.plate,
   eraser: COLORS.creamDark
 };
 

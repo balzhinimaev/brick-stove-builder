@@ -5,10 +5,12 @@ import { makeDemoRows } from "./projects";
 import type {
   CameraState,
   GridSpec,
+  NotchCorner,
   Orientation,
   Parameters,
   PlacedBrick,
   ReadyProject,
+  SnapStep,
   ToolKind,
   ViewMode
 } from "./types";
@@ -27,6 +29,8 @@ export type EditorState = {
   rows: Record<number, PlacedBrick[]>;
   activeTool: ToolKind;
   orientation: Orientation;
+  notchCorner: NotchCorner;
+  snapStep: SnapStep;
   viewMode: ViewMode;
   camera: CameraState;
 };
@@ -43,6 +47,8 @@ export type EditorAction =
   | { type: "setCurrentRow"; row: number }
   | { type: "setTool"; tool: ToolKind }
   | { type: "setOrientation"; orientation: Orientation }
+  | { type: "setNotchCorner"; corner: NotchCorner }
+  | { type: "setSnapStep"; step: SnapStep }
   | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
   | { type: "reset" }
@@ -51,6 +57,7 @@ export type EditorAction =
   | { type: "place"; bricks: PlacedBrick[] }
   | { type: "erase"; x: number; y: number }
   | { type: "addRow" }
+  | { type: "deleteRow" }
   | { type: "copyRow"; bricks: PlacedBrick[] }
   | { type: "clearRow" }
   | { type: "lockRow" }
@@ -73,6 +80,8 @@ export function initialEditorState(): EditorState {
     rows: makeDemoRows(),
     activeTool: "standard",
     orientation: "h",
+    notchCorner: "ne",
+    snapStep: 1,
     viewMode: "3d",
     camera: DEFAULT_CAMERA
   };
@@ -94,6 +103,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, activeTool: action.tool };
     case "setOrientation":
       return { ...state, orientation: action.orientation };
+    case "setNotchCorner":
+      return { ...state, notchCorner: action.corner };
+    case "setSnapStep":
+      return { ...state, snapStep: action.step };
     case "setViewMode":
       return { ...state, viewMode: action.mode };
 
@@ -147,6 +160,28 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, rowCount: next, currentRow: next };
     }
 
+    case "deleteRow": {
+      if (state.rowCount <= 1 || isLocked(state)) return state;
+      const deleted = state.currentRow;
+      const rows: Record<number, PlacedBrick[]> = {};
+      for (const [key, bricks] of Object.entries(state.rows)) {
+        const row = Number(key);
+        if (row === deleted) continue;
+        const target = row > deleted ? row - 1 : row;
+        rows[target] = row > deleted ? bricks.map((brick) => ({ ...brick, row: target })) : bricks;
+      }
+      const rowCount = state.rowCount - 1;
+      return {
+        ...state,
+        rows,
+        rowCount,
+        currentRow: Math.min(deleted, rowCount),
+        lockedRows: state.lockedRows
+          .filter((row) => row !== deleted)
+          .map((row) => (row > deleted ? row - 1 : row))
+      };
+    }
+
     case "copyRow":
       if (state.currentRow <= 1 || isLocked(state)) return state;
       return withRow(state, action.bricks);
@@ -177,4 +212,81 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     default:
       return state;
   }
+}
+
+/**
+ * Undo/redo wrapper around {@link editorReducer}. Only document mutations are
+ * recorded; selections (row/tool/camera/view) change in place, and undo/redo
+ * restores the document while keeping the current view state.
+ */
+export type HistoryState = {
+  past: EditorState[];
+  present: EditorState;
+  future: EditorState[];
+};
+
+export type HistoryAction = EditorAction | { type: "undo" } | { type: "redo" };
+
+const HISTORY_LIMIT = 50;
+
+const TRACKED_ACTIONS: ReadonlySet<EditorAction["type"]> = new Set([
+  "place",
+  "erase",
+  "addRow",
+  "deleteRow",
+  "copyRow",
+  "clearRow",
+  "lockRow",
+  "unlockRow",
+  "updateParameter"
+]);
+
+/** Loading a different document makes the old timeline meaningless. */
+const HISTORY_RESET_ACTIONS: ReadonlySet<EditorAction["type"]> = new Set(["reset", "loadProject", "loadDraft"]);
+
+export function initialHistoryState(): HistoryState {
+  return { past: [], present: initialEditorState(), future: [] };
+}
+
+/** Restore a document snapshot but keep the user's current view/selections. */
+function restoreDocument(snapshot: EditorState, view: EditorState): EditorState {
+  return {
+    ...snapshot,
+    activeTool: view.activeTool,
+    orientation: view.orientation,
+    viewMode: view.viewMode,
+    camera: view.camera
+  };
+}
+
+export function historyReducer(state: HistoryState, action: HistoryAction): HistoryState {
+  if (action.type === "undo") {
+    if (!state.past.length) return state;
+    const previous = state.past[state.past.length - 1];
+    return {
+      past: state.past.slice(0, -1),
+      present: restoreDocument(previous, state.present),
+      future: [state.present, ...state.future]
+    };
+  }
+
+  if (action.type === "redo") {
+    if (!state.future.length) return state;
+    const [next, ...future] = state.future;
+    return {
+      past: [...state.past, state.present],
+      present: restoreDocument(next, state.present),
+      future
+    };
+  }
+
+  const present = editorReducer(state.present, action);
+  if (present === state.present) return state;
+  if (HISTORY_RESET_ACTIONS.has(action.type)) return { past: [], present, future: [] };
+  if (!TRACKED_ACTIONS.has(action.type)) return { ...state, present };
+  return {
+    past: [...state.past, state.present].slice(-HISTORY_LIMIT),
+    present,
+    future: []
+  };
 }

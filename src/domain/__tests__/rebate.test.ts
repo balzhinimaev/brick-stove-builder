@@ -1,0 +1,121 @@
+import { describe, expect, it } from "vitest";
+import { brickBoxes, brickBounds, notchBox, overlaps, placeBricksInRow, removeBrickAt, gridFromParameters } from "../geometry";
+import { DEFAULT_PARAMETERS } from "../constants";
+import type { PlacedBrick } from "../types";
+
+const grid = gridFromParameters(DEFAULT_PARAMETERS);
+
+const rebate = (x: number, y: number, corner: PlacedBrick["notchCorner"], orientation: "h" | "v" = "h"): PlacedBrick => ({
+  id: `reb-${x}-${y}-${corner}`,
+  row: 1,
+  x,
+  y,
+  kind: "rebate",
+  orientation,
+  notchCorner: corner
+});
+
+const standard = (x: number, y: number): PlacedBrick => ({ id: `std-${x}-${y}`, row: 1, x, y, kind: "standard", orientation: "h" });
+
+describe("brickBoxes / notchBox", () => {
+  it("decomposes a rebate brick into an L covering 3/4 of the footprint", () => {
+    const brick = rebate(2, 2, "ne"); // габарит 2×1, вырез 1×0.5 в правом-верхнем углу
+    const boxes = brickBoxes(brick);
+    expect(boxes).toHaveLength(2);
+    const area = boxes.reduce((sum, b) => sum + (b.x2 - b.x1) * (b.y2 - b.y1), 0);
+    expect(area).toBeCloseTo(2 * 1 * 0.75);
+    const notch = notchBox(brick)!;
+    expect(notch).toEqual({ x1: 3, x2: 4, y1: 2, y2: 2.5 });
+    // вырез не пересекается с занятыми боксами
+    for (const box of boxes) {
+      expect(box.x1 < notch.x2 && box.x2 > notch.x1 && box.y1 < notch.y2 && box.y2 > notch.y1).toBe(false);
+    }
+  });
+
+  it("keeps ordinary bricks as a single full box", () => {
+    expect(brickBoxes(standard(0, 0))).toEqual([brickBounds(standard(0, 0))]);
+  });
+});
+
+describe("collision with the notch", () => {
+  it("lets a grate rest half a cell deep in a facing rebate notch", () => {
+    const brick = rebate(2, 4, "ne"); // габарит x:2..4, y:4..5; вырез x:3..4, y:4..4.5
+    const grate: PlacedBrick = { id: "g", row: 1, x: 3, y: 1.5, kind: "grate", orientation: "v" }; // 2×3: x:3..5, y:1.5..4.5
+    // край колосника заходит на 0.5 ячейки ровно в вырез — коллизии нет
+    expect(overlaps(grate, brick)).toBe(false);
+    const next = placeBricksInRow([brick], [grate], grid);
+    expect(next).toHaveLength(2); // кирпич с четвертью остался, колосник сел на полку
+    // а без четверти тот же кирпич колосник бы вытеснил
+    const solid = { ...brick, kind: "standard" as const, notchCorner: undefined };
+    expect(overlaps(grate, solid)).toBe(true);
+  });
+
+  it("allows any element to occupy the notch, and blocks the solid part", () => {
+    const brick = rebate(2, 2, "ne"); // вырез x:3..4, y:2..2.5
+    const inNotch: PlacedBrick = { id: "t", row: 1, x: 3, y: 2, kind: "trim", orientation: "v" }; // 0.5×... trim v = 1×0.5 → x:3..4? size v: w1 h0.5 → x:3..4,y:2..2.5 ровно вырез
+    expect(overlaps(brick, inNotch)).toBe(false);
+    const inSolid: PlacedBrick = { id: "s", row: 1, x: 2, y: 2, kind: "cut", orientation: "h" }; // 1×1 на занятой половине
+    expect(overlaps(brick, inSolid)).toBe(true);
+  });
+
+  it("placeBricksInRow keeps the rebate brick when a piece lands in its notch", () => {
+    const brick = rebate(2, 2, "ne");
+    const seat: PlacedBrick = { id: "seat", row: 1, x: 3, y: 2, kind: "trim", orientation: "v" };
+    const next = placeBricksInRow([brick], [seat], grid);
+    expect(next).toHaveLength(2); // кирпич не «заменился», элемент сел в четверть
+  });
+});
+
+describe("eraser vs notch", () => {
+  it("clicking inside the notch does not delete the rebate brick, solid part does", () => {
+    const brick = rebate(2, 2, "ne");
+    expect(removeBrickAt([brick], 3.5, 2.25)).toHaveLength(1); // клик в вырез — мимо
+    expect(removeBrickAt([brick], 2.5, 2.5)).toHaveLength(0);  // клик в тело — удалил
+  });
+});
+
+describe("edge rebate (паз вдоль грани)", () => {
+  it("leaves a single occupied box and a full-side notch", () => {
+    const brick = rebate(0, 4, "e"); // габарит 0..2×4..5, паз x:1.5..2 во всю грань
+    expect(brickBoxes(brick)).toEqual([{ x1: 0, y1: 4, x2: 1.5, y2: 5 }]);
+    expect(notchBox(brick)).toEqual({ x1: 1.5, y1: 4, x2: 2, y2: 5 });
+  });
+
+  it("seats a full grate assembly: trims land exactly in facing edge notches", () => {
+    // кирпичи слева и справа от проёма, пазы навстречу колоснику
+    const left = [rebate(0, 4, "e"), rebate(0, 5, "e")];
+    const right = [rebate(5, 4, "w"), rebate(5, 5, "w")];
+    // узел «колосник + 4 подрезки» (как ставит инструмент «Колосник») в проёме
+    let seq = 100;
+    const assembly: PlacedBrick[] = [
+      { id: "g", row: 1, x: 2, y: 4, kind: "grate", orientation: "h" },
+      { id: `t${seq++}`, row: 1, x: 1.5, y: 4, kind: "trim", orientation: "h" },
+      { id: `t${seq++}`, row: 1, x: 1.5, y: 5, kind: "trim", orientation: "h" },
+      { id: `t${seq++}`, row: 1, x: 5, y: 4, kind: "trim", orientation: "h" },
+      { id: `t${seq++}`, row: 1, x: 5, y: 5, kind: "trim", orientation: "h" }
+    ];
+    const existing = [...left, ...right];
+    for (const piece of assembly) {
+      for (const brick of existing) expect(overlaps(piece, brick)).toBe(false);
+    }
+    const next = placeBricksInRow(existing, assembly, grid);
+    expect(next).toHaveLength(existing.length + assembly.length); // никто никого не вытеснил
+  });
+});
+
+describe("plate (варочная плита)", () => {
+  it("has a 5×3 footprint and rests in facing edge notches like the grate", () => {
+    // проём 4 ячейки шириной (x:3..7), по бокам кирпичи с пазами навстречу
+    const left = rebate(1, 4, "e");   // занято 1..2.5, паз 2.5..3
+    const right = rebate(7, 4, "w");  // занято 7.5..9, паз 7..7.5
+    const plate: PlacedBrick = { id: "p", row: 1, x: 2.5, y: 4, kind: "plate", orientation: "h" }; // 5×3: x:2.5..7.5
+    // плита краями заходит ровно в пазы обоих кирпичей
+    expect(overlaps(plate, left)).toBe(false);
+    expect(overlaps(plate, right)).toBe(false);
+    const next = placeBricksInRow([left, right], [plate], grid);
+    expect(next).toHaveLength(3);
+    // а «глухие» кирпичи без пазов плита бы вытеснила
+    const solidLeft = { ...left, kind: "standard" as const, notchCorner: undefined };
+    expect(overlaps(plate, solidLeft)).toBe(true);
+  });
+});

@@ -1,8 +1,8 @@
 import { memo, useMemo, useState } from "react";
 import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
-import type { BrickKind, GridSpec, Orientation, PlacedBrick, ToolKind } from "../domain/types";
-import { brickSizeFor, isInsideGrid } from "../domain/geometry";
+import type { BrickKind, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../domain/types";
+import { brickBoxes, brickSizeFor, isInsideGrid, notchBox, snapToStep } from "../domain/geometry";
 import { getToolColor } from "../domain/tools";
 
 const CELL = 34;
@@ -14,6 +14,8 @@ export function PlanGrid({
   bricks,
   activeTool,
   orientation,
+  notchCorner,
+  snapStep,
   placeAt,
   t
 }: {
@@ -21,6 +23,8 @@ export function PlanGrid({
   bricks: PlacedBrick[];
   activeTool: ToolKind;
   orientation: Orientation;
+  notchCorner: NotchCorner;
+  snapStep: SnapStep;
   placeAt: (x: number, y: number) => void;
   t: Translate;
 }) {
@@ -51,24 +55,32 @@ export function PlanGrid({
     return { vertical, horizontal, xTicks, yTicks };
   }, [grid, unit]);
 
-  const cells = useMemo(
-    () =>
-      Array.from({ length: grid.rows }).flatMap((_, y) =>
-        Array.from({ length: grid.cols }).map((__, x) => (
-          <rect
-            key={`${x}-${y}`}
-            x={PAD + x * CELL}
-            y={PAD + HEADER + y * CELL}
-            width={CELL}
-            height={CELL}
-            fill="transparent"
-            className="cursor-pointer"
-            onMouseEnter={() => setHoverCell({ x, y })}
-            onClick={() => placeAt(x, y)}
-          />
-        ))
-      ),
-    [grid.cols, grid.rows, placeAt]
+  // Один прозрачный оверлей вместо ячеек-прямоугольников: координата клика
+  // привязывается к текущему шагу (целая ячейка или полячейки).
+  const cellFromEvent = (event: React.MouseEvent<SVGRectElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return {
+      x: snapToStep((event.clientX - box.left) / CELL, snapStep, grid.cols),
+      y: snapToStep((event.clientY - box.top) / CELL, snapStep, grid.rows)
+    };
+  };
+  const overlay = (
+    <rect
+      x={PAD}
+      y={PAD + HEADER}
+      width={grid.cols * CELL}
+      height={grid.rows * CELL}
+      fill="transparent"
+      className="cursor-pointer"
+      onMouseMove={(event) => {
+        const cell = cellFromEvent(event);
+        setHoverCell((prev) => (prev && prev.x === cell.x && prev.y === cell.y ? prev : cell));
+      }}
+      onClick={(event) => {
+        const cell = cellFromEvent(event);
+        placeAt(cell.x, cell.y);
+      }}
+    />
   );
 
   return (
@@ -83,12 +95,16 @@ export function PlanGrid({
         {lines.yTicks}
         {bricks.map((brick) => <Brick2D key={brick.id} brick={brick} cell={CELL} pad={PAD} />)}
 
-        {hoverCell ? <rect x={PAD + hoverCell.x * CELL + 1.5} y={PAD + HEADER + hoverCell.y * CELL + 1.5} width={CELL - 3} height={CELL - 3} rx="8" fill="rgba(143,175,118,0.18)" stroke="rgba(95,126,77,0.75)" strokeWidth="1.5" /> : null}
+        {hoverCell ? <rect x={PAD + hoverCell.x * CELL + 1.5} y={PAD + HEADER + hoverCell.y * CELL + 1.5} width={CELL * snapStep - 3} height={CELL * snapStep - 3} rx={snapStep === 1 ? 8 : 5} fill="rgba(143,175,118,0.18)" stroke="rgba(95,126,77,0.75)" strokeWidth="1.5" /> : null}
 
         {hoverCell && ghost && hoverGhostFits ? (
           <g>
             {activeTool === "grate"
               ? <Grate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} orientation={orientation} opacity={0.72} />
+              : activeTool === "plate"
+              ? <Plate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} orientation={orientation} opacity={0.72} />
+              : activeTool === "rebate"
+              ? <Rebate2D brick={{ id: "ghost", row: 0, x: hoverCell.x, y: hoverCell.y, kind: "rebate", orientation, notchCorner }} cell={CELL} pad={PAD} opacity={0.5} />
               : <rect x={hoverGhostX} y={hoverGhostY} width={ghost.w * CELL - 6} height={ghost.h * CELL - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.34" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
             <text x={hoverGhostX + (ghost.w * CELL - 6) / 2} y={hoverGhostY + (ghost.h * CELL - 6) / 2 + 5} textAnchor="middle" fontSize="18" fontWeight="900" fill="#2f5d38">+</text>
           </g>
@@ -100,7 +116,7 @@ export function PlanGrid({
             : <rect x={PAD + 0.2 * CELL} y={PAD + HEADER + 0.2 * CELL} width={ghost.w * CELL - 6} height={ghost.h * CELL - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.24" stroke={COLORS.charcoal} strokeDasharray="4 4" />
         ) : null}
 
-        {cells}
+        {overlay}
       </svg>
     </div>
   );
@@ -115,6 +131,8 @@ const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick
   const fill = getToolColor(brick.kind);
 
   if (brick.kind === "grate") return <Grate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
+  if (brick.kind === "rebate") return <Rebate2D brick={brick} cell={cell} pad={pad} />;
+  if (brick.kind === "plate") return <Plate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
 
   return (
     <g>
@@ -126,6 +144,53 @@ const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick
     </g>
   );
 });
+
+/** Кирпич с четвертью на плане: Г-образное тело + светлая посадочная полка в вырезе. */
+function Rebate2D({ brick, cell, pad, opacity = 1 }: { brick: PlacedBrick; cell: number; pad: number; opacity?: number }) {
+  const toRect = (box: { x1: number; y1: number; x2: number; y2: number }, inset: number) => ({
+    x: pad + box.x1 * cell + 3 + inset,
+    y: pad + HEADER + box.y1 * cell + 3 + inset,
+    w: (box.x2 - box.x1) * cell - 6 - inset * 2,
+    h: (box.y2 - box.y1) * cell - 6 - inset * 2
+  });
+  const fill = getToolColor("rebate");
+  const notch = notchBox(brick);
+  return (
+    <g opacity={opacity}>
+      {brickBoxes(brick).map((box, index) => {
+        const r = toRect(box, 0);
+        return <rect key={index} x={r.x} y={r.y} width={r.w} height={r.h} rx="7" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" />;
+      })}
+      {notch ? (() => {
+        const r = toRect(notch, 2);
+        return <rect x={r.x} y={r.y} width={r.w} height={r.h} rx="5" fill={COLORS.cutBrick} stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" opacity="0.55" />;
+      })() : null}
+    </g>
+  );
+}
+
+/** Варочная плита на плане: тёмная панель с двумя конфорками. */
+function Plate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: number; w: number; h: number; orientation: Orientation; opacity?: number }) {
+  const longX = orientation === "h";
+  const cx1 = longX ? x + w * 0.28 : x + w / 2;
+  const cy1 = longX ? y + h / 2 : y + h * 0.28;
+  const cx2 = longX ? x + w * 0.72 : x + w / 2;
+  const cy2 = longX ? y + h / 2 : y + h * 0.72;
+  const r = Math.min(w, h) * 0.24;
+  return (
+    <g opacity={opacity}>
+      <rect x={x + 3} y={y + 4} width={w} height={h} rx="8" fill="rgba(61,43,31,0.18)" />
+      <rect x={x} y={y} width={w} height={h} rx="8" fill="#33383E" stroke={COLORS.charcoal} strokeWidth="2" />
+      {[[cx1, cy1], [cx2, cy2]].map(([cx, cy], index) => (
+        <g key={index}>
+          <circle cx={cx} cy={cy} r={r} fill="#26292d" stroke="#1e2124" strokeWidth="2.5" />
+          <circle cx={cx} cy={cy} r={r * 0.55} fill="none" stroke="#1e2124" strokeWidth="1.5" />
+        </g>
+      ))}
+      <text x={x + w / 2} y={y + h - 7} textAnchor="middle" fontSize="11" fontWeight="900" fill="#e6d7bd">Плита</text>
+    </g>
+  );
+}
 
 function Grate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: number; w: number; h: number; orientation: Orientation; opacity?: number }) {
   const barCount = 5;

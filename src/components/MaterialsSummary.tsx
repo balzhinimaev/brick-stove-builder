@@ -9,7 +9,9 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
       <MaterialRow label={t("regularBricks")} value={materials.regularBricks} />
       <MaterialRow label={t("firebricks")} value={materials.firebricks} />
       <MaterialRow label={t("cutBricks")} value={materials.cutBricks} />
+      <MaterialRow label={t("rebatedBricks")} value={materials.rebatedBricks} />
       <MaterialRow label={t("grates")} value={materials.grates} />
+      <MaterialRow label={t("plates")} value={materials.plates} />
       <MaterialRow label={t("mortarEstimate")} value={`${materials.mortarM3.toFixed(2)} m³`} />
       <MaterialRow label={t("foundationConcrete")} value={`${materials.concreteVolumeM3.toFixed(2)} m³`} />
     </div>

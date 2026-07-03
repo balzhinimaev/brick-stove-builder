@@ -122,3 +122,24 @@ describe("camera", () => {
     expect(s.camera).toEqual(initialEditorState().camera);
   });
 });
+
+describe("deleteRow", () => {
+  it("removes the current row, renumbers higher rows and shifts locks", () => {
+    let state: EditorState = { ...freshOnRow(2), rowCount: 4, lockedRows: [1, 3] };
+    state = { ...state, rows: { 1: [standard(0, 0)], 2: [{ ...standard(2, 0), row: 2 }], 3: [{ ...standard(4, 0), row: 3 }] } };
+    const next = editorReducer(state, { type: "deleteRow" });
+    expect(next.rowCount).toBe(3);
+    expect(next.currentRow).toBe(2);
+    expect(next.rows[1]).toHaveLength(1);
+    expect(next.rows[2][0].x).toBe(4); // former row 3 shifted down
+    expect(next.rows[2][0].row).toBe(2);
+    expect(next.lockedRows).toEqual([1, 2]);
+  });
+
+  it("refuses on a locked row and on the last remaining row", () => {
+    const locked: EditorState = { ...freshOnRow(2, [2]), rowCount: 3 };
+    expect(editorReducer(locked, { type: "deleteRow" })).toBe(locked);
+    const single: EditorState = { ...freshOnRow(1), rowCount: 1 };
+    expect(editorReducer(single, { type: "deleteRow" })).toBe(single);
+  });
+});

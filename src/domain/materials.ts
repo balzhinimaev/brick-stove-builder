@@ -12,13 +12,18 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
   let regularBricks = 0;
   let cutLike = 0;
   let trims = 0;
+  let rebatedBricks = 0;
   let firebricks = 0;
   let grates = 0;
+  let plates = 0;
 
   for (const brick of allBricks) {
     switch (brick.kind) {
       case "standard":
         regularBricks++;
+        break;
+      case "rebate":
+        rebatedBricks++;
         break;
       case "cut":
       case "cleanout":
@@ -33,15 +38,19 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
       case "grate":
         grates++;
         break;
+      case "plate":
+        plates++;
+        break;
     }
   }
 
   const cutBricks = cutLike + trims * TRIM_AS_CUT_FACTOR;
-  const mortarM3 = (regularBricks + firebricks + cutBricks * CUT_MORTAR_FACTOR) * MORTAR_M3_PER_BRICK;
+  // Кирпич с четвертью — целый кирпич минус четверть: и по расходу раствора близок к целому.
+  const mortarM3 = (regularBricks + rebatedBricks * 0.75 + firebricks + cutBricks * CUT_MORTAR_FACTOR) * MORTAR_M3_PER_BRICK;
   const concreteVolumeM3 =
     (parameters.foundationWidth / CM_PER_M) *
     (parameters.foundationLength / CM_PER_M) *
     (parameters.foundationThickness / CM_PER_M);
 
-  return { regularBricks, cutBricks, firebricks, grates, mortarM3, concreteVolumeM3, total: allBricks.length };
+  return { regularBricks, cutBricks, rebatedBricks, firebricks, grates, plates, mortarM3, concreteVolumeM3, total: allBricks.length };
 }

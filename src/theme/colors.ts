@@ -10,9 +10,11 @@ export const COLORS = {
   mortar: "#F4D9B7",
   firebrick: "#A8321A",
   cutBrick: "#F2A35E",
+  rebate: "#D06A38",
   vent: "#6B7C85",
   cleanout: "#8B5E3C",
   grate: "#4A4A4A",
+  plate: "#33383E",
   foundation: "#B8A38D",
   skyCream: "#FFF7E8",
   gridLine: "rgba(61,43,31,0.18)"

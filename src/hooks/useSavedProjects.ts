@@ -23,5 +23,13 @@ export function useSavedProjects(session: Session | null) {
     return saved;
   }, []);
 
-  return { savedProjects, saveProject };
+  const replaceProject = useCallback((project: ReadyProject) => {
+    setSavedProjects((current) => current.map((item) => (item.id === project.id ? project : item)));
+  }, []);
+
+  const removeProject = useCallback((id: string) => {
+    setSavedProjects((current) => current.filter((item) => item.id !== id));
+  }, []);
+
+  return { savedProjects, saveProject, replaceProject, removeProject };
 }

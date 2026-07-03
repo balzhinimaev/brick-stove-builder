@@ -1,16 +1,17 @@
 import { useCallback, useMemo, useReducer } from "react";
-import { editorReducer, initialEditorState, type DraftSnapshot } from "../domain/editor";
-import { grateAssemblyBricks } from "../domain/geometry";
+import { historyReducer, initialHistoryState, type DraftSnapshot } from "../domain/editor";
+import { fillRowBricks, grateAssemblyBricks } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
 import { nextSeq } from "../lib/id";
-import type { Orientation, Parameters, PlacedBrick, ReadyProject, ToolKind, ViewMode } from "../domain/types";
+import type { NotchCorner, Orientation, Parameters, PlacedBrick, ReadyProject, SnapStep, ToolKind, ViewMode } from "../domain/types";
 
 /**
- * React binding around the pure {@link editorReducer}. The only impurity it
+ * React binding around the pure {@link historyReducer}. The only impurity it
  * adds is brick id allocation; all state transitions stay in the reducer.
  */
 export function useEditor() {
-  const [state, dispatch] = useReducer(editorReducer, undefined, initialEditorState);
+  const [history, dispatch] = useReducer(historyReducer, undefined, initialHistoryState);
+  const state = history.present;
 
   const allBricks = useMemo(() => Object.values(state.rows).flat(), [state.rows]);
   const materials = useMemo(() => estimateMaterials(allBricks, state.parameters), [allBricks, state.parameters]);
@@ -26,9 +27,10 @@ export function useEditor() {
         return;
       }
       const brick: PlacedBrick = { id: `r${state.currentRow}-${nextSeq()}-${x}-${y}`, row: state.currentRow, x, y, kind: state.activeTool, orientation: state.orientation };
+      if (state.activeTool === "rebate") brick.notchCorner = state.notchCorner;
       dispatch({ type: "place", bricks: [brick] });
     },
-    [state.activeTool, state.orientation, state.currentRow]
+    [state.activeTool, state.orientation, state.currentRow, state.notchCorner]
   );
 
   const copyPreviousRow = useCallback(() => {
@@ -37,6 +39,12 @@ export function useEditor() {
     const bricks = previous.map((brick, index) => ({ ...brick, id: `r${state.currentRow}-copy-${index}-${nextSeq()}`, row: state.currentRow }));
     dispatch({ type: "copyRow", bricks });
   }, [state.currentRow, state.lockedRows, state.rows]);
+
+  const fillCurrentRow = useCallback(() => {
+    if (state.lockedRows.includes(state.currentRow)) return;
+    const bricks = fillRowBricks(state.rows[state.currentRow] ?? [], state.grid, state.currentRow, state.orientation, nextSeq);
+    if (bricks.length) dispatch({ type: "place", bricks });
+  }, [state.currentRow, state.lockedRows, state.rows, state.grid, state.orientation]);
 
   return {
     parameters: state.parameters,
@@ -47,6 +55,8 @@ export function useEditor() {
     rows: state.rows,
     activeTool: state.activeTool,
     orientation: state.orientation,
+    notchCorner: state.notchCorner,
+    snapStep: state.snapStep,
     viewMode: state.viewMode,
     camera: state.camera,
     allBricks,
@@ -55,15 +65,24 @@ export function useEditor() {
     setCurrentRow: useCallback((row: number) => dispatch({ type: "setCurrentRow", row }), []),
     setActiveTool: useCallback((tool: ToolKind) => dispatch({ type: "setTool", tool }), []),
     setOrientation: useCallback((orientation: Orientation) => dispatch({ type: "setOrientation", orientation }), []),
+    setNotchCorner: useCallback((corner: NotchCorner) => dispatch({ type: "setNotchCorner", corner }), []),
+    setSnapStep: useCallback((step: SnapStep) => dispatch({ type: "setSnapStep", step }), []),
     setViewMode: useCallback((mode: ViewMode) => dispatch({ type: "setViewMode", mode }), []),
     updateParameter: useCallback((key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }), []),
 
     placeAt,
     addRow: useCallback(() => dispatch({ type: "addRow" }), []),
+    deleteCurrentRow: useCallback(() => dispatch({ type: "deleteRow" }), []),
     copyPreviousRow,
+    fillCurrentRow,
     clearCurrentRow: useCallback(() => dispatch({ type: "clearRow" }), []),
     lockRow: useCallback(() => dispatch({ type: "lockRow" }), []),
     unlockRow: useCallback(() => dispatch({ type: "unlockRow" }), []),
+
+    canUndo: history.past.length > 0,
+    canRedo: history.future.length > 0,
+    undo: useCallback(() => dispatch({ type: "undo" }), []),
+    redo: useCallback(() => dispatch({ type: "redo" }), []),
 
     reset: useCallback(() => dispatch({ type: "reset" }), []),
     loadProject: useCallback((project: ReadyProject) => dispatch({ type: "loadProject", project }), []),

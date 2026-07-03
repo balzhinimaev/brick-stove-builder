@@ -1,8 +1,14 @@
-import { slugify } from "./normalize.js";
+import mongoose from "mongoose";
+import { rowsToObject, slugify } from "./normalize.js";
+
+/** Проект адресуется и по ObjectId, и по slug — фильтр выбираем по формату id. */
+export function idQuery(id, extra = {}) {
+  return mongoose.Types.ObjectId.isValid(id) ? { _id: id, ...extra } : { slug: id, ...extra };
+}
 
 export function normalizeProject(project) {
   const plain = typeof project.toObject === "function" ? project.toObject() : project;
-  const rows = plain.rows instanceof Map ? Object.fromEntries(plain.rows) : plain.rows || {};
+  const rows = rowsToObject(plain.rows);
 
   return {
     id: plain.slug || String(plain._id),

@@ -77,7 +77,7 @@ const projectSchema = new mongoose.Schema(
     title: { type: localizedTextSchema, required: true },
     subtitle: { type: localizedTextSchema, default: () => ({}) },
     parameters: { type: parametersSchema, required: true },
-    rowCount: { type: Number, required: true, min: 1 },
+    rowCount: { type: Number, required: true, min: 1, max: 200 },
     lockedRows: { type: [Number], default: [] },
     rows: { type: Map, of: [brickSchema], default: {} },
     accent: { type: String, default: "#C1440E" },

@@ -1,15 +1,12 @@
 import { Router } from "express";
 import { Lead } from "../models/Lead.js";
 import { requireMongo } from "../middleware/requireMongo.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 import { formatLeadMessage, notifyTelegram } from "../lib/telegram.js";
 
 const PHONE_DIGITS_MIN = 10;
 const PHONE_DIGITS_MAX = 15;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-/** Naive per-IP throttle: at most one accepted lead per IP per interval. */
-const THROTTLE_MS = 15_000;
-const lastSubmitByIp = new Map();
 
 function cleanStr(value, maxLength = 200) {
   return String(value ?? "").trim().slice(0, maxLength);
@@ -17,7 +14,7 @@ function cleanStr(value, maxLength = 200) {
 
 export const leadsRouter = Router();
 
-leadsRouter.post("/", requireMongo, async (req, res, next) => {
+leadsRouter.post("/", rateLimit({ windowMs: 60_000, max: 3 }), requireMongo, async (req, res, next) => {
   try {
     const body = req.body ?? {};
 
@@ -33,14 +30,6 @@ leadsRouter.post("/", requireMongo, async (req, res, next) => {
     if (email && !EMAIL_RE.test(email)) {
       return res.status(400).json({ error: "Укажите корректный email" });
     }
-
-    const ip = req.headers["x-real-ip"] || req.ip || "unknown";
-    const last = lastSubmitByIp.get(ip) ?? 0;
-    if (Date.now() - last < THROTTLE_MS) {
-      return res.status(429).json({ error: "Слишком часто. Попробуйте через минуту." });
-    }
-    lastSubmitByIp.set(ip, Date.now());
-    if (lastSubmitByIp.size > 10_000) lastSubmitByIp.clear();
 
     const lead = await Lead.create({
       name: cleanStr(body.name, 100),

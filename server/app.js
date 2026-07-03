@@ -16,6 +16,9 @@ const distDir = path.join(path.resolve(__dirname, ".."), "dist");
 export function createApp(config) {
   const app = express();
 
+  // За nginx на 127.0.0.1: req.ip берётся из X-Forwarded-For (первый прокси).
+  app.set("trust proxy", 1);
+
   app.use(cors({ origin: config.corsOrigin }));
   app.use(express.json({ limit: "5mb" }));
 
@@ -54,7 +57,8 @@ export function createApp(config) {
 
   app.use((error, _req, res, _next) => {
     console.error(error);
-    res.status(500).json({ error: error.message || "Internal server error" });
+    // Клиенту — без деталей: error.message может раскрывать внутренности.
+    res.status(500).json({ error: "Internal server error" });
   });
 
   return app;

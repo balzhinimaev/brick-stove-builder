@@ -1,8 +1,7 @@
 import { Router } from "express";
-import mongoose from "mongoose";
 import { Project } from "../models/Project.js";
 import { requireMongo } from "../middleware/requireMongo.js";
-import { normalizeProject } from "../lib/project.js";
+import { idQuery, normalizeProject } from "../lib/project.js";
 
 /** Public catalog of published stove projects — no auth: this is what customers browse. */
 export const showcaseRouter = Router();
@@ -23,10 +22,7 @@ showcaseRouter.get("/", async (_req, res, next) => {
 
 showcaseRouter.get("/:id", async (req, res, next) => {
   try {
-    const idQuery = mongoose.Types.ObjectId.isValid(req.params.id)
-      ? { _id: req.params.id }
-      : { slug: req.params.id };
-    const project = await Project.findOne({ ...idQuery, "showcase.published": true });
+    const project = await Project.findOne(idQuery(req.params.id, { "showcase.published": true }));
     if (!project) return res.status(404).json({ error: "Project not found" });
     res.json({ project: normalizeProject(project) });
   } catch (error) {

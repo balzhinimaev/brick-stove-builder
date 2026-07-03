@@ -10,7 +10,7 @@ const draftSchema = new mongoose.Schema(
   {
     ownerLogin: { type: String, required: true, unique: true, trim: true },
     parameters: { type: parametersSchema, required: true },
-    rowCount: { type: Number, required: true, min: 1 },
+    rowCount: { type: Number, required: true, min: 1, max: 200 },
     currentRow: { type: Number, required: true, min: 1 },
     lockedRows: { type: [Number], default: [] },
     rows: { type: Map, of: [brickSchema], default: {} },

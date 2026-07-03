@@ -5,20 +5,20 @@ import { signToken, verifyToken } from "../token.js";
 const SECRET = "test-secret-test-secret";
 
 describe("password hashing", () => {
-  it("verifies a correct password", () => {
-    const stored = hashPassword("hunter2!");
-    expect(verifyPassword("hunter2!", stored)).toBe(true);
+  it("verifies a correct password", async () => {
+    const stored = await hashPassword("hunter2!");
+    expect(await verifyPassword("hunter2!", stored)).toBe(true);
   });
-  it("rejects a wrong password", () => {
-    const stored = hashPassword("hunter2!");
-    expect(verifyPassword("nope", stored)).toBe(false);
+  it("rejects a wrong password", async () => {
+    const stored = await hashPassword("hunter2!");
+    expect(await verifyPassword("nope", stored)).toBe(false);
   });
-  it("uses a unique salt per hash", () => {
-    expect(hashPassword("same")).not.toBe(hashPassword("same"));
+  it("uses a unique salt per hash", async () => {
+    expect(await hashPassword("same")).not.toBe(await hashPassword("same"));
   });
-  it("rejects malformed stored values", () => {
-    expect(verifyPassword("x", "")).toBe(false);
-    expect(verifyPassword("x", "nosalt")).toBe(false);
+  it("rejects malformed stored values", async () => {
+    expect(await verifyPassword("x", "")).toBe(false);
+    expect(await verifyPassword("x", "nosalt")).toBe(false);
   });
 });
 

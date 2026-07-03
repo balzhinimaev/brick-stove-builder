@@ -81,7 +81,7 @@ export function useEditor() {
     setNotchCorner: useCallback((corner: NotchCorner) => dispatch({ type: "setNotchCorner", corner }), []),
     setSnapStep: useCallback((step: SnapStep) => dispatch({ type: "setSnapStep", step }), []),
     pickCustomBrick: useCallback((spec: CustomBrickSpec) => dispatch({ type: "pickCustomBrick", spec }), []),
-    setPlateSize: useCallback((lengthMm: number, widthMm: number) => dispatch({ type: "setPlateSize", lengthMm, widthMm }), []),
+    setPlateSize: useCallback((lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) => dispatch({ type: "setPlateSize", lengthMm, widthMm, thicknessMm, flush }), []),
     setDoorSize: useCallback((widthMm: number, heightMm: number) => dispatch({ type: "setDoorSize", widthMm, heightMm }), []),
     setViewMode: useCallback((mode: ViewMode) => dispatch({ type: "setViewMode", mode }), []),
     updateParameter: useCallback((key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }), []),

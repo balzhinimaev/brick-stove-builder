@@ -264,3 +264,38 @@ describe("честные 3D-коллизии по высоте", () => {
     expect(overlaps3D(plate, plateAbove)).toBe(false); // 65..79 vs 135..149
   });
 });
+
+describe("плита заподлицо (flush) ложится в вырезы", () => {
+  const flushPlate = (t: number): PlacedBrick => ({
+    id: "fp", row: 1, x: 2.5, y: 4, kind: "plate", orientation: "h",
+    custom: { name: "Плита", w: 5, h: 3, notch: null, thicknessMm: t, flush: true }
+  });
+  const shelf = (depth: number, x: number, corner: "e" | "w"): PlacedBrick => ({
+    id: `sh${x}`, row: 1, x, y: 4, kind: "custom", orientation: "h",
+    custom: { name: "паз", w: 2, h: 1, notch: corner === "e" ? { x1: 1.5, y1: 0, x2: 2, y2: 1 } : { x1: 0, y1: 0, x2: 0.5, y2: 1 }, ledge: true, notchDepthMm: depth }
+  });
+
+  it("садится в достаточно глубокие вырезы, мелкие — отказ", async () => {
+    const { overlaps3D } = await import("../geometry");
+    // плита 15 мм: полка выреза 20 мм → верх полки 45 < низ плиты 50 — садится
+    expect(overlaps3D(flushPlate(15), shelf(20, 1, "e"))).toBe(false);
+    // вырез 10 мм (полка 55) мельче толщины 15 — конфликт
+    expect(overlaps3D(flushPlate(15), shelf(10, 1, "e"))).toBe(true);
+    // полнотелый кирпич под краем плиты — конфликт
+    expect(overlaps3D(flushPlate(15), standard(1, 4))).toBe(true);
+  });
+
+  it("накладная плита по-прежнему не конфликтует с кладкой", async () => {
+    const { overlaps3D } = await import("../geometry");
+    const onTop: PlacedBrick = { ...flushPlate(15), custom: { ...flushPlate(15).custom!, flush: false } };
+    expect(overlaps3D(onTop, standard(3, 4))).toBe(false);
+  });
+
+  it("плита никогда не заменяет кирпичи: конфликт — отказ", async () => {
+    const { placeBricksInRows } = await import("../geometry");
+    const rows = { 1: [standard(3, 4)] };
+    expect(placeBricksInRows(rows, 1, [flushPlate(15)], grid)).toBeNull();
+    const seated = { 1: [shelf(20, 0.5, "e"), shelf(20, 7.5, "w")] };
+    expect(placeBricksInRows(seated, 1, [flushPlate(15)], grid)).not.toBeNull();
+  });
+});

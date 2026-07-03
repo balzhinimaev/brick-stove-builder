@@ -155,12 +155,20 @@ export function isOverlayKind(kind: BrickFootprint["kind"]): boolean {
   return kind === "plate";
 }
 
+/**
+ * Накладная ли КОНКРЕТНАЯ плита: в режиме «заподлицо» (flush) плита утоплена
+ * в ряд, участвует в честных 3D-коллизиях и ложится в вырезы кирпичей.
+ */
+export function isOverlayBrick(brick: BrickFootprint): boolean {
+  return brick.kind === "plate" && brick.custom?.flush !== true;
+}
+
 /** Ряд кладки: кирпич на плашку 65 мм + шов ≈ 70 мм. */
 export const COURSE_MM = 70;
 export const BRICK_MM = 65;
 /** Толщина колосниковой решётки; лежит заподлицо с верхом ряда. */
 const GRATE_THICKNESS_MM = 22;
-/** Толщина варочной плиты, лежит НА ряду. */
+/** Толщина варочной плиты по умолчанию. */
 const PLATE_THICKNESS_MM = 14;
 /** Подрезка колосникового узла лежит на посадочной полке — верхняя половина. */
 const TRIM_SEAT_MM = BRICK_MM / 2;
@@ -175,7 +183,14 @@ export type BrickSolid = { box: BrickBox; z1: number; z2: number };
  */
 export function brickSolids(brick: BrickFootprint): BrickSolid[] {
   const bounds = brickBounds(brick);
-  if (brick.kind === "plate") return [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + PLATE_THICKNESS_MM }];
+  if (brick.kind === "plate") {
+    const t = brick.custom?.thicknessMm ?? PLATE_THICKNESS_MM;
+    // заподлицо: верх плиты = верх ряда, опирается на полки вырезов;
+    // поверх: лежит на ряду
+    return brick.custom?.flush === true
+      ? [{ box: bounds, z1: BRICK_MM - t, z2: BRICK_MM }]
+      : [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
+  }
   if (brick.kind === "grate") return [{ box: bounds, z1: BRICK_MM - GRATE_THICKNESS_MM, z2: BRICK_MM }];
   if (brick.kind === "cleanout") return [{ box: bounds, z1: 0, z2: brick.custom?.heightMm ?? BRICK_MM }];
   if (brick.kind === "trim") return [{ box: bounds, z1: TRIM_SEAT_MM, z2: BRICK_MM }];
@@ -195,7 +210,7 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
  * конфликтует, только плита с плитой.
  */
 export function overlaps3D(a: PlacedBrick, b: PlacedBrick): boolean {
-  if (isOverlayKind(a.kind) !== isOverlayKind(b.kind)) return false;
+  if (isOverlayBrick(a) !== isOverlayBrick(b)) return false;
   const aBase = (a.row - 1) * COURSE_MM;
   const bBase = (b.row - 1) * COURSE_MM;
   return brickSolids(a).some((sa) =>
@@ -244,7 +259,8 @@ export function placeBricksInRows(
     .flat()
     .filter((brick) => drafts.some((draft) => overlaps3D(draft, brick)));
 
-  if (drafts.some((draft) => isOverlayKind(draft.kind))) {
+  // плита (и накладная, и заподлицо) никого не заменяет: занято — отказ
+  if (drafts.some((draft) => draft.kind === "plate")) {
     if (conflicts.length) return null;
     return { ...rows, [row]: [...(rows[row] ?? []), ...drafts] };
   }

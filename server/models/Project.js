@@ -47,7 +47,10 @@ export const brickSchema = new mongoose.Schema(
           // глубина выреза по высоте кирпича, мм (65 = насквозь)
           notchDepthMm: { type: Number, min: 0, required: false },
           // высота проёма дверцы, мм (вертикальный размер)
-          heightMm: { type: Number, min: 0, required: false }
+          heightMm: { type: Number, min: 0, required: false },
+          // толщина плиты, мм; flush — утоплена заподлицо в вырезы
+          thicknessMm: { type: Number, min: 0, required: false },
+          flush: { type: Boolean, required: false }
         },
         { _id: false }
       ),

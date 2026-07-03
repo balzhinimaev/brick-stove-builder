@@ -57,7 +57,7 @@ export type EditorAction =
   | { type: "setNotchCorner"; corner: NotchCorner }
   | { type: "setSnapStep"; step: SnapStep }
   | { type: "pickCustomBrick"; spec: CustomBrickSpec }
-  | { type: "setPlateSize"; lengthMm: number; widthMm: number }
+  | { type: "setPlateSize"; lengthMm: number; widthMm: number; thicknessMm: number; flush: boolean }
   | { type: "setDoorSize"; widthMm: number; heightMm: number }
   | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
@@ -83,12 +83,14 @@ const CAMERA_ZOOM_MAX = 1.55;
 /** 1 ячейка сетки = 125 мм. */
 const MM_PER_CELL = 125;
 
-export function plateSpecFromMm(lengthMm: number, widthMm: number): CustomBrickSpec {
+export function plateSpecFromMm(lengthMm: number, widthMm: number, thicknessMm = 14, flush = false): CustomBrickSpec {
   return {
-    name: `Плита ${lengthMm}×${widthMm}`,
+    name: `Плита ${lengthMm}×${widthMm}×${thicknessMm}`,
     w: lengthMm / MM_PER_CELL,
     h: widthMm / MM_PER_CELL,
-    notch: null
+    notch: null,
+    thicknessMm,
+    flush
   };
 }
 
@@ -152,7 +154,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "pickCustomBrick":
       return { ...state, activeTool: "custom", customBrick: action.spec };
     case "setPlateSize":
-      return { ...state, plateSpec: plateSpecFromMm(action.lengthMm, action.widthMm) };
+      return { ...state, plateSpec: plateSpecFromMm(action.lengthMm, action.widthMm, action.thicknessMm, action.flush) };
     case "setDoorSize":
       return { ...state, doorSpec: doorSpecFromMm(action.widthMm, action.heightMm) };
     case "setViewMode":

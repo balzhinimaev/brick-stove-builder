@@ -40,6 +40,10 @@ export type CustomBrickSpec = {
   notchDepthMm?: number;
   /** вертикальный размер (дверцы): высота проёма в мм, ~70 мм на ряд кладки */
   heightMm?: number;
+  /** толщина плиты, мм */
+  thicknessMm?: number;
+  /** плита утоплена заподлицо с верхом ряда (ложится в вырезы кирпичей) */
+  flush?: boolean;
 };
 
 export type PlacedBrick = {

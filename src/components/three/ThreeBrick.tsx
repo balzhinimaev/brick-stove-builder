@@ -161,11 +161,13 @@ export function ThreeDoor({ grid, brick, currentRow, opacity = 1 }: { grid: Grid
 export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
   const geometry = brickWorldGeometry(brick, grid);
   const size = footprintSizeOf(brick);
-  const plateHeight = BRICK_LAYER_HEIGHT * 0.14;
+  const thicknessMm = brick.custom?.thicknessMm ?? 14;
+  const flush = brick.custom?.flush === true;
+  const plateHeight = (thicknessMm / 65) * BRICK_LAYER_HEIGHT * 0.92;
   const rowTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
-  // Плита лежит НА ряду: низ панели на верхе кирпичей (лёгкая посадка от щели),
-  // поэтому кирпичи под ней не пересекают её объём.
-  const plateY = rowTopY + plateHeight / 2 - 0.008;
+  // «Заподлицо»: верх плиты = верх ряда (утоплена в вырезы кирпичей);
+  // «Поверх»: лежит на ряду, кирпичи под ней не пересекают её объём.
+  const plateY = flush ? rowTopY - plateHeight / 2 + 0.004 : rowTopY + plateHeight / 2 - 0.008;
   const topY = plateY + plateHeight / 2;
   const isCurrent = brick.row === currentRow;
   const transparent = opacity < 1;
@@ -206,7 +208,7 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
         </mesh>
       )}
       <Text position={[geometry.position[0], topY + 0.05, geometry.position[2] + size.h / 2 - 0.35]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#e6d7bd" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
-        {`Плита ${Math.round(size.w * 125)}×${Math.round(size.h * 125)} мм`}
+        {`Плита ${Math.round(size.w * 125)}×${Math.round(size.h * 125)}×${thicknessMm} мм${flush ? " · заподлицо" : ""}`}
       </Text>
     </group>
   );

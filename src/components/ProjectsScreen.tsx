@@ -1,12 +1,11 @@
 import { useState } from "react";
-import { COLORS } from "../theme/colors";
 import type { Locale, Translate } from "../i18n";
 import type { GridSpec, PlacedBrick, ReadyProject } from "../domain/types";
 import type { PublishFields } from "../api/client";
-import { brickBoxes, gridFromParameters, isOverlayKind } from "../domain/geometry";
+import { gridFromParameters } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
-import { getToolColor } from "../domain/tools";
 import { Pill, SectionTitle } from "./ui";
+import { RowMap } from "./RowMap";
 
 export function ProjectsScreen({
   locale,
@@ -174,30 +173,11 @@ export function ProjectOrderPreview({ grid, rows, rowCount, t }: { grid: GridSpe
                 <span>{t("currentRow")} {row}</span>
                 <span className="text-[#5F7E4D]">{rows[row]?.length ?? 0}</span>
               </div>
-              <ProjectRowMap grid={grid} bricks={rows[row] ?? []} />
+              <RowMap grid={grid} bricks={rows[row] ?? []} variant="screen" />
             </div>
           );
         })}
       </div>
     </div>
-  );
-}
-
-function ProjectRowMap({ grid, bricks }: { grid: GridSpec; bricks: PlacedBrick[] }) {
-  const cell = Math.min(10, 112 / Math.max(grid.cols, grid.rows));
-  const pad = 9;
-  const width = grid.cols * cell + pad * 2;
-  const height = grid.rows * cell + pad * 2;
-  return (
-    <svg className="mx-auto block" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-      <rect x="1" y="1" width={width - 2} height={height - 2} rx="12" fill={COLORS.cream} stroke={COLORS.charcoal} strokeWidth="1.5" opacity="0.26" />
-      {Array.from({ length: grid.cols + 1 }).map((_, x) => <line key={`prx-${x}`} x1={pad + x * cell} y1={pad} x2={pad + x * cell} y2={pad + grid.rows * cell} stroke={COLORS.gridLine} strokeWidth="0.8" />)}
-      {Array.from({ length: grid.rows + 1 }).map((_, y) => <line key={`pry-${y}`} x1={pad} y1={pad + y * cell} x2={pad + grid.cols * cell} y2={pad + y * cell} stroke={COLORS.gridLine} strokeWidth="0.8" />)}
-      {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).flatMap((brick) =>
-        brickBoxes(brick).map((box, index) => (
-          <rect key={`${brick.id}-${index}`} x={pad + box.x1 * cell + 1} y={pad + box.y1 * cell + 1} width={(box.x2 - box.x1) * cell - 2} height={(box.y2 - box.y1) * cell - 2} rx="3" fill={getToolColor(brick.kind)} stroke={COLORS.charcoal} strokeWidth="0.8" />
-        ))
-      )}
-    </svg>
   );
 }

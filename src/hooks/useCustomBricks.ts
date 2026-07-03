@@ -11,14 +11,14 @@ export function useCustomBricks(login: string) {
     setCustomBricks(loadCustomBricks(login));
   }, [login]);
 
+  // Запись в localStorage — вне setState-updater'а: updater обязан быть чистым
+  // (в StrictMode он выполняется дважды).
   const addCustomBrick = useCallback(
     (spec: CustomBrickSpec) => {
       const item: StoredCustomBrick = { id: uniqueId("cb"), spec };
-      setCustomBricks((current) => {
-        const next = [...current, item];
-        saveCustomBricks(login, next);
-        return next;
-      });
+      const next = [...loadCustomBricks(login), item];
+      saveCustomBricks(login, next);
+      setCustomBricks(next);
       return item;
     },
     [login]
@@ -26,11 +26,9 @@ export function useCustomBricks(login: string) {
 
   const removeCustomBrick = useCallback(
     (id: string) => {
-      setCustomBricks((current) => {
-        const next = current.filter((item) => item.id !== id);
-        saveCustomBricks(login, next);
-        return next;
-      });
+      const next = loadCustomBricks(login).filter((item) => item.id !== id);
+      saveCustomBricks(login, next);
+      setCustomBricks(next);
     },
     [login]
   );

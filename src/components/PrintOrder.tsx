@@ -1,8 +1,8 @@
 import { createPortal } from "react-dom";
 import type { Translate } from "../i18n";
 import type { GridSpec, MaterialsEstimate, Parameters, PlacedBrick } from "../domain/types";
-import { brickBoxes, isOverlayKind } from "../domain/geometry";
-import { getToolColor } from "../domain/tools";
+import { RowMap } from "./RowMap";
+import { formatM3 } from "./format";
 
 /**
  * Print-only sheet with the full stove order: one plan per row plus the
@@ -53,7 +53,7 @@ export function PrintOrder({
                 {t("currentRow")} {row}
                 {lockedRows.includes(row) ? " ✓" : ""} · {bricks.length}
               </div>
-              <PrintRowMap grid={grid} bricks={bricks} />
+              <RowMap grid={grid} bricks={bricks} variant="print" />
             </div>
           );
         })}
@@ -70,8 +70,9 @@ export function PrintOrder({
             [t("grates"), materials.grates],
             [t("plates"), materials.plates],
             [t("doors"), materials.doors],
-            [t("mortarEstimate"), `${materials.mortarM3} м³`],
-            [t("foundationConcrete"), `${materials.concreteVolumeM3} м³`]
+            [t("vents"), materials.vents],
+            [t("mortarEstimate"), formatM3(materials.mortarM3)],
+            [t("foundationConcrete"), formatM3(materials.concreteVolumeM3)]
           ].map(([label, value]) => (
             <tr key={String(label)}>
               <td style={{ border: "1px solid #bbb", padding: "3px 10px" }}>{label}</td>
@@ -82,37 +83,5 @@ export function PrintOrder({
       </table>
     </div>,
     document.body
-  );
-}
-
-function PrintRowMap({ grid, bricks }: { grid: GridSpec; bricks: PlacedBrick[] }) {
-  const cell = Math.min(18, 220 / Math.max(grid.cols, grid.rows));
-  const width = grid.cols * cell + 2;
-  const height = grid.rows * cell + 2;
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-      <rect x="0.5" y="0.5" width={width - 1} height={height - 1} fill="#fff" stroke="#888" strokeWidth="1" />
-      {Array.from({ length: grid.cols + 1 }).map((_, x) => (
-        <line key={`x${x}`} x1={1 + x * cell} y1={1} x2={1 + x * cell} y2={1 + grid.rows * cell} stroke="#ddd" strokeWidth="0.6" />
-      ))}
-      {Array.from({ length: grid.rows + 1 }).map((_, y) => (
-        <line key={`y${y}`} x1={1} y1={1 + y * cell} x2={1 + grid.cols * cell} y2={1 + y * cell} stroke="#ddd" strokeWidth="0.6" />
-      ))}
-      {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).flatMap((brick) =>
-        brickBoxes(brick).map((box, index) => (
-          <rect
-            key={`${brick.id}-${index}`}
-            x={1 + box.x1 * cell + 0.8}
-            y={1 + box.y1 * cell + 0.8}
-            width={(box.x2 - box.x1) * cell - 1.6}
-            height={(box.y2 - box.y1) * cell - 1.6}
-            rx="2"
-            fill={getToolColor(brick.kind)}
-            stroke="#333"
-            strokeWidth="0.8"
-          />
-        ))
-      )}
-    </svg>
   );
 }

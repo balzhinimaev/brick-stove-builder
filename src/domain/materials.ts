@@ -17,6 +17,7 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
   let grates = 0;
   let plates = 0;
   let doors = 0;
+  let vents = 0;
 
   for (const brick of allBricks) {
     switch (brick.kind) {
@@ -45,6 +46,11 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
       case "plate":
         plates++;
         break;
+      case "vent":
+        // Вентканал — размеченная пустота: кирпича и раствора не расходует,
+        // но в смете виден отдельной строкой, чтобы сходился общий счёт.
+        vents++;
+        break;
     }
   }
 
@@ -56,5 +62,5 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
     (parameters.foundationLength / CM_PER_M) *
     (parameters.foundationThickness / CM_PER_M);
 
-  return { regularBricks, cutBricks, rebatedBricks, firebricks, grates, plates, doors, mortarM3, concreteVolumeM3, total: allBricks.length };
+  return { regularBricks, cutBricks, rebatedBricks, firebricks, grates, plates, doors, vents, mortarM3, concreteVolumeM3, total: allBricks.length };
 }

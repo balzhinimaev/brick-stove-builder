@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera, Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
@@ -69,9 +69,16 @@ export function ThreeStack({
           shadow-mapSize-height={2048}
         />
         <directionalLight position={[-6, 4.5, -4]} intensity={LIGHTING.rimLight} />
-        <OrthographicCamera makeDefault position={[Math.max(grid.cols, 6.8), 6.2, Math.max(grid.rows, 7.2)]} zoom={(520 / Math.max(grid.cols, grid.rows, 10)) * camera.zoom} />
-        <OrbitControls enableDamping dampingFactor={0.12} enableRotate enableZoom enablePan minZoom={25} maxZoom={120} target={[camera.offsetX, BRICK_LAYER_HEIGHT * currentRow * 0.45, camera.offsetY]} />
-        <group rotation={[0, (camera.angle * Math.PI) / 180, 0]} position={[camera.offsetX, 0, camera.offsetY]}>
+        {/* Оффсет панорамирования задаётся ТОЛЬКО камере и её цели (не группе сцены),
+            иначе сдвиг group гасится сдвигом target и кнопки-стрелки ничего не двигают.
+            Смещаем и позицию камеры, и target на один вектор — направление взгляда
+            сохраняется, получается честный параллельный сдвиг. */}
+        <OrthographicCamera makeDefault position={[Math.max(grid.cols, 6.8) + camera.offsetX, 6.2, Math.max(grid.rows, 7.2) + camera.offsetY]} zoom={(520 / Math.max(grid.cols, grid.rows, 10)) * camera.zoom} />
+        {/* Zoom: единственный источник — React-стейт (кнопки/пинч UI) через zoom-проп
+            камеры; enableZoom у OrbitControls выключен, чтобы контролы не мутировали
+            camera.zoom в обход стейта (иначе любой ре-рендер сбрасывал их зум). */}
+        <OrbitControls enableDamping dampingFactor={0.12} enableRotate enableZoom={false} enablePan target={[camera.offsetX, BRICK_LAYER_HEIGHT * currentRow * 0.45, camera.offsetY]} />
+        <group rotation={[0, (camera.angle * Math.PI) / 180, 0]}>
           <FoundationSlab grid={grid} />
           <ThreeGrid grid={grid} gridY={gridY} />
           <DimensionLabels grid={grid} gridY={gridY} unit={unit} />
@@ -83,20 +90,22 @@ export function ThreeStack({
   );
 }
 
-function FoundationSlab({ grid }: { grid: GridSpec }) {
+// memo: hoverCell3d в ThreeStack меняется на каждое движение указателя и
+// перерисовывает весь Canvas — статичные подложка/сетка/подписи не пересобираем.
+const FoundationSlab = memo(function FoundationSlab({ grid }: { grid: GridSpec }) {
   return <mesh position={[0, -0.08, 0]} receiveShadow><boxGeometry args={[grid.cols + 0.4, 0.12, grid.rows + 0.4]} /><meshStandardMaterial color={COLORS.foundation} roughness={0.88} /></mesh>;
-}
+});
 
-function ThreeGrid({ grid, gridY }: { grid: GridSpec; gridY: number }) {
+const ThreeGrid = memo(function ThreeGrid({ grid, gridY }: { grid: GridSpec; gridY: number }) {
   return (
     <group>
       {Array.from({ length: grid.cols + 1 }).map((_, x) => { const world = cellToWorld(x, 0, grid); return <mesh key={`grid-x-${x}`} position={[world.x, gridY, 0]}><boxGeometry args={[0.012, 0.012, grid.rows]} /><meshBasicMaterial color={COLORS.sageDark} transparent opacity={0.45} /></mesh>; })}
       {Array.from({ length: grid.rows + 1 }).map((_, z) => { const world = cellToWorld(0, z, grid); return <mesh key={`grid-z-${z}`} position={[0, gridY, world.z]}><boxGeometry args={[grid.cols, 0.012, 0.012]} /><meshBasicMaterial color={COLORS.sageDark} transparent opacity={0.45} /></mesh>; })}
     </group>
   );
-}
+});
 
-function DimensionLabels({ grid, gridY, unit }: { grid: GridSpec; gridY: number; unit: string }) {
+const DimensionLabels = memo(function DimensionLabels({ grid, gridY, unit }: { grid: GridSpec; gridY: number; unit: string }) {
   return (
     <group>
       <Text position={[0, gridY + 0.04, grid.rows / 2 + 0.48]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.22} color={COLORS.charcoal} anchorX="center" anchorY="middle">{grid.widthCm} {unit}</Text>
@@ -105,7 +114,7 @@ function DimensionLabels({ grid, gridY, unit }: { grid: GridSpec; gridY: number;
       {Array.from({ length: grid.rows + 1 }).map((_, z) => { const world = cellToWorld(0, z, grid); return <Text key={`z-label-${z}`} position={[-grid.cols / 2 - 0.22, gridY + 0.04, world.z]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.14} color={COLORS.sageDark}>{Math.round((z * grid.lengthCm) / grid.rows)}</Text>; })}
     </group>
   );
-}
+});
 
 function PlacementCells({
   grid,
@@ -139,6 +148,10 @@ function PlacementCells({
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
   const previewKind: BrickKind = activeTool === "eraser" ? "cut" : activeTool;
   const previewOrientation: Orientation = activeTool === "eraser" ? "h" : orientation;
+
+  // Курсор ставим на body — обязателен сброс при размонтировании (уход в 2D/другой экран),
+  // иначе «pointer» залипает на всём приложении.
+  useEffect(() => () => { document.body.style.cursor = "auto"; }, []);
 
   // Точка пересечения луча с плоскостью → локальные координаты → узел сетки по шагу.
   const cellFromEvent = (event: ThreeEvent<MouseEvent>) => {
@@ -193,8 +206,11 @@ function PlacementCells({
           setHoverCell((prev) => (prev && prev.x === cell.x && prev.y === cell.y ? prev : cell));
           document.body.style.cursor = "pointer";
         }}
-        onPointerOut={() => { setHoverCell(null); document.body.style.cursor = "default"; }}
+        onPointerOut={() => { setHoverCell(null); document.body.style.cursor = "auto"; }}
         onClick={(event) => {
+          // Отпускание после drag-вращения OrbitControls тоже приходит как click:
+          // накопленное смещение указателя > 2px — это было вращение, не установка.
+          if (event.delta > 2) return;
           event.stopPropagation();
           const cell = cellFromEvent(event);
           placeAt(cell.x, cell.y, cell.rawX, cell.rawY);

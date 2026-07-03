@@ -15,7 +15,10 @@ export function snapToStep(value: number, step: number, max: number): number {
 export function gridFromParameters(parameters: Parameters): GridSpec {
   const cols = Math.max(MIN_GRID_COLS, Math.round(parameters.foundationWidth / CELL_CM));
   const rows = Math.max(MIN_GRID_ROWS, Math.round(parameters.foundationLength / CELL_CM));
-  return { cols, rows, widthCm: parameters.foundationWidth, lengthCm: parameters.foundationLength };
+  // Габариты — от фактической сетки, а не от введённого параметра: вся
+  // кирпичная математика считает ячейку 12.5 см, и подписи осей обязаны
+  // совпадать с ней (120 см округляется до 10 ячеек = 125 см).
+  return { cols, rows, widthCm: cols * CELL_CM, lengthCm: rows * CELL_CM };
 }
 
 export type BrickSize = { w: number; h: number };
@@ -116,8 +119,14 @@ export function brickBoxes(brick: BrickFootprint): BrickBox[] {
 
   const west = notch.x1 <= b.x1 + EPS;
   const north = notch.y1 <= b.y1 + EPS;
-  const fullX = west && notch.x2 >= b.x2 - EPS;
-  const fullY = north && notch.y2 >= b.y2 - EPS;
+  const east = notch.x2 >= b.x2 - EPS;
+  const south = notch.y2 >= b.y2 - EPS;
+  // Контракт резака: вырез заякорен в угол или грань. «Плавающий» вырез в
+  // середине тела разложению на 2 бокса не поддаётся — считаем кирпич целым,
+  // а не молча превращаем часть тела в свободную зону.
+  if (!(west || east) || !(north || south)) return [b];
+  const fullX = west && east;
+  const fullY = north && south;
 
   // паз во всю грань — остаётся один бокс
   if (fullY) return [west ? { x1: notch.x2, y1: b.y1, x2: b.x2, y2: b.y2 } : { x1: b.x1, y1: b.y1, x2: notch.x1, y2: b.y2 }];

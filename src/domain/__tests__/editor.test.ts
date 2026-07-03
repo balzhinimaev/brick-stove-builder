@@ -79,6 +79,62 @@ describe("rows", () => {
   });
 });
 
+describe("copyRow gates", () => {
+  const door = (x: number, y: number, row: number): PlacedBrick => ({
+    id: `door-${row}`,
+    row,
+    x,
+    y,
+    kind: "cleanout",
+    orientation: "h",
+    custom: { name: "ДТ-3", w: 2, h: 1, notch: null, heightMm: 210 }
+  });
+
+  it("copies a plain row through the placement gates", () => {
+    const state: EditorState = { ...freshOnRow(3), rows: { 2: [{ ...standard(1, 1), row: 2 }] } };
+    const next = editorReducer(state, { type: "copyRow", bricks: [{ ...standard(1, 1), id: "copy", row: 3 }] });
+    expect(next.rows[3]).toHaveLength(1);
+  });
+
+  it("rejects a copy colliding with a door reaching up from the source row", () => {
+    // дверца 210 мм из ряда 2 занимает объём рядов 2–4: её копия в ряд 3
+    // въезжает в оригинал — раньше это молча ломало 3D-инвариант
+    const state: EditorState = { ...freshOnRow(3), rows: { 2: [door(1, 1, 2)] } };
+    const next = editorReducer(state, { type: "copyRow", bricks: [door(1, 1, 3)] });
+    expect(next).toBe(state);
+  });
+
+  it("does not silently wipe a plate in the target row", () => {
+    const plate: PlacedBrick = { id: "pl", row: 3, x: 0, y: 0, kind: "plate", orientation: "h" };
+    const state: EditorState = { ...freshOnRow(3), rows: { 2: [{ ...standard(1, 1), row: 2 }], 3: [plate] } };
+    const next = editorReducer(state, { type: "copyRow", bricks: [{ ...standard(1, 1), id: "copy", row: 3 }] });
+    expect(next).toBe(state);
+  });
+
+  it("copying an empty row clears the target", () => {
+    const state: EditorState = { ...freshOnRow(3), rows: { 3: [{ ...standard(1, 1), row: 3 }] } };
+    const next = editorReducer(state, { type: "copyRow", bricks: [] });
+    expect(next.rows[3]).toHaveLength(0);
+  });
+});
+
+describe("no-op guards return the same state", () => {
+  it("eraser miss", () => {
+    const state: EditorState = { ...freshOnRow(2), rows: { 2: [{ ...standard(1, 1), row: 2 }] } };
+    expect(editorReducer(state, { type: "erase", x: 10, y: 7 })).toBe(state);
+  });
+
+  it("clearRow on an empty row", () => {
+    const state = freshOnRow(2);
+    expect(editorReducer(state, { type: "clearRow" })).toBe(state);
+  });
+
+  it("unlockRow on an unlocked row", () => {
+    const state = freshOnRow(2);
+    expect(editorReducer(state, { type: "unlockRow" })).toBe(state);
+  });
+});
+
 describe("updateParameter", () => {
   it("clamps to bounds and recomputes the grid", () => {
     const next = editorReducer(initialEditorState(), { type: "updateParameter", key: "foundationWidth", value: 9999 });
@@ -141,5 +197,29 @@ describe("deleteRow", () => {
     expect(editorReducer(locked, { type: "deleteRow" })).toBe(locked);
     const single: EditorState = { ...freshOnRow(1), rowCount: 1 };
     expect(editorReducer(single, { type: "deleteRow" })).toBe(single);
+  });
+
+  it("refuses when compaction would drop masonry into a door volume below", () => {
+    // дверца 210 мм в ряду 2 (объём до ряда 4); кирпич в ряду 5 стоит свободно,
+    // но после удаления пустого ряда 4 опустился бы прямо в проём
+    const door: PlacedBrick = {
+      id: "door",
+      row: 2,
+      x: 1,
+      y: 1,
+      kind: "cleanout",
+      orientation: "h",
+      custom: { name: "ДТ-3", w: 2, h: 1, notch: null, heightMm: 210 }
+    };
+    const state: EditorState = {
+      ...freshOnRow(4),
+      rowCount: 6,
+      rows: { 2: [door], 5: [{ ...standard(1, 1), row: 5 }] }
+    };
+    expect(editorReducer(state, { type: "deleteRow" })).toBe(state);
+    // а удаление ряда НАД кирпичом (ряд 6 пуст, currentRow 6 → нет) — ок:
+    // контрольный случай, когда сдвига в проём нет
+    const safe: EditorState = { ...state, currentRow: 5, rows: { 2: [door] } };
+    expect(editorReducer(safe, { type: "deleteRow" }).rowCount).toBe(5);
   });
 });

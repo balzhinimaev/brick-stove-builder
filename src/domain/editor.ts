@@ -1,5 +1,5 @@
-import { DEFAULT_CAMERA, DEFAULT_PARAMETERS, INITIAL_ROWS } from "./constants";
-import { cloneRows, gridFromParameters, placeBricksInRows, pruneRowsToGrid, removeBrickAt } from "./geometry";
+import { DEFAULT_CAMERA, DEFAULT_PARAMETERS, INITIAL_ROWS, MM_PER_CELL } from "./constants";
+import { cloneRows, gridFromParameters, overlaps3D, placeBricksInRows, pruneRowsToGrid, removeBrickAt } from "./geometry";
 import { PARAM_BOUNDS, clamp } from "./parameters";
 import { makeDemoRows } from "./projects";
 import type {
@@ -79,9 +79,6 @@ export type EditorAction =
 
 const CAMERA_ZOOM_MIN = 0.65;
 const CAMERA_ZOOM_MAX = 1.55;
-
-/** 1 ячейка сетки = 125 мм. */
-const MM_PER_CELL = 125;
 
 export function plateSpecFromMm(lengthMm: number, widthMm: number, thicknessMm = 14, flush = false): CustomBrickSpec {
   return {
@@ -193,7 +190,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         grid: gridFromParameters(action.draft.parameters),
         rowCount: action.draft.rowCount,
         currentRow: action.draft.currentRow,
-        lockedRows: action.draft.lockedRows,
+        lockedRows: [...action.draft.lockedRows],
         rows: cloneRows(action.draft.rows)
       };
 
@@ -204,9 +201,13 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return rows ? { ...state, rows } : state;
     }
 
-    case "erase":
+    case "erase": {
       if (isLocked(state)) return state;
-      return withRow(state, removeBrickAt(state.rows[state.currentRow] ?? [], action.x, action.y));
+      const current = state.rows[state.currentRow] ?? [];
+      const next = removeBrickAt(current, action.x, action.y);
+      // Промах ластика — не событие: иначе он засоряет undo и стирает redo.
+      return next.length === current.length ? state : withRow(state, next);
+    }
 
     case "addRow": {
       const next = state.rowCount + 1;
@@ -223,6 +224,11 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         const target = row > deleted ? row - 1 : row;
         rows[target] = row > deleted ? bricks.map((brick) => ({ ...brick, row: target })) : bricks;
       }
+      // Компактация опускает верхнюю кладку на ряд: если она въезжает в объём
+      // элемента снизу (дверца, тянущаяся через ряды), удаление отклоняется.
+      const shifted = Object.values(rows).flat().filter((brick) => brick.row >= deleted);
+      const below = Object.values(rows).flat().filter((brick) => brick.row < deleted);
+      if (shifted.some((a) => below.some((b) => overlaps3D(a, b)))) return state;
       const rowCount = state.rowCount - 1;
       return {
         ...state,
@@ -235,12 +241,21 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       };
     }
 
-    case "copyRow":
+    case "copyRow": {
       if (state.currentRow <= 1 || isLocked(state)) return state;
-      return withRow(state, action.bricks);
+      const target = state.rows[state.currentRow] ?? [];
+      // Плиту, как и везде, молча не стираем — сначала ластик.
+      if (target.some((brick) => brick.kind === "plate")) return state;
+      if (!action.bricks.length) return target.length ? withRow(state, []) : state;
+      // Копия проходит те же ворота, что и ручное размещение: дверца из
+      // нижнего ряда, тянущаяся в текущий, делает копирование невозможным.
+      const base = { ...state.rows, [state.currentRow]: [] };
+      const rows = placeBricksInRows(base, state.currentRow, action.bricks, state.grid);
+      return rows ? { ...state, rows } : state;
+    }
 
     case "clearRow":
-      if (isLocked(state)) return state;
+      if (isLocked(state) || !(state.rows[state.currentRow] ?? []).length) return state;
       return withRow(state, []);
 
     case "lockRow":
@@ -251,6 +266,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       };
 
     case "unlockRow":
+      if (!isLocked(state)) return state;
       return { ...state, lockedRows: state.lockedRows.filter((row) => row !== state.currentRow) };
 
     case "cameraZoom":
@@ -276,6 +292,12 @@ export type HistoryState = {
   past: EditorState[];
   present: EditorState;
   future: EditorState[];
+  /**
+   * Ключ последнего записанного действия — для коалесинга: перетаскивание
+   * слайдера параметра даёт десятки тиков, в истории они должны быть одним
+   * шагом, иначе пара движений вымывает реальную кладку из undo.
+   */
+  lastTracked?: string;
 };
 
 export type HistoryAction = EditorAction | { type: "undo" } | { type: "redo" };
@@ -342,9 +364,14 @@ export function historyReducer(state: HistoryState, action: HistoryAction): Hist
   if (present === state.present) return state;
   if (HISTORY_RESET_ACTIONS.has(action.type)) return { past: [], present, future: [] };
   if (!TRACKED_ACTIONS.has(action.type)) return { ...state, present };
+  const trackedKey = action.type === "updateParameter" ? `updateParameter:${action.key}` : action.type;
+  if (action.type === "updateParameter" && state.lastTracked === trackedKey) {
+    return { ...state, present, future: [] };
+  }
   return {
     past: [...state.past, state.present].slice(-HISTORY_LIMIT),
     present,
-    future: []
+    future: [],
+    lastTracked: trackedKey
   };
 }

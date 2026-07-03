@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
 import type { CustomBrickSpec } from "../domain/types";
+import { notchedShape } from "../domain/outline";
 
 // Three.js тяжёлый — 3D-превью резака грузим лениво, как и основную сцену.
 const CutterPreview3D = lazy(() => import("./three/CutterPreview3D"));
@@ -63,20 +64,25 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
   const mx = (mm: number) => RULER + mm * SCALE;
   const my = (mm: number) => RULER + mm * SCALE;
 
-  // контур результата в мм (для L-формы)
+  // контур результата в мм (для L-формы) — общий polygon-builder (domain/outline)
   const bodyPath = useMemo(() => {
     const L = lengthMm;
     const W = widthMm;
-    if (corner === "none") return `M${mx(0)} ${my(0)} L${mx(L)} ${my(0)} L${mx(L)} ${my(W)} L${mx(0)} ${my(W)} Z`;
-    const nl = clampedNotchLen;
-    const nw = clampedNotchWid;
-    const points: Record<Exclude<Corner, "none">, Array<[number, number]>> = {
-      nw: [[nl, 0], [L, 0], [L, W], [0, W], [0, nw], [nl, nw]],
-      ne: [[0, 0], [L - nl, 0], [L - nl, nw], [L, nw], [L, W], [0, W]],
-      sw: [[0, 0], [L, 0], [L, W], [nl, W], [nl, W - nw], [0, W - nw]],
-      se: [[0, 0], [L, 0], [L, W - nw], [L - nl, W - nw], [L - nl, W], [0, W]]
-    };
-    return `M${points[corner].map(([x, y]) => `${mx(x)} ${my(y)}`).join(" L")} Z`;
+    const west = corner === "nw" || corner === "sw";
+    const north = corner === "nw" || corner === "ne";
+    const notchMm = corner === "none"
+      ? null
+      : {
+          x1: west ? 0 : L - clampedNotchLen,
+          x2: west ? clampedNotchLen : L,
+          y1: north ? 0 : W - clampedNotchWid,
+          y2: north ? clampedNotchWid : W
+        };
+    const shape = notchedShape({ x1: 0, y1: 0, x2: L, y2: W }, notchMm);
+    const points: Array<[number, number]> = shape.kind === "polygon"
+      ? shape.points
+      : [[shape.rect.x1, shape.rect.y1], [shape.rect.x2, shape.rect.y1], [shape.rect.x2, shape.rect.y2], [shape.rect.x1, shape.rect.y2]];
+    return `M${points.map(([x, y]) => `${mx(x)} ${my(y)}`).join(" L")} Z`;
   }, [lengthMm, widthMm, corner, clampedNotchLen, clampedNotchWid]);
 
   const numberInput = (value: number, set: (v: number) => void, min: number, max: number) => (

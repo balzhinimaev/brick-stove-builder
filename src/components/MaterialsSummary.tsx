@@ -1,6 +1,7 @@
 import React from "react";
 import type { Translate } from "../i18n";
 import type { MaterialsEstimate } from "../domain/types";
+import { formatM3 } from "./format";
 
 export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimate; t: Translate }) {
   return (
@@ -13,8 +14,9 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
       <MaterialRow label={t("grates")} value={materials.grates} />
       <MaterialRow label={t("plates")} value={materials.plates} />
       <MaterialRow label={t("doors")} value={materials.doors} />
-      <MaterialRow label={t("mortarEstimate")} value={`${materials.mortarM3.toFixed(2)} m³`} />
-      <MaterialRow label={t("foundationConcrete")} value={`${materials.concreteVolumeM3.toFixed(2)} m³`} />
+      <MaterialRow label={t("vents")} value={materials.vents} />
+      <MaterialRow label={t("mortarEstimate")} value={formatM3(materials.mortarM3)} />
+      <MaterialRow label={t("foundationConcrete")} value={formatM3(materials.concreteVolumeM3)} />
     </div>
   );
 }

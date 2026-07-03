@@ -18,5 +18,9 @@ export function loadCustomBricks(login: string): StoredCustomBrick[] {
 }
 
 export function saveCustomBricks(login: string, bricks: StoredCustomBrick[]): void {
-  localStorage.setItem(storageKey(login), JSON.stringify(bricks));
+  try {
+    localStorage.setItem(storageKey(login), JSON.stringify(bricks));
+  } catch {
+    /* переполнение хранилища: палитра доживёт до перезагрузки в памяти */
+  }
 }

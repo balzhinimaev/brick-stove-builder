@@ -64,6 +64,33 @@ describe("historyReducer", () => {
     expect(state.future).toHaveLength(0);
   });
 
+  it("eraser miss neither pollutes undo nor destroys redo", () => {
+    let state = fresh();
+    state = historyReducer(state, { type: "place", bricks: [brick(0, 2)] });
+    state = historyReducer(state, { type: "undo" });
+    expect(state.future).toHaveLength(1);
+    const next = historyReducer(state, { type: "erase", x: 10, y: 5 });
+    expect(next).toBe(state); // промах — не событие: redo жив
+  });
+
+  it("consecutive ticks of one parameter slider coalesce into a single undo step", () => {
+    let state = fresh();
+    state = historyReducer(state, { type: "updateParameter", key: "foundationWidth", value: 130 });
+    state = historyReducer(state, { type: "updateParameter", key: "foundationWidth", value: 135 });
+    state = historyReducer(state, { type: "updateParameter", key: "foundationWidth", value: 140 });
+    expect(state.past).toHaveLength(1);
+    expect(state.present.parameters.foundationWidth).toBe(140);
+    state = historyReducer(state, { type: "undo" });
+    expect(state.present.parameters.foundationWidth).toBe(120); // одним шагом к исходному
+
+    // кладка между тиками разрывает цепочку коалесинга
+    let mixed = fresh();
+    mixed = historyReducer(mixed, { type: "updateParameter", key: "foundationWidth", value: 130 });
+    mixed = historyReducer(mixed, { type: "place", bricks: [brick(0, 2)] });
+    mixed = historyReducer(mixed, { type: "updateParameter", key: "foundationWidth", value: 140 });
+    expect(mixed.past).toHaveLength(3);
+  });
+
   it("undo keeps snap step, notch corner and picked custom brick", () => {
     let state = fresh();
     state = historyReducer(state, { type: "place", bricks: [brick(0, 2)] });

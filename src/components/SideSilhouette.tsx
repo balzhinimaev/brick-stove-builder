@@ -15,7 +15,8 @@ export function SideSilhouette({ parameters, lockedRows, t }: { parameters: Para
         <line x1="18" y1={ceilingY} x2="174" y2={ceilingY} stroke={COLORS.sageDark} strokeWidth="2" strokeDasharray="6 5" />
         <text x="22" y={ceilingY - 6} fill={COLORS.sageDark} fontSize="10" fontWeight="800">{t("ceilingLimit")}</text>
         <rect x={x - 12} y={baseY} width={stoveWidth + 24} height={foundationHeight} rx="8" fill={COLORS.foundation} stroke={COLORS.charcoal} strokeWidth="2" />
-        {Array.from({ length: Math.max(8, lockedRows.length + 2) }).map((_, index) => {
+        {/* рисуем до самого верхнего залоченного ряда (+2 «пустых» сверху), а не по их количеству */}
+        {Array.from({ length: Math.max(8, (lockedRows.length ? Math.max(...lockedRows) : 0) + 2) }).map((_, index) => {
           const row = index + 1;
           const locked = lockedRows.includes(row);
           const y = baseY - row * 11;

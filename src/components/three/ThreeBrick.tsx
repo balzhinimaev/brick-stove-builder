@@ -3,6 +3,7 @@ import { Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT, BRICK_GAP } from "../../domain/constants";
 import { brickBounds, brickBoxes, brickSizeFor, brickWorldGeometry, cellToWorld, footprintSizeOf, notchBox, type BrickBox } from "../../domain/geometry";
+import { plateBurnerCenters } from "../../domain/plate";
 import { getToolColor } from "../../domain/tools";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 
@@ -118,10 +119,11 @@ export function ThreeDoor({ grid, brick, currentRow, opacity = 1 }: { grid: Grid
   const centerY = bottom + height / 2;
   const isCurrent = brick.row === currentRow;
   const transparent = opacity < 1;
-  // полотно смотрит вдоль короткой стороны следа
+  // полотно смотрит вдоль короткой стороны следа: рамка растянута по длинной
+  // оси следа (X при alongX, Z при вертикальной ориентации 1×2)
   const alongX = size.w >= size.h;
-  const frameW = alongX ? size.w - 0.08 : size.h * 0.42;
-  const frameD = alongX ? size.h * 0.42 : size.w - 0.08;
+  const frameW = alongX ? size.w - 0.08 : size.w * 0.42;
+  const frameD = alongX ? size.h * 0.42 : size.h - 0.08;
   const mat = (color: string, metal = 0.5) => <meshStandardMaterial color={color} roughness={0.5} metalness={metal} transparent={transparent} opacity={opacity} />;
 
   return (
@@ -136,9 +138,9 @@ export function ThreeDoor({ grid, brick, currentRow, opacity = 1 }: { grid: Grid
         <boxGeometry args={[frameW * 0.78, height * 0.78, frameD + 0.05]} />
         {mat("#3a4046", 0.6)}
       </mesh>
-      {/* ручка */}
-      <mesh position={[geometry.position[0] + (alongX ? frameW * 0.26 : 0), centerY - height * 0.05, geometry.position[2] + (alongX ? 0 : frameW * 0.26)]}>
-        <boxGeometry args={alongX ? [0.1, 0.1, frameD + 0.14] : [frameD + 0.14, 0.1, 0.1]} />
+      {/* ручка: смещена вдоль длинной оси рамки, сама перекладина — поперёк узкой */}
+      <mesh position={[geometry.position[0] + (alongX ? frameW * 0.26 : 0), centerY - height * 0.05, geometry.position[2] + (alongX ? 0 : frameD * 0.26)]}>
+        <boxGeometry args={alongX ? [0.1, 0.1, frameD + 0.14] : [frameW + 0.14, 0.1, 0.1]} />
         {mat("#15181a", 0.7)}
       </mesh>
       {isCurrent && !transparent && (
@@ -171,16 +173,9 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
   const topY = plateY + plateHeight / 2;
   const isCurrent = brick.row === currentRow;
   const transparent = opacity < 1;
-  const longX = size.w >= size.h;
-  const longSide = Math.max(size.w, size.h);
-  // короткие плиты — одноконфорочные; конфорки вдоль длинной оси
-  const twoBurners = longSide * 125 >= 550;
-  const burnerOffset = longSide / 4;
-  const burners: Array<[number, number]> = twoBurners
-    ? longX
-      ? [[-burnerOffset, 0], [burnerOffset, 0]]
-      : [[0, -burnerOffset], [0, burnerOffset]]
-    : [[0, 0]];
+  // короткие плиты — одноконфорочные; конфорки вдоль длинной оси (domain/plate)
+  const burners: Array<[number, number]> = plateBurnerCenters(size.w, size.h)
+    .map(([fx, fy]) => [(fx - 0.5) * size.w, (fy - 0.5) * size.h]);
   const burnerR = Math.min(0.72, Math.min(size.w, size.h) * 0.27);
 
   return (

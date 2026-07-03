@@ -3,6 +3,8 @@ import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
 import type { BrickKind, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../domain/types";
 import { brickBounds, footprintSizeOf, isInsideGrid, isOverlayKind, notchBox, snapToStep } from "../domain/geometry";
+import { notchedShape } from "../domain/outline";
+import { plateBurnerCenters } from "../domain/plate";
 import { getToolColor } from "../domain/tools";
 
 const CELL = 34;
@@ -116,7 +118,7 @@ export function PlanGrid({
             {activeTool === "grate"
               ? <Grate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} orientation={orientation} opacity={0.72} />
               : activeTool === "plate"
-              ? <Plate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} burners={plateBurners(ghost.w, ghost.h)} opacity={0.72} />
+              ? <Plate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} burners={plateBurnerCenters(ghost.w, ghost.h)} opacity={0.72} />
               : activeTool === "rebate"
               ? <Rebate2D brick={{ id: "ghost", row: 0, x: hoverCell.x, y: hoverCell.y, kind: "rebate", orientation, notchCorner }} cell={CELL} pad={PAD} opacity={0.5} />
               : activeTool === "custom" && customBrick?.notch
@@ -148,7 +150,7 @@ const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick
 
   if (brick.kind === "grate") return <Grate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
   if (brick.kind === "rebate" || (brick.kind === "custom" && brick.custom?.notch)) return <Rebate2D brick={brick} cell={cell} pad={pad} />;
-  if (brick.kind === "plate") return <Plate2D x={x} y={y} w={w} h={h} burners={plateBurners(size.w, size.h)} />;
+  if (brick.kind === "plate") return <Plate2D x={x} y={y} w={w} h={h} burners={plateBurnerCenters(size.w, size.h)} />;
 
   return (
     <g>
@@ -171,48 +173,28 @@ function Rebate2D({ brick, cell, pad, opacity = 1 }: { brick: PlacedBrick; cell:
   const inset = 3;
   const px = (v: number) => pad + v * cell;
   const py = (v: number) => pad + HEADER + v * cell;
-  // внешние грани ужимаем как у обычных кирпичей; линии среза оставляем точными
-  const X1 = px(b.x1) + inset;
-  const X2 = px(b.x2) - inset;
-  const Y1 = py(b.y1) + inset;
-  const Y2 = py(b.y2) - inset;
   const EPS = 1e-6;
-  const nx1 = Math.abs(notch.x1 - b.x1) < EPS ? X1 : px(notch.x1);
-  const nx2 = Math.abs(notch.x2 - b.x2) < EPS ? X2 : px(notch.x2);
-  const ny1 = Math.abs(notch.y1 - b.y1) < EPS ? Y1 : py(notch.y1);
-  const ny2 = Math.abs(notch.y2 - b.y2) < EPS ? Y2 : py(notch.y2);
+  // внешние грани ужимаем как у обычных кирпичей; линии среза оставляем точными
+  const mapX = (v: number) => (Math.abs(v - b.x1) < EPS ? px(b.x1) + inset : Math.abs(v - b.x2) < EPS ? px(b.x2) - inset : px(v));
+  const mapY = (v: number) => (Math.abs(v - b.y1) < EPS ? py(b.y1) + inset : Math.abs(v - b.y2) < EPS ? py(b.y2) - inset : py(v));
 
-  // положение выреза определяем по самому вырезу — работает и для «четверти»,
-  // и для произвольных форм из резака
-  const west = notch.x1 <= b.x1 + EPS;
-  const north = notch.y1 <= b.y1 + EPS;
-  const fullX = west && notch.x2 >= b.x2 - EPS;
-  const fullY = north && notch.y2 >= b.y2 - EPS;
-
-  const points: Array<[number, number]> | null = fullX || fullY
-    ? null
-    : west
-      ? north
-        ? [[nx2, Y1], [X2, Y1], [X2, Y2], [X1, Y2], [X1, ny2], [nx2, ny2]]
-        : [[X1, Y1], [X2, Y1], [X2, Y2], [nx2, Y2], [nx2, ny1], [X1, ny1]]
-      : north
-        ? [[X1, Y1], [nx1, Y1], [nx1, ny2], [X2, ny2], [X2, Y2], [X1, Y2]]
-        : [[X1, Y1], [X2, Y1], [X2, ny1], [nx1, ny1], [nx1, Y2], [X1, Y2]];
-  // паз вдоль грани: тело — прямоугольник, «отрезанный» по линии паза
-  const bodyRect = points
-    ? null
-    : fullY
-      ? { x: west ? nx2 : X1, y: Y1, x2: west ? X2 : nx1, y2: Y2 }
-      : { x: X1, y: north ? ny2 : Y1, x2: X2, y2: north ? Y2 : ny1 };
+  // контур тела «габарит минус вырез» — общий polygon-builder (domain/outline),
+  // считаем в ячейках сетки и уже потом переводим точки в px с ужимкой граней
+  const shape = notchedShape(b, notch, EPS);
+  const nx1 = mapX(notch.x1);
+  const nx2 = mapX(notch.x2);
+  const ny1 = mapY(notch.y1);
+  const ny2 = mapY(notch.y2);
 
   const fill = getToolColor(brick.kind);
   return (
     <g opacity={opacity}>
-      {points ? (
-        <path d={`M${points.map(([x, y]) => `${x} ${y}`).join(" L")} Z`} fill={fill} stroke={COLORS.charcoal} strokeWidth="2" strokeLinejoin="round" />
-      ) : bodyRect ? (
-        <rect x={bodyRect.x} y={bodyRect.y} width={bodyRect.x2 - bodyRect.x} height={bodyRect.y2 - bodyRect.y} rx="7" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" />
-      ) : null}
+      {shape.kind === "polygon" ? (
+        <path d={`M${shape.points.map(([x, y]) => `${mapX(x)} ${mapY(y)}`).join(" L")} Z`} fill={fill} stroke={COLORS.charcoal} strokeWidth="2" strokeLinejoin="round" />
+      ) : (
+        // паз вдоль грани: тело — прямоугольник, «отрезанный» по линии паза
+        <rect x={mapX(shape.rect.x1)} y={mapY(shape.rect.y1)} width={mapX(shape.rect.x2) - mapX(shape.rect.x1)} height={mapY(shape.rect.y2) - mapY(shape.rect.y1)} rx="7" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" />
+      )}
       {/* ступень-полка внутри выреза: бледная, чтобы вырез читался как вырез */}
       {brick.kind !== "custom" || brick.custom?.ledge !== false ? (
         <rect x={nx1 + 1.5} y={ny1 + 1.5} width={nx2 - nx1 - 3} height={ny2 - ny1 - 3} fill={COLORS.cutBrick} opacity="0.3" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" />
@@ -221,15 +203,9 @@ function Rebate2D({ brick, cell, pad, opacity = 1 }: { brick: PlacedBrick; cell:
   );
 }
 
-/** Варочная плита на плане: тёмная панель, 1 или 2 конфорки по длине. */
-function Plate2D({ x, y, w, h, burners = 2, opacity = 1 }: { x: number; y: number; w: number; h: number; burners?: number; opacity?: number }) {
-  const longX = w >= h;
-  const centers: Array<[number, number]> =
-    burners >= 2
-      ? longX
-        ? [[x + w * 0.28, y + h / 2], [x + w * 0.72, y + h / 2]]
-        : [[x + w / 2, y + h * 0.28], [x + w / 2, y + h * 0.72]]
-      : [[x + w / 2, y + h / 2]];
+/** Варочная плита на плане: тёмная панель; конфорки — доли размера из domain/plate. */
+function Plate2D({ x, y, w, h, burners, opacity = 1 }: { x: number; y: number; w: number; h: number; burners: Array<[number, number]>; opacity?: number }) {
+  const centers: Array<[number, number]> = burners.map(([fx, fy]) => [x + w * fx, y + h * fy]);
   const r = Math.min(w, h) * 0.24;
   return (
     <g opacity={opacity}>
@@ -246,10 +222,6 @@ function Plate2D({ x, y, w, h, burners = 2, opacity = 1 }: { x: number; y: numbe
   );
 }
 
-/** 1 или 2 конфорки в зависимости от длины плиты (порог 550 мм). */
-function plateBurners(wCells: number, hCells: number): number {
-  return Math.max(wCells, hCells) * 125 >= 550 ? 2 : 1;
-}
 
 function Grate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: number; w: number; h: number; orientation: Orientation; opacity?: number }) {
   const barCount = 5;

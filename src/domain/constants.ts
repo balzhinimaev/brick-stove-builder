@@ -7,7 +7,8 @@ export const INITIAL_ROWS = 8;
  * 250×120 mm, and we lay it out on a 12.5 cm square lattice so a horizontal
  * brick spans two cells (≈25 cm) and a vertical one spans two cells the other way.
  */
-export const CELL_CM = 12.5;
+export const MM_PER_CELL = 125;
+export const CELL_CM = MM_PER_CELL / 10;
 export const MIN_GRID_COLS = 4;
 export const MIN_GRID_ROWS = 4;
 

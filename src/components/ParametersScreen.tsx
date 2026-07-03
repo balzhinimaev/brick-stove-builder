@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Translate } from "../i18n";
 import type { Parameters } from "../domain/types";
 import { PARAM_BOUNDS, PARAMETER_FIELDS, validateParameters } from "../domain/parameters";
@@ -56,6 +56,13 @@ function ParameterControl({
   const ratio = (value - bounds.min) / (bounds.max - bounds.min);
   const title = t(bounds.title);
   const unit = t("unitCm");
+  // Черновик на время фокуса: клампить на каждое нажатие нельзя — «85» было бы
+  // не набрать (8 → min). Коммитим на blur/Enter; вне фокуса показываем проп.
+  const [draft, setDraft] = useState<string | null>(null);
+  const commitDraft = () => {
+    if (draft !== null && draft !== "") updateParameter(field, Number(draft));
+    setDraft(null);
+  };
   return (
     <div className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-3 shadow-md shadow-[#3D2B1F]/10">
       <div className="flex gap-3">
@@ -66,8 +73,11 @@ function ParameterControl({
         </div>
         <label className="flex min-w-[86px] items-center rounded-[17px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] px-2 py-1.5">
           <input
-            value={value}
-            onChange={(event) => updateParameter(field, Number(event.target.value.replace(/[^0-9]/g, "")))}
+            value={draft ?? String(value)}
+            onFocus={() => setDraft(String(value))}
+            onChange={(event) => setDraft(event.target.value.replace(/[^0-9]/g, ""))}
+            onBlur={commitDraft}
+            onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
             inputMode="numeric"
             aria-label={`${title}, ${unit}`}
             className="w-10 bg-transparent text-base font-black outline-none"

@@ -67,6 +67,8 @@ export type MaterialsEstimate = {
   grates: number;
   plates: number;
   doors: number;
+  /** Вентканалы — размеченные пустоты, материалов не расходуют. */
+  vents: number;
   mortarM3: number;
   concreteVolumeM3: number;
   total: number;

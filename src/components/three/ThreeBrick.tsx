@@ -6,6 +6,11 @@ import { brickBounds, brickBoxes, brickSizeFor, brickWorldGeometry, cellToWorld,
 import { getToolColor } from "../../domain/tools";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 
+/** Размер в см: сотые показываются, когда они есть («19», «6,25», «8,5»). */
+function fmtCm(cells: number): string {
+  return (cells * 12.5).toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
+}
+
 export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, unit }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; unit: string }) {
   if (brick.kind === "grate") return <ThreeGrate grid={grid} brick={brick} currentRow={currentRow} unit={unit} />;
   if (brick.kind === "rebate" || brick.kind === "custom") return <ThreeRebate grid={grid} brick={brick} currentRow={currentRow} />;
@@ -22,6 +27,12 @@ export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, un
       <mesh position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.006, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] * 0.96, 0.01, geometry.scale[2] * 0.08]} /><meshBasicMaterial color={COLORS.mortar} transparent opacity={0.65} /></mesh>
       {isCurrent && <mesh position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.014, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] + 0.035, 0.018, geometry.scale[2] + 0.035]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.23} /></mesh>}
       {label && <Text position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.025, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.28} color={COLORS.cream} anchorX="center" anchorY="middle">{label}</Text>}
+      {/* измеритель: габарит кирпича текущего ряда в см (сотые после запятой) */}
+      {isCurrent && (
+        <Text position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.03, geometry.position[2] + footprintSizeOf(brick).h / 2 + 0.16]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.19} color={COLORS.sageDark} outlineWidth={0.012} outlineColor="#FFF7E8" anchorX="center" anchorY="middle">
+          {`${fmtCm(footprintSizeOf(brick).w)}×${fmtCm(footprintSizeOf(brick).h)} см`}
+        </Text>
+      )}
     </group>
   );
 });
@@ -33,7 +44,9 @@ export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, un
  */
 export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
   const color = getToolColor(brick.kind);
-  const withLedge = brick.kind !== "custom" || brick.custom?.ledge !== false;
+  // глубина реза по высоте: из резака (notchDepthMm), для «четверти» — полвысоты
+  const depthMm = brick.custom?.notchDepthMm ?? (brick.custom?.ledge === false ? 65 : 32.5);
+  const ledgeFrac = Math.max(0, 1 - depthMm / 65);
   const outer = brickBounds(brick);
   const notch = notchBox(brick);
   const bounds = brickWorldGeometry(brick, grid);
@@ -65,13 +78,24 @@ export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: Gr
   return (
     <group>
       {brickBoxes(brick).map((box, index) => boxMesh(shave(box), fullHeight, rowBottom, color, index))}
-      {/* ступень среза в вырезе: заметно ниже тела, светлый «спил» */}
-      {notch && withLedge ? boxMesh(shave(notch), fullHeight * 0.32, rowBottom, COLORS.cutBrick, "ledge") : null}
+      {/* ступень среза в вырезе: высота = 65 мм минус глубина реза */}
+      {notch && ledgeFrac > 0.03 ? boxMesh(shave(notch), fullHeight * ledgeFrac, rowBottom, COLORS.cutBrick, "ledge") : null}
       {isCurrent && !transparent && (
         <mesh position={[bounds.position[0], bounds.position[1] + bounds.scale[1] / 2 + 0.014, bounds.position[2]]}>
           <boxGeometry args={[bounds.scale[0] + 0.035, 0.018, bounds.scale[2] + 0.035]} />
           <meshBasicMaterial color={COLORS.sage} transparent opacity={0.23} />
         </mesh>
+      )}
+      {/* измерители: габарит в см и размер выреза (красным) */}
+      {isCurrent && (
+        <Text position={[bounds.position[0], rowBottom + fullHeight + 0.03, bounds.position[2] + (outer.y2 - outer.y1) / 2 + 0.16]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.19} color={COLORS.sageDark} outlineWidth={0.012} outlineColor="#FFF7E8" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.6}>
+          {`${fmtCm(outer.x2 - outer.x1)}×${fmtCm(outer.y2 - outer.y1)} см`}
+        </Text>
+      )}
+      {isCurrent && notch && (
+        <Text position={[cellToWorld((notch.x1 + notch.x2) / 2, (notch.y1 + notch.y2) / 2, grid).x, rowBottom + fullHeight + 0.03, cellToWorld((notch.x1 + notch.x2) / 2, (notch.y1 + notch.y2) / 2, grid).z]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#9b2c2c" outlineWidth={0.01} outlineColor="#FFF7E8" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.6}>
+          {`${fmtCm(notch.x2 - notch.x1)}×${fmtCm(notch.y2 - notch.y1)}`}
+        </Text>
       )}
     </group>
   );

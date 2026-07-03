@@ -7,9 +7,10 @@ import type { CustomBrickSpec } from "../domain/types";
 // Three.js тяжёлый — 3D-превью резака грузим лениво, как и основную сцену.
 const CutterPreview3D = lazy(() => import("./three/CutterPreview3D"));
 
-/** Полный кирпич-заготовка: 250×120 мм; 1 ячейка сетки редактора = 125 мм. */
+/** Полный кирпич-заготовка: 250×120×65 мм; 1 ячейка сетки редактора = 125 мм. */
 const BLANK_L = 250;
 const BLANK_W = 120;
+const BLANK_H_MM = 65;
 const MM_PER_CELL = 125;
 const STEP_MM = 5;
 const SCALE = 1.7; // px на мм
@@ -24,9 +25,11 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
   const [corner, setCorner] = useState<Corner>("ne");
   const [notchLenMm, setNotchLenMm] = useState(125);
   const [notchWidMm, setNotchWidMm] = useState(60);
-  const [ledge, setLedge] = useState(true);
+  /** Глубина выреза по высоте кирпича (65 мм = насквозь), полка = остаток. */
+  const [notchDepthMm, setNotchDepthMm] = useState(35);
   const [name, setName] = useState("");
   const [view, setView] = useState<"3d" | "2d">("3d");
+  const ledge = notchDepthMm < BLANK_H_MM;
 
   const clampedNotchLen = Math.min(notchLenMm, lengthMm - STEP_MM);
   const clampedNotchWid = Math.min(notchWidMm, widthMm - STEP_MM);
@@ -46,13 +49,14 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
       };
     }
     return {
-      name: name.trim() || `${lengthMm}×${widthMm}${corner !== "none" ? ` −${clampedNotchLen}×${clampedNotchWid}` : ""}`,
+      name: name.trim() || `${lengthMm}×${widthMm}${corner !== "none" ? ` −${clampedNotchLen}×${clampedNotchWid}×${notchDepthMm}` : ""}`,
       w,
       h,
       notch,
-      ledge
+      ledge,
+      notchDepthMm: corner !== "none" ? notchDepthMm : undefined
     };
-  }, [lengthMm, widthMm, corner, clampedNotchLen, clampedNotchWid, ledge, name]);
+  }, [lengthMm, widthMm, corner, clampedNotchLen, clampedNotchWid, ledge, notchDepthMm, name]);
 
   const svgW = RULER + BLANK_L * SCALE + PAD;
   const svgH = RULER + BLANK_W * SCALE + PAD;
@@ -209,9 +213,12 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
                 <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterNotchWid")}</span>
                 {numberInput(clampedNotchWid, setNotchWidMm, STEP_MM * 2, widthMm - STEP_MM)}
               </label>
-              <label className="flex items-center gap-2 text-sm font-bold">
-                <input type="checkbox" checked={ledge} onChange={(e) => setLedge(e.target.checked)} className="h-4 w-4 accent-[#C1440E]" />
-                {t("cutterLedge")}
+              <label className="block">
+                <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterDepth")}</span>
+                {numberInput(notchDepthMm, setNotchDepthMm, STEP_MM, BLANK_H_MM)}
+                <span className="text-[11px] font-bold text-[#3D2B1F]/55">
+                  {ledge ? `${t("cutterLedgeLeft")}: ${BLANK_H_MM - notchDepthMm} мм` : t("cutterThrough")}
+                </span>
               </label>
             </>
           )}

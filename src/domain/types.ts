@@ -36,6 +36,8 @@ export type CustomBrickSpec = {
   notch?: { x1: number; y1: number; x2: number; y2: number } | null;
   /** true — в вырезе остаётся полка на посадку; false — вырез сквозной */
   ledge?: boolean;
+  /** глубина выреза по ВЫСОТЕ кирпича, мм (кирпич 65 мм; 65 = насквозь) */
+  notchDepthMm?: number;
   /** вертикальный размер (дверцы): высота проёма в мм, ~70 мм на ряд кладки */
   heightMm?: number;
 };

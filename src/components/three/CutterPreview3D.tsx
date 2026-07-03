@@ -61,13 +61,17 @@ export default function CutterPreview3D({ spec }: { spec: CustomBrickSpec }) {
 
       {/* результат: занятые боксы на полную высоту */}
       {boxes.map((box, index) => boxMesh(box, BRICK_H, 0, COLORS.customBrick, index))}
-      {/* полка в вырезе */}
-      {notch && spec.ledge !== false ? boxMesh(notch, BRICK_H * 0.5, 0, COLORS.cutBrick, "ledge") : null}
+      {/* полка в вырезе: высота = 65 мм минус глубина реза */}
+      {(() => {
+        const depthMm = spec.notchDepthMm ?? (spec.ledge === false ? 65 : 32.5);
+        const ledgeFrac = Math.max(0, 1 - depthMm / 65);
+        return notch && ledgeFrac > 0.03 ? boxMesh(notch, BRICK_H * ledgeFrac, 0, COLORS.cutBrick, "ledge") : null;
+      })()}
 
       {/* размеры, мм */}
       {label(`${Math.round(spec.w * 125)} мм`, spec.w / 2 - cx, BLANK_D - cz + 0.3)}
       {label(`${Math.round(spec.h * 125)} мм`, -cx - 0.32, spec.h / 2 - cz)}
-      {notch ? label(`${notchLenMm}×${notchWidMm} мм`, (notch.x1 + notch.x2) / 2 - cx, (notch.y1 + notch.y2) / 2 - cz, DIM, 0.1) : null}
+      {notch ? label(`${notchLenMm}×${notchWidMm}×${spec.notchDepthMm ?? 33} мм`, (notch.x1 + notch.x2) / 2 - cx, (notch.y1 + notch.y2) / 2 - cz, DIM, 0.1) : null}
 
       <OrbitControls enablePan={false} minDistance={1.4} maxDistance={4.5} target={[0, BRICK_H / 2, 0]} />
     </Canvas>

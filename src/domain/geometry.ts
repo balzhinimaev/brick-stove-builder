@@ -266,7 +266,9 @@ export function placeBricksInRows(
   }
 
   if (drafts.length === 1) {
-    if (conflicts.some((brick) => brick.row !== row)) return null;
+    // «тап — заменил» действует только в своём ряду; плиту тапом не стираем —
+    // её снимают ластиком осознанно
+    if (conflicts.some((brick) => brick.row !== row || brick.kind === "plate")) return null;
     const replaced = new Set(conflicts.map((brick) => brick.id));
     return { ...rows, [row]: [...(rows[row] ?? []).filter((brick) => !replaced.has(brick.id)), ...drafts] };
   }

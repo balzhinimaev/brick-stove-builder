@@ -48,3 +48,25 @@ describe("snapToStep", () => {
     expect(snapToStep(9.99, 0.5, 10)).toBe(9.5);
   });
 });
+
+describe("заполнение с учётом высот (ревью-фиксы)", () => {
+  it("fill обходит проём дверцы из нижнего ряда", async () => {
+    const { fillRowBricks, placeBricksInRows, overlaps3D } = await import("../geometry");
+    const door = { id: "door", row: 1, x: 2, y: 4, kind: "cleanout" as const, orientation: "h" as const, custom: { name: "ДТ", w: 2, h: 1, notch: null, heightMm: 210 } };
+    let s = 0;
+    const drafts = fillRowBricks([door], grid, 2, "h", () => ++s);
+    // ни один черновик ряда 2 не пересекает объём дверцы
+    for (const d of drafts) expect(overlaps3D(d, door)).toBe(false);
+    // и всё заполнение проходит движком целиком
+    expect(placeBricksInRows({ 1: [door] }, 2, drafts, grid)).not.toBeNull();
+  });
+
+  it("fill обходит утопленную плиту, но заполняет под накладной", async () => {
+    const { fillRowBricks, overlaps3D } = await import("../geometry");
+    const flush = { id: "fp", row: 1, x: 2, y: 4, kind: "plate" as const, orientation: "h" as const, custom: { name: "П", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true } };
+    let s = 0;
+    const drafts = fillRowBricks([flush], grid, 1, "h", () => ++s);
+    for (const d of drafts) expect(overlaps3D(d, flush)).toBe(false);
+    expect(drafts.length).toBeGreaterThan(0);
+  });
+});

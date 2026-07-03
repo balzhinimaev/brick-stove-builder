@@ -299,3 +299,12 @@ describe("плита заподлицо (flush) ложится в вырезы",
     expect(placeBricksInRows(seated, 1, [flushPlate(15)], grid)).not.toBeNull();
   });
 });
+
+describe("плита защищена от тапа-замены", () => {
+  it("одиночный кирпич на утопленную плиту — отказ, плита цела", async () => {
+    const { placeBricksInRows } = await import("../geometry");
+    const flush: PlacedBrick = { id: "fp", row: 1, x: 2, y: 4, kind: "plate", orientation: "h", custom: { name: "П", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true } };
+    const rows = { 1: [flush] };
+    expect(placeBricksInRows(rows, 1, [{ ...standard(3, 5), id: "tap" }], grid)).toBeNull();
+  });
+});

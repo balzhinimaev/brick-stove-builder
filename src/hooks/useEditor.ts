@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useReducer } from "react";
 import { historyReducer, initialHistoryState, type DraftSnapshot } from "../domain/editor";
-import { fillRowBricks, grateAssemblyBricks } from "../domain/geometry";
+import { fillRowBricks, grateAssemblyBricks, isOverlayBrick } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
 import { nextSeq } from "../lib/id";
 import type { CustomBrickSpec, NotchCorner, Orientation, Parameters, PlacedBrick, ReadyProject, SnapStep, ToolKind, ViewMode } from "../domain/types";
@@ -50,8 +50,10 @@ export function useEditor() {
 
   const fillCurrentRow = useCallback(() => {
     if (state.lockedRows.includes(state.currentRow)) return;
-    // Плиты — накладные, кладку под ними заполняем как под настоящей плитой.
-    const existing = (state.rows[state.currentRow] ?? []).filter((brick) => brick.kind !== "plate");
+    // Заполнение видит ВСЮ кладку: дверца из нижнего ряда или утопленная плита
+    // держат свой объём (overlaps3D по row учтёт высоты сам). Исключаем только
+    // накладные плиты — под ними кладка продолжается.
+    const existing = Object.values(state.rows).flat().filter((brick) => !isOverlayBrick(brick));
     const bricks = fillRowBricks(existing, state.grid, state.currentRow, state.orientation, nextSeq);
     if (bricks.length) dispatch({ type: "place", bricks });
   }, [state.currentRow, state.lockedRows, state.rows, state.grid, state.orientation]);

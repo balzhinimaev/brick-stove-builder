@@ -1,8 +1,8 @@
 import { memo, useMemo, useState } from "react";
 import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
-import type { BrickKind, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../domain/types";
-import { brickBounds, brickSizeFor, isInsideGrid, notchBox, snapToStep } from "../domain/geometry";
+import type { BrickKind, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../domain/types";
+import { brickBounds, footprintSizeOf, isInsideGrid, notchBox, snapToStep } from "../domain/geometry";
 import { getToolColor } from "../domain/tools";
 
 const CELL = 34;
@@ -16,6 +16,7 @@ export function PlanGrid({
   orientation,
   notchCorner,
   snapStep,
+  customBrick,
   placeAt,
   t
 }: {
@@ -25,16 +26,19 @@ export function PlanGrid({
   orientation: Orientation;
   notchCorner: NotchCorner;
   snapStep: SnapStep;
+  customBrick: CustomBrickSpec | null;
   placeAt: (x: number, y: number) => void;
   t: Translate;
 }) {
   const width = grid.cols * CELL + PAD * 2;
   const height = grid.rows * CELL + PAD * 2 + HEADER;
-  const ghost = activeTool === "eraser" ? null : brickSizeFor(activeTool, orientation);
+  const ghost = activeTool === "eraser" || (activeTool === "custom" && !customBrick)
+    ? null
+    : footprintSizeOf({ x: 0, y: 0, kind: activeTool as BrickKind, orientation, custom: customBrick ?? undefined });
   const [hoverCell, setHoverCell] = useState<{ x: number; y: number } | null>(null);
   const unit = t("unitCm");
 
-  const hoverGhostFits = hoverCell && ghost ? isInsideGrid({ ...hoverCell, kind: activeTool as BrickKind, orientation }, grid) : false;
+  const hoverGhostFits = hoverCell && ghost ? isInsideGrid({ ...hoverCell, kind: activeTool as BrickKind, orientation, custom: customBrick ?? undefined }, grid) : false;
   const hoverGhostX = hoverCell ? PAD + hoverCell.x * CELL + 3 : 0;
   const hoverGhostY = hoverCell ? PAD + HEADER + hoverCell.y * CELL + 3 : 0;
 
@@ -105,6 +109,8 @@ export function PlanGrid({
               ? <Plate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} orientation={orientation} opacity={0.72} />
               : activeTool === "rebate"
               ? <Rebate2D brick={{ id: "ghost", row: 0, x: hoverCell.x, y: hoverCell.y, kind: "rebate", orientation, notchCorner }} cell={CELL} pad={PAD} opacity={0.5} />
+              : activeTool === "custom" && customBrick?.notch
+              ? <Rebate2D brick={{ id: "ghost", row: 0, x: hoverCell.x, y: hoverCell.y, kind: "custom", orientation, custom: customBrick }} cell={CELL} pad={PAD} opacity={0.5} />
               : <rect x={hoverGhostX} y={hoverGhostY} width={ghost.w * CELL - 6} height={ghost.h * CELL - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.34" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
             <text x={hoverGhostX + (ghost.w * CELL - 6) / 2} y={hoverGhostY + (ghost.h * CELL - 6) / 2 + 5} textAnchor="middle" fontSize="18" fontWeight="900" fill="#2f5d38">+</text>
           </g>
@@ -123,7 +129,7 @@ export function PlanGrid({
 }
 
 const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick; cell: number; pad: number }) {
-  const size = brickSizeFor(brick.kind, brick.orientation);
+  const size = footprintSizeOf(brick);
   const x = pad + brick.x * cell + 3;
   const y = pad + HEADER + brick.y * cell + 3;
   const w = size.w * cell - 6;
@@ -131,7 +137,7 @@ const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick
   const fill = getToolColor(brick.kind);
 
   if (brick.kind === "grate") return <Grate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
-  if (brick.kind === "rebate") return <Rebate2D brick={brick} cell={cell} pad={pad} />;
+  if (brick.kind === "rebate" || (brick.kind === "custom" && brick.custom?.notch)) return <Rebate2D brick={brick} cell={cell} pad={pad} />;
   if (brick.kind === "plate") return <Plate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
 
   return (
@@ -160,34 +166,47 @@ function Rebate2D({ brick, cell, pad, opacity = 1 }: { brick: PlacedBrick; cell:
   const X2 = px(b.x2) - inset;
   const Y1 = py(b.y1) + inset;
   const Y2 = py(b.y2) - inset;
-  const nx1 = notch.x1 === b.x1 ? X1 : px(notch.x1);
-  const nx2 = notch.x2 === b.x2 ? X2 : px(notch.x2);
-  const ny1 = notch.y1 === b.y1 ? Y1 : py(notch.y1);
-  const ny2 = notch.y2 === b.y2 ? Y2 : py(notch.y2);
+  const EPS = 1e-6;
+  const nx1 = Math.abs(notch.x1 - b.x1) < EPS ? X1 : px(notch.x1);
+  const nx2 = Math.abs(notch.x2 - b.x2) < EPS ? X2 : px(notch.x2);
+  const ny1 = Math.abs(notch.y1 - b.y1) < EPS ? Y1 : py(notch.y1);
+  const ny2 = Math.abs(notch.y2 - b.y2) < EPS ? Y2 : py(notch.y2);
 
-  const corner = brick.notchCorner ?? "ne";
-  const CORNER_POINTS: Record<string, Array<[number, number]> | null> = {
-    ne: [[X1, Y1], [nx1, Y1], [nx1, ny2], [X2, ny2], [X2, Y2], [X1, Y2]],
-    nw: [[nx2, Y1], [X2, Y1], [X2, Y2], [X1, Y2], [X1, ny2], [nx2, ny2]],
-    se: [[X1, Y1], [X2, Y1], [X2, ny1], [nx1, ny1], [nx1, Y2], [X1, Y2]],
-    sw: [[X1, Y1], [X2, Y1], [X2, Y2], [nx2, Y2], [nx2, ny1], [X1, ny1]],
-    n: null, e: null, s: null, w: null
-  };
-  const points = CORNER_POINTS[corner];
+  // положение выреза определяем по самому вырезу — работает и для «четверти»,
+  // и для произвольных форм из резака
+  const west = notch.x1 <= b.x1 + EPS;
+  const north = notch.y1 <= b.y1 + EPS;
+  const fullX = west && notch.x2 >= b.x2 - EPS;
+  const fullY = north && notch.y2 >= b.y2 - EPS;
+
+  const points: Array<[number, number]> | null = fullX || fullY
+    ? null
+    : west
+      ? north
+        ? [[nx2, Y1], [X2, Y1], [X2, Y2], [X1, Y2], [X1, ny2], [nx2, ny2]]
+        : [[X1, Y1], [X2, Y1], [X2, Y2], [nx2, Y2], [nx2, ny1], [X1, ny1]]
+      : north
+        ? [[X1, Y1], [nx1, Y1], [nx1, ny2], [X2, ny2], [X2, Y2], [X1, Y2]]
+        : [[X1, Y1], [X2, Y1], [X2, ny1], [nx1, ny1], [nx1, Y2], [X1, Y2]];
   // паз вдоль грани: тело — прямоугольник, «отрезанный» по линии паза
   const bodyRect = points
     ? null
-    : { x: corner === "w" ? nx2 : X1, y: corner === "n" ? ny2 : Y1, x2: corner === "e" ? nx1 : X2, y2: corner === "s" ? ny1 : Y2 };
+    : fullY
+      ? { x: west ? nx2 : X1, y: Y1, x2: west ? X2 : nx1, y2: Y2 }
+      : { x: X1, y: north ? ny2 : Y1, x2: X2, y2: north ? Y2 : ny1 };
 
+  const fill = getToolColor(brick.kind);
   return (
     <g opacity={opacity}>
       {points ? (
-        <path d={`M${points.map(([x, y]) => `${x} ${y}`).join(" L")} Z`} fill={getToolColor("rebate")} stroke={COLORS.charcoal} strokeWidth="2" strokeLinejoin="round" />
+        <path d={`M${points.map(([x, y]) => `${x} ${y}`).join(" L")} Z`} fill={fill} stroke={COLORS.charcoal} strokeWidth="2" strokeLinejoin="round" />
       ) : bodyRect ? (
-        <rect x={bodyRect.x} y={bodyRect.y} width={bodyRect.x2 - bodyRect.x} height={bodyRect.y2 - bodyRect.y} rx="7" fill={getToolColor("rebate")} stroke={COLORS.charcoal} strokeWidth="2" />
+        <rect x={bodyRect.x} y={bodyRect.y} width={bodyRect.x2 - bodyRect.x} height={bodyRect.y2 - bodyRect.y} rx="7" fill={fill} stroke={COLORS.charcoal} strokeWidth="2" />
       ) : null}
       {/* ступень-полка внутри выреза: бледная, чтобы вырез читался как вырез */}
-      <rect x={nx1 + 1.5} y={ny1 + 1.5} width={nx2 - nx1 - 3} height={ny2 - ny1 - 3} fill={COLORS.cutBrick} opacity="0.3" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" />
+      {brick.kind !== "custom" || brick.custom?.ledge !== false ? (
+        <rect x={nx1 + 1.5} y={ny1 + 1.5} width={nx2 - nx1 - 3} height={ny2 - ny1 - 3} fill={COLORS.cutBrick} opacity="0.3" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" />
+      ) : null}
     </g>
   );
 }

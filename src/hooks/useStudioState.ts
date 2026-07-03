@@ -146,6 +146,8 @@ export function useStudioState() {
     setNotchCorner: editor.setNotchCorner,
     snapStep: editor.snapStep,
     setSnapStep: editor.setSnapStep,
+    customBrick: editor.customBrick,
+    pickCustomBrick: editor.pickCustomBrick,
     viewMode: editor.viewMode,
     setViewMode: editor.setViewMode,
     camera: editor.camera,

@@ -6,7 +6,7 @@ import { BRICK_LAYER_HEIGHT } from "../../domain/constants";
 import { brickWorldGeometry, cellToWorld, isInsideGrid, snapToStep } from "../../domain/geometry";
 import { getToolColor } from "../../domain/tools";
 import type { Translate } from "../../i18n";
-import type { BrickKind, CameraState, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../../domain/types";
+import type { BrickKind, CameraState, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../../domain/types";
 import { ThreeBrick, ThreeGrate, ThreePlate, ThreeRebate } from "./ThreeBrick";
 
 type HoverCell = { x: number; y: number } | null;
@@ -29,7 +29,8 @@ export function ThreeStack({
   activeTool,
   orientation,
   notchCorner,
-  snapStep
+  snapStep,
+  customBrick
 }: {
   grid: GridSpec;
   bricks: PlacedBrick[];
@@ -41,6 +42,7 @@ export function ThreeStack({
   orientation: Orientation;
   notchCorner: NotchCorner;
   snapStep: SnapStep;
+  customBrick: CustomBrickSpec | null;
 }) {
   const [hoverCell3d, setHoverCell3d] = useState<HoverCell>(null);
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
@@ -70,7 +72,7 @@ export function ThreeStack({
           <ThreeGrid grid={grid} gridY={gridY} />
           <DimensionLabels grid={grid} gridY={gridY} unit={unit} />
           {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} unit={unit} />)}
-          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} unit={unit} />
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} unit={unit} />
         </group>
       </Canvas>
     </div>
@@ -111,6 +113,7 @@ function PlacementCells({
   orientation,
   notchCorner,
   snapStep,
+  customBrick,
   unit
 }: {
   grid: GridSpec;
@@ -122,6 +125,7 @@ function PlacementCells({
   orientation: Orientation;
   notchCorner: NotchCorner;
   snapStep: SnapStep;
+  customBrick: CustomBrickSpec | null;
   unit: string;
 }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
@@ -140,16 +144,17 @@ function PlacementCells({
   return (
     <group>
       {hoverCell ? (() => {
-        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined } as PlacedBrick;
+        if (previewKind === "custom" && !customBrick) return null;
+        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : undefined } as PlacedBrick;
         const geom = brickWorldGeometry(draft, grid);
-        const fits = activeTool === "eraser" ? true : isInsideGrid({ x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation }, grid);
+        const fits = activeTool === "eraser" ? true : isInsideGrid(draft, grid);
         const color = activeTool === "eraser" ? "#c94f4f" : getToolColor(previewKind);
 
         return (
           <group>
             {previewKind === "grate"
               ? <ThreeGrate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} unit={unit} />
-              : previewKind === "rebate"
+              : previewKind === "rebate" || previewKind === "custom"
               ? <ThreeRebate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
               : previewKind === "plate"
               ? <ThreePlate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />

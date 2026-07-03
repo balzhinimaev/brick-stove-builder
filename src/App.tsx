@@ -79,6 +79,9 @@ export default function App() {
             setNotchCorner={studio.setNotchCorner}
             snapStep={studio.snapStep}
             setSnapStep={studio.setSnapStep}
+            customBrick={studio.customBrick}
+            pickCustomBrick={studio.pickCustomBrick}
+            userLogin={userLogin}
             viewMode={studio.viewMode}
             setViewMode={studio.setViewMode}
             placeAt={studio.placeAt}

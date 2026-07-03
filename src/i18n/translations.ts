@@ -154,7 +154,20 @@ const ru = {
   myProjectsTitle: "Мои проекты",
   myProjectsSubtitle: "Сохранённые порядовки: можно доработать, выставить на витрину или удалить.",
   myProjectsEmpty: "Пока пусто. Соберите кладку и нажмите «Сохранить проект».",
-  templatesTitle: "Шаблоны"
+  templatesTitle: "Шаблоны",
+  custom: "Резаный",
+  cutterOpen: "Резак",
+  cutterTitle: "Резак кирпича",
+  cutterHint: "Заготовка — целый кирпич 250×120 мм. Отпилите длину/ширину и при необходимости выберите четверть в углу. Шаг реза — 5 мм.",
+  cutterLength: "Длина, мм",
+  cutterWidth: "Ширина, мм",
+  cutterCorner: "Вырез угла",
+  cutterNotchLen: "Вырез: по длине, мм",
+  cutterNotchWid: "Вырез: по ширине, мм",
+  cutterLedge: "Оставить полку в вырезе (посадка под колосник/плиту)",
+  cutterName: "Название (например «трёхчетвертка»)",
+  cutterSave: "В палитру",
+  cutterPalette: "Нарезанные кирпичи"
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -310,7 +323,20 @@ const en: Record<TranslationKey, string> = {
   myProjectsTitle: "My projects",
   myProjectsSubtitle: "Saved layouts: refine them, publish to the showcase or delete.",
   myProjectsEmpty: "Nothing yet. Build a layout and press \"Save project\".",
-  templatesTitle: "Templates"
+  templatesTitle: "Templates",
+  custom: "Cut piece",
+  cutterOpen: "Cutter",
+  cutterTitle: "Brick cutter",
+  cutterHint: "The blank is a full 250×120 mm brick. Trim length/width and optionally cut a corner rebate. Cut step is 5 mm.",
+  cutterLength: "Length, mm",
+  cutterWidth: "Width, mm",
+  cutterCorner: "Corner cut",
+  cutterNotchLen: "Cut: along length, mm",
+  cutterNotchWid: "Cut: along width, mm",
+  cutterLedge: "Keep a ledge in the cut (grate/plate seat)",
+  cutterName: "Name (e.g. \"three-quarter\")",
+  cutterSave: "Add to palette",
+  cutterPalette: "Cut bricks"
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -464,7 +490,20 @@ const lt: Record<TranslationKey, string> = {
   myProjectsTitle: "Mano projektai",
   myProjectsSubtitle: "Išsaugoti maketai: tobulinkite, skelbkite vitrinoje arba ištrinkite.",
   myProjectsEmpty: "Kol kas tuščia. Sudėkite mūrą ir spauskite „Išsaugoti projektą“.",
-  templatesTitle: "Šablonai"
+  templatesTitle: "Šablonai",
+  custom: "Pjaustyta",
+  cutterOpen: "Pjaustyklė",
+  cutterTitle: "Plytos pjaustyklė",
+  cutterHint: "Ruošinys — pilna 250×120 mm plyta. Nupjaukite ilgį/plotį ir, jei reikia, kampo ketvirtį. Pjūvio žingsnis — 5 mm.",
+  cutterLength: "Ilgis, mm",
+  cutterWidth: "Plotis, mm",
+  cutterCorner: "Kampo išpjova",
+  cutterNotchLen: "Išpjova: pagal ilgį, mm",
+  cutterNotchWid: "Išpjova: pagal plotį, mm",
+  cutterLedge: "Palikti lentynėlę išpjovoje",
+  cutterName: "Pavadinimas",
+  cutterSave: "Į paletę",
+  cutterPalette: "Pjaustytos plytos"
 };
 
 export const translations = { ru, en, lt } as const;

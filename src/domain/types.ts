@@ -2,8 +2,8 @@ import type { Locale } from "../i18n";
 
 export type Screen = "parameters" | "projects" | "builder" | "showcase";
 export type ViewMode = "2d" | "3d";
-export type BrickKind = "standard" | "cut" | "trim" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate";
-export type ToolKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate" | "eraser";
+export type BrickKind = "standard" | "cut" | "trim" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate" | "custom";
+export type ToolKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate" | "custom" | "eraser";
 export type Orientation = "h" | "v";
 /** Шаг привязки клика к сетке: целая ячейка или полячейки (четверть кирпича). */
 export type SnapStep = 1 | 0.5;
@@ -22,6 +22,22 @@ export type Parameters = {
 
 export type GridSpec = { cols: number; rows: number; widthCm: number; lengthCm: number };
 
+/**
+ * Кирпич, «нарезанный» в резаке. Размеры в ячейках сетки (1 ячейка = 125 мм),
+ * геометрия описана для горизонтальной ориентации заготовки; при установке
+ * вертикально поворачивается на 90°.
+ */
+export type CustomBrickSpec = {
+  name: string;
+  /** габарит после резов, в ячейках */
+  w: number;
+  h: number;
+  /** вырез, привязанный к углу заготовки: бокс в координатах заготовки */
+  notch?: { x1: number; y1: number; x2: number; y2: number } | null;
+  /** true — в вырезе остаётся полка на посадку; false — вырез сквозной */
+  ledge?: boolean;
+};
+
 export type PlacedBrick = {
   id: string;
   x: number;
@@ -31,6 +47,8 @@ export type PlacedBrick = {
   orientation: Orientation;
   /** Only for kind "rebate": which corner is cut out. */
   notchCorner?: NotchCorner;
+  /** Only for kind "custom": форма из резака. */
+  custom?: CustomBrickSpec;
 };
 
 export type MaterialsEstimate = {
@@ -70,4 +88,4 @@ export type ReadyProject = {
 };
 
 /** A brick footprint is enough to reason about size, bounds, overlaps and fit. */
-export type BrickFootprint = Pick<PlacedBrick, "x" | "y" | "kind" | "orientation" | "notchCorner">;
+export type BrickFootprint = Pick<PlacedBrick, "x" | "y" | "kind" | "orientation" | "notchCorner" | "custom">;

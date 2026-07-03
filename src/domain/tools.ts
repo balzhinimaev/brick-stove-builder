@@ -12,6 +12,7 @@ const TOOL_COLORS: Record<ToolKind | BrickKind, string> = {
   cleanout: COLORS.cleanout,
   grate: COLORS.grate,
   plate: COLORS.plate,
+  custom: COLORS.customBrick,
   eraser: COLORS.creamDark
 };
 

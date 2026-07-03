@@ -3,7 +3,7 @@ import { historyReducer, initialHistoryState, type DraftSnapshot } from "../doma
 import { fillRowBricks, grateAssemblyBricks } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
 import { nextSeq } from "../lib/id";
-import type { NotchCorner, Orientation, Parameters, PlacedBrick, ReadyProject, SnapStep, ToolKind, ViewMode } from "../domain/types";
+import type { CustomBrickSpec, NotchCorner, Orientation, Parameters, PlacedBrick, ReadyProject, SnapStep, ToolKind, ViewMode } from "../domain/types";
 
 /**
  * React binding around the pure {@link historyReducer}. The only impurity it
@@ -28,9 +28,13 @@ export function useEditor() {
       }
       const brick: PlacedBrick = { id: `r${state.currentRow}-${nextSeq()}-${x}-${y}`, row: state.currentRow, x, y, kind: state.activeTool, orientation: state.orientation };
       if (state.activeTool === "rebate") brick.notchCorner = state.notchCorner;
+      if (state.activeTool === "custom") {
+        if (!state.customBrick) return;
+        brick.custom = state.customBrick;
+      }
       dispatch({ type: "place", bricks: [brick] });
     },
-    [state.activeTool, state.orientation, state.currentRow, state.notchCorner]
+    [state.activeTool, state.orientation, state.currentRow, state.notchCorner, state.customBrick]
   );
 
   const copyPreviousRow = useCallback(() => {
@@ -42,7 +46,9 @@ export function useEditor() {
 
   const fillCurrentRow = useCallback(() => {
     if (state.lockedRows.includes(state.currentRow)) return;
-    const bricks = fillRowBricks(state.rows[state.currentRow] ?? [], state.grid, state.currentRow, state.orientation, nextSeq);
+    // Плиты — накладные, кладку под ними заполняем как под настоящей плитой.
+    const existing = (state.rows[state.currentRow] ?? []).filter((brick) => brick.kind !== "plate");
+    const bricks = fillRowBricks(existing, state.grid, state.currentRow, state.orientation, nextSeq);
     if (bricks.length) dispatch({ type: "place", bricks });
   }, [state.currentRow, state.lockedRows, state.rows, state.grid, state.orientation]);
 
@@ -57,6 +63,7 @@ export function useEditor() {
     orientation: state.orientation,
     notchCorner: state.notchCorner,
     snapStep: state.snapStep,
+    customBrick: state.customBrick,
     viewMode: state.viewMode,
     camera: state.camera,
     allBricks,
@@ -67,6 +74,7 @@ export function useEditor() {
     setOrientation: useCallback((orientation: Orientation) => dispatch({ type: "setOrientation", orientation }), []),
     setNotchCorner: useCallback((corner: NotchCorner) => dispatch({ type: "setNotchCorner", corner }), []),
     setSnapStep: useCallback((step: SnapStep) => dispatch({ type: "setSnapStep", step }), []),
+    pickCustomBrick: useCallback((spec: CustomBrickSpec) => dispatch({ type: "pickCustomBrick", spec }), []),
     setViewMode: useCallback((mode: ViewMode) => dispatch({ type: "setViewMode", mode }), []),
     updateParameter: useCallback((key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }), []),
 

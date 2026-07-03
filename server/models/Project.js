@@ -25,10 +25,30 @@ export const brickSchema = new mongoose.Schema(
     x: { type: Number, required: true, min: 0 },
     y: { type: Number, required: true, min: 0 },
     row: { type: Number, required: true, min: 1 },
-    kind: { type: String, enum: ["standard", "cut", "trim", "firebrick", "vent", "cleanout", "grate", "rebate", "plate"], required: true },
+    kind: { type: String, enum: ["standard", "cut", "trim", "firebrick", "vent", "cleanout", "grate", "rebate", "plate", "custom"], required: true },
     orientation: { type: String, enum: ["h", "v"], required: true },
     // Кирпич с четвертью: угол или грань, где выбрана посадочная четверть.
-    notchCorner: { type: String, enum: ["nw", "ne", "sw", "se", "n", "e", "s", "w"], required: false }
+    notchCorner: { type: String, enum: ["nw", "ne", "sw", "se", "n", "e", "s", "w"], required: false },
+    // Кирпич из резака: форма в ячейках (описана для горизонтальной ориентации).
+    custom: {
+      type: new mongoose.Schema(
+        {
+          name: { type: String, default: "" },
+          w: { type: Number, required: true, min: 0.1 },
+          h: { type: Number, required: true, min: 0.1 },
+          notch: {
+            type: new mongoose.Schema(
+              { x1: Number, y1: Number, x2: Number, y2: Number },
+              { _id: false }
+            ),
+            required: false
+          },
+          ledge: { type: Boolean, default: true }
+        },
+        { _id: false }
+      ),
+      required: false
+    }
   },
   { _id: false }
 );

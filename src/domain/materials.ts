@@ -27,6 +27,7 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
         break;
       case "cut":
       case "cleanout":
+      case "custom":
         cutLike++;
         break;
       case "trim":

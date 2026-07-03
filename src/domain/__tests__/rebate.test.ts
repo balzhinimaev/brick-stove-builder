@@ -119,3 +119,77 @@ describe("plate (варочная плита)", () => {
     expect(overlaps(plate, solidLeft)).toBe(true);
   });
 });
+
+describe("правила размещения (не стираем молча)", () => {
+  it("плита ложится ПОВЕРХ кирпичей — кладка под ней остаётся", () => {
+    const bricks = [standard(3, 4), { ...standard(5, 4), id: "std2" }];
+    const plate: PlacedBrick = { id: "p", row: 1, x: 3, y: 4, kind: "plate", orientation: "h" };
+    const next = placeBricksInRow(bricks, [plate], grid);
+    expect(next).toHaveLength(3); // ничего не стёрлось
+    expect(next.filter((b) => b.kind === "standard")).toHaveLength(2);
+  });
+
+  it("две плиты внахлёст — отказ", () => {
+    const plate1: PlacedBrick = { id: "p1", row: 1, x: 1, y: 4, kind: "plate", orientation: "h" };
+    const plate2: PlacedBrick = { id: "p2", row: 1, x: 3, y: 4, kind: "plate", orientation: "h" };
+    const next = placeBricksInRow([plate1], [plate2], grid);
+    expect(next).toEqual([plate1]);
+  });
+
+  it("сборка колосника на занятое место — отказ, ничего не удалено", () => {
+    const occupied = [standard(2, 4)];
+    let seq = 0;
+    const assembly: PlacedBrick[] = [
+      { id: "g", row: 1, x: 2, y: 4, kind: "grate", orientation: "h" },
+      { id: `t${seq++}`, row: 1, x: 1.5, y: 4, kind: "trim", orientation: "h" }
+    ];
+    const next = placeBricksInRow(occupied, assembly, grid);
+    expect(next).toBe(occupied); // no-op
+  });
+
+  it("одиночный кирпич по-прежнему заменяет занятое место, но не плиту", () => {
+    const plate: PlacedBrick = { id: "p", row: 1, x: 2, y: 4, kind: "plate", orientation: "h" };
+    const bricks = [standard(3, 4), plate];
+    const draft = { ...standard(3, 4), id: "new" };
+    const next = placeBricksInRow(bricks, [draft], grid);
+    expect(next.map((b) => b.id).sort()).toEqual(["new", "p"]);
+  });
+
+  it("ластик над плитой снимает плиту, кирпич под ней цел", () => {
+    const plate: PlacedBrick = { id: "p", row: 1, x: 3, y: 4, kind: "plate", orientation: "h" };
+    const bricks = [standard(3, 4), plate];
+    const afterFirst = removeBrickAt(bricks, 3.5, 4.5);
+    expect(afterFirst.map((b) => b.id)).toEqual([bricks[0].id]); // плита снята
+    expect(removeBrickAt(afterFirst, 3.5, 4.5)).toHaveLength(0); // второй клик — кирпич
+  });
+});
+
+describe("custom brick (резак)", () => {
+  const spec = { name: "тест", w: 1.6, h: 0.8, notch: { x1: 0.8, y1: 0, x2: 1.6, y2: 0.4 }, ledge: true };
+  const custom = (x: number, y: number, orientation: "h" | "v" = "h"): PlacedBrick =>
+    ({ id: "c1", row: 1, x, y, kind: "custom", orientation, custom: spec });
+
+  it("bounds учитывают размер из резака и ориентацию", () => {
+    expect(brickBounds(custom(2, 3))).toEqual({ x1: 2, y1: 3, x2: 3.6, y2: 3.8 });
+    expect(brickBounds(custom(2, 3, "v"))).toEqual({ x1: 2, y1: 3, x2: 2.8, y2: 4.6 });
+  });
+
+  it("вырез поворачивается вместе с кирпичом", () => {
+    expect(notchBox(custom(0, 0))).toEqual({ x1: 0.8, y1: 0, x2: 1.6, y2: 0.4 });
+    // поворот на 90° по часовой: (x, y) → (h − y, x)
+    expect(notchBox(custom(0, 0, "v"))).toEqual({ x1: 0.4, y1: 0.8, x2: 0.8, y2: 1.6 });
+  });
+
+  it("занятая площадь = габарит минус вырез, элемент садится в вырез", () => {
+    const brick = custom(0, 0);
+    const boxes = brickBoxes(brick);
+    const area = boxes.reduce((s, b) => s + (b.x2 - b.x1) * (b.y2 - b.y1), 0);
+    expect(area).toBeCloseTo(1.6 * 0.8 - 0.8 * 0.4);
+    const seat: PlacedBrick = { id: "s", row: 1, x: 0.8, y: 0, kind: "trim", orientation: "v" }; // 1×0.5... x:0.8..1.8? trim v = w1 h0.5
+    // элемент ровно в вырезе (0.8..1.6 × 0..0.4): возьмём кастомную вставку
+    const insert: PlacedBrick = { id: "i", row: 1, x: 0.8, y: 0, kind: "custom", orientation: "h", custom: { name: "вставка", w: 0.8, h: 0.4, notch: null } };
+    expect(overlaps(brick, insert)).toBe(false);
+    expect(overlaps(brick, { ...insert, x: 0.4 })).toBe(true); // сдвинут на тело — конфликт
+    void seat;
+  });
+});

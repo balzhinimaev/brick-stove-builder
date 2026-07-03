@@ -11,6 +11,7 @@ export const COLORS = {
   firebrick: "#A8321A",
   cutBrick: "#F2A35E",
   rebate: "#D06A38",
+  customBrick: "#B9581F",
   vent: "#6B7C85",
   cleanout: "#8B5E3C",
   grate: "#4A4A4A",

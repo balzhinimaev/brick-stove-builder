@@ -4,6 +4,7 @@ import { PARAM_BOUNDS, clamp } from "./parameters";
 import { makeDemoRows } from "./projects";
 import type {
   CameraState,
+  CustomBrickSpec,
   GridSpec,
   NotchCorner,
   Orientation,
@@ -31,6 +32,8 @@ export type EditorState = {
   orientation: Orientation;
   notchCorner: NotchCorner;
   snapStep: SnapStep;
+  /** Выбранный в палитре кирпич из резака (активен при activeTool === "custom"). */
+  customBrick: CustomBrickSpec | null;
   viewMode: ViewMode;
   camera: CameraState;
 };
@@ -49,6 +52,7 @@ export type EditorAction =
   | { type: "setOrientation"; orientation: Orientation }
   | { type: "setNotchCorner"; corner: NotchCorner }
   | { type: "setSnapStep"; step: SnapStep }
+  | { type: "pickCustomBrick"; spec: CustomBrickSpec }
   | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
   | { type: "reset" }
@@ -82,6 +86,7 @@ export function initialEditorState(): EditorState {
     orientation: "h",
     notchCorner: "ne",
     snapStep: 1,
+    customBrick: null,
     viewMode: "3d",
     camera: DEFAULT_CAMERA
   };
@@ -107,6 +112,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, notchCorner: action.corner };
     case "setSnapStep":
       return { ...state, snapStep: action.step };
+    case "pickCustomBrick":
+      return { ...state, activeTool: "custom", customBrick: action.spec };
     case "setViewMode":
       return { ...state, viewMode: action.mode };
 

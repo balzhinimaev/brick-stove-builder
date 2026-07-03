@@ -8,7 +8,7 @@ import type { GridSpec, PlacedBrick } from "../../domain/types";
 
 export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, unit }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; unit: string }) {
   if (brick.kind === "grate") return <ThreeGrate grid={grid} brick={brick} currentRow={currentRow} unit={unit} />;
-  if (brick.kind === "rebate") return <ThreeRebate grid={grid} brick={brick} currentRow={currentRow} />;
+  if (brick.kind === "rebate" || brick.kind === "custom") return <ThreeRebate grid={grid} brick={brick} currentRow={currentRow} />;
   if (brick.kind === "plate") return <ThreePlate grid={grid} brick={brick} currentRow={currentRow} />;
 
   const geometry = brickWorldGeometry(brick, grid);
@@ -31,7 +31,8 @@ export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, un
  * плита или кирпич следующего элемента — вырез в коллизиях свободен.
  */
 export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
-  const color = getToolColor("rebate");
+  const color = getToolColor(brick.kind);
+  const withLedge = brick.kind !== "custom" || brick.custom?.ledge !== false;
   const outer = brickBounds(brick);
   const notch = notchBox(brick);
   const bounds = brickWorldGeometry(brick, grid);
@@ -64,7 +65,7 @@ export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: Gr
     <group>
       {brickBoxes(brick).map((box, index) => boxMesh(shave(box), fullHeight, rowBottom, color, index))}
       {/* ступень среза в вырезе: заметно ниже тела, светлый «спил» */}
-      {notch ? boxMesh(shave(notch), fullHeight * 0.32, rowBottom, COLORS.cutBrick, "ledge") : null}
+      {notch && withLedge ? boxMesh(shave(notch), fullHeight * 0.32, rowBottom, COLORS.cutBrick, "ledge") : null}
       {isCurrent && !transparent && (
         <mesh position={[bounds.position[0], bounds.position[1] + bounds.scale[1] / 2 + 0.014, bounds.position[2]]}>
           <boxGeometry args={[bounds.scale[0] + 0.035, 0.018, bounds.scale[2] + 0.035]} />

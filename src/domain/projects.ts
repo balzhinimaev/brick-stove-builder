@@ -96,7 +96,73 @@ function makeCookStoveRows(): Record<number, PlacedBrick[]> {
   ) as Record<number, PlacedBrick[]>;
 }
 
+/**
+ * Варочная печь «до плиты»: сплошное основание, зольник с поддувальной
+ * дверцей (250×140, 2 ряда), колосник, топка с топочной дверцей (250×210,
+ * 3 ряда) и посадочный ряд из кирпичей с четвертями-пазами внутрь, в которые
+ * ЗАПОДЛИЦО ложится варочная плита 625×375×15. Каждый элемент проходит
+ * честную 3D-проверку движка (см. тест).
+ */
+function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
+  const rows: Record<number, PlacedBrick[]> = {};
+  let seq = 0;
+  const add = (row: number, x: number, y: number, kind: BrickKind = "standard", orientation: Orientation = "h", extra: Partial<PlacedBrick> = {}) => {
+    (rows[row] ??= []).push({ id: `fps${row}-${seq++}`, row, x, y, kind, orientation, ...extra });
+  };
+
+  // печь 6×4 ячейки (75×50 см): контур x1..7, y2..6; камера x2..6, y3..5
+  const frame = (row: number) => {
+    for (const x of [1, 3, 5]) add(row, x, 2); // задняя стенка
+    add(row, 1, 3, "standard", "v"); // бока
+    add(row, 6, 3, "standard", "v");
+    add(row, 1, 5); // передняя стенка (проём x3..5 под дверцы)
+    add(row, 5, 5);
+  };
+
+  // ряд 1: сплошное основание
+  for (const y of [2, 3, 4, 5]) for (const x of [1, 3, 5]) add(1, x, y);
+
+  // ряд 2: зольник + поддувальная дверца 250×140 (занимает ряды 2–3)
+  frame(2);
+  add(2, 3, 5, "cleanout", "h", { custom: { name: "Дверца 250×140", w: 2, h: 1, notch: null, heightMm: 140 } });
+
+  // ряд 3: зольник, проём дверцы; колосник заподлицо с верхом ряда
+  frame(3);
+  add(3, 2.5, 3, "grate", "h");
+
+  // ряд 4: перемычка над поддувальной + топочная дверца 250×210 (ряды 4–6)
+  frame(4);
+  add(4, 3, 5, "cleanout", "h", { custom: { name: "Дверца 250×210", w: 2, h: 1, notch: null, heightMm: 210 } });
+
+  // ряды 5–6: топка, проём топочной дверцы
+  frame(5);
+  frame(6);
+
+  // ряд 7: посадочный — четверти пазами внутрь, плита ложится ЗАПОДЛИЦО
+  for (const x of [1, 3, 5]) add(7, x, 2, "rebate", "h", { notchCorner: "s" });
+  add(7, 1, 3, "rebate", "v", { notchCorner: "e" });
+  add(7, 6, 3, "rebate", "v", { notchCorner: "w" });
+  for (const x of [1, 3, 5]) add(7, x, 5, "rebate", "h", { notchCorner: "n" });
+  add(7, 1.5, 2.5, "plate", "h", { custom: { name: "Плита 625×375×15", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true } });
+
+  return rows;
+}
+
 export const READY_PROJECTS: ReadyProject[] = [
+  {
+    id: "cook-plate-flush",
+    title: { ru: "Варочная печь с плитой заподлицо", en: "Cook stove with flush plate", lt: "Viryklė su įleista plokšte" },
+    subtitle: {
+      ru: "Полный узел до плиты: поддувальная и топочная дверцы, колосник, посадочный ряд с четвертями — плита 625×375×15 утоплена вровень с кладкой.",
+      en: "Complete stack up to the plate: ash and fire doors, grate, seat course with rebates — the 625×375×15 plate sits flush with the masonry.",
+      lt: "Pilnas mazgas iki plokštės: durelės, grotelės ir įleista 625×375×15 plokštė."
+    },
+    parameters: { foundationWidth: 120, foundationLength: 160, foundationThickness: 25, roomHeight: 260 },
+    rowCount: 7,
+    lockedRows: [1, 2, 3, 4, 5, 6],
+    rows: makeFlushPlateStoveRows(),
+    accent: COLORS.brickOrange
+  },
   {
     id: "compact-heater",
     title: { ru: "Компактная отопительная", en: "Compact heater", lt: "Kompaktiška šildymo" },

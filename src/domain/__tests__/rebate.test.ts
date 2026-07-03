@@ -308,3 +308,31 @@ describe("плита защищена от тапа-замены", () => {
     expect(placeBricksInRows(rows, 1, [{ ...standard(3, 5), id: "tap" }], grid)).toBeNull();
   });
 });
+
+describe("шаблон «Варочная печь с плитой заподлицо»", () => {
+  it("собирается движком поэлементно: без отказов и без молчаливых замен", async () => {
+    const { placeBricksInRows, gridFromParameters } = await import("../geometry");
+    const { READY_PROJECTS } = await import("../projects");
+    const project = READY_PROJECTS.find((p) => p.id === "cook-plate-flush")!;
+    const projectGrid = gridFromParameters(project.parameters);
+
+    let rows: Record<number, PlacedBrick[]> = {};
+    let placedCount = 0;
+    for (const [rowKey, bricks] of Object.entries(project.rows)) {
+      for (const brick of bricks) {
+        const next = placeBricksInRows(rows, Number(rowKey), [brick], projectGrid);
+        expect(next, `движок отклонил ${brick.id} (${brick.kind})`).not.toBeNull();
+        rows = next!;
+        placedCount++;
+      }
+    }
+    // ничего не было молчаливо заменено
+    expect(Object.values(rows).flat()).toHaveLength(placedCount);
+
+    const plate = Object.values(rows).flat().find((b) => b.kind === "plate")!;
+    expect(plate.custom?.flush).toBe(true);
+    expect(plate.custom?.thicknessMm).toBe(15);
+    // все девять кирпичей посадочного ряда — с четвертями
+    expect(rows[7].filter((b) => b.kind === "rebate")).toHaveLength(8);
+  });
+});

@@ -99,6 +99,7 @@ describe("buildPlacementDrafts — превью и установка видят
     plateSpec: initialEditorState().plateSpec,
     doorSpec: initialEditorState().doorSpec,
     damperSpec: initialEditorState().damperSpec,
+    grateSpec: initialEditorState().grateSpec,
     ...over
   });
 
@@ -114,10 +115,12 @@ describe("buildPlacementDrafts — превью и установка видят
     expect(buildPlacementDrafts(selection({ activeTool: "custom", customBrick: null }), 1, 1, () => 0)).toBeNull();
   });
 
-  it("колосник ставится сборкой из решётки и четырёх подрезок", () => {
+  it("колосник — одиночный элемент со своей спекой (опора — автоподрез при установке)", () => {
     const drafts = buildPlacementDrafts(selection({ activeTool: "grate" }), 2, 2, (() => { let i = 0; return () => i++; })());
-    expect(drafts).toHaveLength(5);
-    expect(drafts!.map((brick) => brick.kind).sort()).toEqual(["grate", "trim", "trim", "trim", "trim"]);
+    expect(drafts).toHaveLength(1);
+    expect(drafts![0].kind).toBe("grate");
+    expect(drafts![0].custom?.name).toContain("Колосник");
+    expect(drafts![0].custom?.thicknessMm).toBe(22);
   });
 
   it("плита берёт текущую спеку размера/толщины/посадки", () => {

@@ -222,7 +222,13 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
     const t = brick.custom?.thicknessMm ?? DAMPER_MM;
     return [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
   }
-  if (brick.kind === "grate") return [{ box: bounds, z1: BRICK_MM - GRATE_THICKNESS_MM, z2: BRICK_MM }];
+  if (brick.kind === "grate") {
+    // как flush-плита: лежит на посадке из полок (автоподрез при установке);
+    // без полок — верх заподлицо с верхом ряда
+    const t = brick.custom?.thicknessMm ?? GRATE_THICKNESS_MM;
+    const seat = brick.custom?.seatZMm ?? BRICK_MM - t;
+    return [{ box: bounds, z1: seat, z2: seat + t }];
+  }
   if (brick.kind === "cleanout") return [{ box: bounds, z1: 0, z2: brick.custom?.heightMm ?? BRICK_MM }];
   if (brick.kind === "trim") return [{ box: bounds, z1: TRIM_SEAT_MM, z2: BRICK_MM }];
 
@@ -389,28 +395,31 @@ export function planPlacement(
   if (!rawDrafts.length) return { rows: null, conflicts: [] };
   if (rawDrafts.some((draft) => !isInsideGrid(draft, grid))) return { rows: null, conflicts: [] };
 
-  // Flush-плита при одиночной установке САМА подрезает кирпичи своего ряда под
-  // след: полновысотные получают полку глубиной в толщину плиты, мелкие полки
-  // углубляются. Нережимое (дверца, колосник…) остаётся честным конфликтом.
-  const singleFlushPlate =
-    rawDrafts.length === 1 && rawDrafts[0].kind === "plate" && rawDrafts[0].custom?.flush === true
-      ? rawDrafts[0]
-      : null;
+  // «Садящиеся» элементы (flush-плита, колосник) при одиночной установке САМИ
+  // подрезают кирпичи своего ряда под след: полновысотные получают полку
+  // глубиной в толщину элемента, мелкие полки углубляются. Нережимое (дверца,
+  // обвязка…) остаётся честным конфликтом.
+  const isSeated = (b: PlacedBrick) => b.kind === "grate" || (b.kind === "plate" && b.custom?.flush === true);
+  const seatedThickness = (b: PlacedBrick) =>
+    b.custom?.thicknessMm ?? (b.kind === "grate" ? GRATE_THICKNESS_MM : PLATE_THICKNESS_MM);
+  const singleSeated = rawDrafts.length === 1 && isSeated(rawDrafts[0]) ? rawDrafts[0] : null;
   let baseRow = rows[row] ?? [];
-  if (singleFlushPlate) {
-    const t = singleFlushPlate.custom?.thicknessMm ?? PLATE_THICKNESS_MM;
+  if (singleSeated) {
+    const t = seatedThickness(singleSeated);
     baseRow = baseRow.map((brick) => {
-      if (isOverlayKind(brick.kind)) return brick;
-      return cutBrickForPlate(brick, singleFlushPlate, t) ?? brick;
+      if (isOverlayKind(brick.kind) || brick.kind === "grate") return brick;
+      return cutBrickForPlate(brick, singleSeated, t) ?? brick;
     });
   }
-  const workRows = singleFlushPlate ? { ...rows, [row]: baseRow } : rows;
+  const workRows = singleSeated ? { ...rows, [row]: baseRow } : rows;
 
-  // Flush-плита получает посадку НА УСТАНОВКЕ: низ = самая высокая полка под
-  // следом (plateSeatZ, уже с учётом автоподреза). Считаем до коллизий —
+  // Садящийся элемент получает посадку НА УСТАНОВКЕ: низ = самая высокая полка
+  // под следом (plateSeatZ, уже с учётом автоподреза). Считаем до коллизий —
   // занятые объёмы зависят от неё.
+  // (элемент без custom-спеки — легаси из старых проектов: посадку не штампуем,
+  // solids/рендер используют дефолт «верх заподлицо»)
   const drafts = rawDrafts.map((draft) =>
-    draft.kind === "plate" && draft.custom?.flush === true
+    isSeated(draft) && draft.custom
       ? {
           ...draft,
           custom: {
@@ -429,11 +438,11 @@ export function planPlacement(
   // размер/посадку уже стоящей плиты, не стирая её ластиком. Сравниваем в
   // плане (не 3D): плиты «поверх» и «заподлицо» живут на разных высотах,
   // но занимают одно место на ряду.
-  if (drafts.length === 1 && drafts[0].kind === "plate") {
+  if (drafts.length === 1 && (drafts[0].kind === "plate" || drafts[0].kind === "grate")) {
     const target = drafts[0];
-    const replacedPlates = baseRow.filter((brick) => brick.kind === "plate" && overlaps(brick, target));
-    if (replacedPlates.length) {
-      const replaced = new Set(replacedPlates.map((brick) => brick.id));
+    const replacedSame = baseRow.filter((brick) => brick.kind === target.kind && overlaps(brick, target));
+    if (replacedSame.length) {
+      const replaced = new Set(replacedSame.map((brick) => brick.id));
       const remaining = conflicts.filter((brick) => !replaced.has(brick.id));
       if (remaining.length) return { rows: null, conflicts: remaining };
       return {
@@ -443,8 +452,8 @@ export function planPlacement(
     }
   }
 
-  // плита и задвижка никого не заменяют: занято — отказ
-  if (drafts.some((draft) => draft.kind === "plate" || draft.kind === "damper")) {
+  // плита, колосник и задвижка никого не заменяют: занято — отказ
+  if (drafts.some((draft) => draft.kind === "plate" || draft.kind === "damper" || draft.kind === "grate")) {
     if (conflicts.length) return { rows: null, conflicts };
     return { rows: { ...workRows, [row]: [...baseRow, ...drafts] }, conflicts: [] };
   }
@@ -486,25 +495,9 @@ export function damperBlockers(rowBricks: PlacedBrick[], damper: BrickFootprint)
   );
 }
 
-export function grateAssemblyBricks(row: number, x: number, y: number, orientation: Orientation, nextId: () => number): PlacedBrick[] {
-  const grate: PlacedBrick = { id: `r${row}-${nextId()}-${x}-${y}`, row, x, y, kind: "grate", orientation };
-  if (orientation === "h") {
-    return [
-      grate,
-      { id: `r${row}-${nextId()}-${x - 0.5}-${y}`, row, x: x - 0.5, y, kind: "trim", orientation: "h" },
-      { id: `r${row}-${nextId()}-${x - 0.5}-${y + 1}`, row, x: x - 0.5, y: y + 1, kind: "trim", orientation: "h" },
-      { id: `r${row}-${nextId()}-${x + 3}-${y}`, row, x: x + 3, y, kind: "trim", orientation: "h" },
-      { id: `r${row}-${nextId()}-${x + 3}-${y + 1}`, row, x: x + 3, y: y + 1, kind: "trim", orientation: "h" }
-    ];
-  }
-  return [
-    grate,
-    { id: `r${row}-${nextId()}-${x}-${y - 0.5}`, row, x, y: y - 0.5, kind: "trim", orientation: "v" },
-    { id: `r${row}-${nextId()}-${x + 1}-${y - 0.5}`, row, x: x + 1, y: y - 0.5, kind: "trim", orientation: "v" },
-    { id: `r${row}-${nextId()}-${x}-${y + 3}`, row, x, y: y + 3, kind: "trim", orientation: "v" },
-    { id: `r${row}-${nextId()}-${x + 1}-${y + 3}`, row, x: x + 1, y: y + 3, kind: "trim", orientation: "v" }
-  ];
-}
+// Бывшая «сборка колосника» (grate + 4 подрезки-trim) удалена: колосник, как и
+// плита, получает опору автоподрезом кирпичей при установке. Kind "trim"
+// сохранён для старых проектов.
 
 /**
  * Greedy row auto-fill: walks the grid and lays full bricks in the given

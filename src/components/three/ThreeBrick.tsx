@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT, BRICK_GAP } from "../../domain/constants";
-import { brickBounds, brickBoxes, brickSizeFor, brickWorldGeometry, cellToWorld, footprintSizeOf, notchBox, type BrickBox } from "../../domain/geometry";
+import { brickBounds, brickBoxes, brickWorldGeometry, cellToWorld, footprintSizeOf, notchBox, type BrickBox } from "../../domain/geometry";
 import { plateBurnerCenters } from "../../domain/plate";
 import { getToolColor } from "../../domain/tools";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
@@ -310,75 +310,50 @@ export function ThreeDamper({ grid, brick, currentRow, opacity = 1, onToggle }: 
   );
 }
 
+/**
+ * Колосниковая решётка: чугунные прутья на посадке из полок (seatZMm считается
+ * при установке автоподрезом, как у плиты). Размер — из custom-спеки;
+ * старые колосники без неё — 3×2 ячейки заподлицо с верхом ряда.
+ */
 export function ThreeGrate({ grid, brick, currentRow, opacity = 1, unit }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number; unit: string }) {
   const geometry = brickWorldGeometry(brick, grid);
-  const grateSize = brickSizeFor("grate", brick.orientation);
+  const grateSize = footprintSizeOf(brick);
+  const thicknessMm = brick.custom?.thicknessMm ?? 22;
+  const seatMm = brick.custom?.seatZMm ?? 65 - thicknessMm;
   // Grate should not inherit full brick mortar gaps; keep it almost flush with support cuts.
   const grateScaleX = Math.max(0.1, grateSize.w - BRICK_GAP * 0.12);
   const grateScaleZ = Math.max(0.1, grateSize.h - BRICK_GAP * 0.12);
-  const grateHeight = BRICK_LAYER_HEIGHT * 0.22; // thinner cast-iron grate profile
-  const supportTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
-  const grateSeatEmbed = 0.004; // tiny embed removes "floating" seam
-  const grateY = supportTopY + grateHeight / 2 - grateSeatEmbed;
+  const brickHeight = BRICK_LAYER_HEIGHT * 0.92;
+  const grateHeight = Math.max(0.05, (thicknessMm / 65) * brickHeight);
+  const rowBottomY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT - brickHeight / 2;
+  const grateY = rowBottomY + (seatMm / 65) * brickHeight + grateHeight / 2 + 0.004;
   const isCurrent = brick.row === currentRow;
   const bars = 5;
   const longX = grateScaleX >= grateScaleZ;
   const span = longX ? grateScaleZ : grateScaleX;
   const barSize = span / (bars * 1.7);
   const gap = (span - barSize * bars) / Math.max(1, bars - 1);
-  const supportRailHeight = Math.max(0.02, grateHeight * 0.58);
-  const supportRailWidth = 0.12;
-  const supportRailY = supportTopY - supportRailHeight / 2;
-  const halfX = grateScaleX / 2;
-  const halfZ = grateScaleZ / 2;
-  const alongXCm = brick.orientation === "h" ? 38 : 25.2;
-  const alongZCm = brick.orientation === "h" ? 25.2 : 38;
+  const alongXCm = grateSize.w * 12.5;
+  const alongZCm = grateSize.h * 12.5;
   const topLabelY = grateY + grateHeight / 2 + 0.035;
   const labelOpacity = opacity >= 0.95 ? 1 : 0.55;
+  const lengthMm = Math.round((longX ? grateSize.w : grateSize.h) * 125);
+  const widthMm = Math.round((longX ? grateSize.h : grateSize.w) * 125);
 
   return (
     <group>
-      {/* Brick seat rails: visual quarter-cut support where the grate rests. */}
-      {longX ? (
-        <>
-          <mesh position={[geometry.position[0], supportRailY, geometry.position[2] - halfZ + supportRailWidth / 2]} castShadow receiveShadow>
-            <boxGeometry args={[grateScaleX, supportRailHeight, supportRailWidth]} />
-            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
-          </mesh>
-          <mesh position={[geometry.position[0], supportRailY, geometry.position[2] + halfZ - supportRailWidth / 2]} castShadow receiveShadow>
-            <boxGeometry args={[grateScaleX, supportRailHeight, supportRailWidth]} />
-            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
-          </mesh>
-        </>
-      ) : (
-        <>
-          <mesh position={[geometry.position[0] - halfX + supportRailWidth / 2, supportRailY, geometry.position[2]]} castShadow receiveShadow>
-            <boxGeometry args={[supportRailWidth, supportRailHeight, grateScaleZ]} />
-            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
-          </mesh>
-          <mesh position={[geometry.position[0] + halfX - supportRailWidth / 2, supportRailY, geometry.position[2]]} castShadow receiveShadow>
-            <boxGeometry args={[supportRailWidth, supportRailHeight, grateScaleZ]} />
-            <meshStandardMaterial color={COLORS.cutBrick} roughness={0.88} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.96)} />
-          </mesh>
-        </>
-      )}
-
-      {/* Corner chamfers to avoid the "floating rectangle" look. */}
-      {[
-        [-1, -1],
-        [1, -1],
-        [-1, 1],
-        [1, 1]
-      ].map(([sx, sz], i) => (
+      {/* торцевые перемычки рамки — по коротким сторонам */}
+      {[-1, 1].map((s) => (
         <mesh
-          key={`seat-corner-${i}`}
-          position={[geometry.position[0] + sx * (halfX - 0.06), supportTopY - 0.012, geometry.position[2] + sz * (halfZ - 0.06)]}
-          rotation={[0, Math.PI / 4, 0]}
+          key={`end-${s}`}
+          position={longX
+            ? [geometry.position[0] + s * (grateScaleX / 2 - 0.05), grateY, geometry.position[2]]
+            : [geometry.position[0], grateY, geometry.position[2] + s * (grateScaleZ / 2 - 0.05)]}
           castShadow
           receiveShadow
         >
-          <boxGeometry args={[0.09, 0.024, 0.09]} />
-          <meshStandardMaterial color={COLORS.cutBrick} roughness={0.9} metalness={0.02} transparent opacity={Math.min(1, opacity * 0.94)} />
+          <boxGeometry args={longX ? [0.1, grateHeight, grateScaleZ] : [grateScaleX, grateHeight, 0.1]} />
+          <meshStandardMaterial color={COLORS.grate} roughness={0.58} metalness={0.42} transparent opacity={opacity} />
         </mesh>
       ))}
 
@@ -394,7 +369,7 @@ export function ThreeGrate({ grid, brick, currentRow, opacity = 1, unit }: { gri
       })}
 
       {isCurrent && <mesh position={[geometry.position[0], topLabelY + 0.002, geometry.position[2]]}><boxGeometry args={[grateScaleX + 0.05, 0.012, grateScaleZ + 0.05]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.16} /></mesh>}
-      <Text position={[geometry.position[0], topLabelY + 0.03, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#f4e3c4" anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>РУ {brick.orientation === "h" ? "380×252×22 мм" : "252×380×22 мм"}</Text>
+      <Text position={[geometry.position[0], topLabelY + 0.03, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#f4e3c4" anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{`РУ ${lengthMm}×${widthMm}×${thicknessMm} мм`}</Text>
 
       <mesh position={[geometry.position[0], topLabelY, geometry.position[2] - grateScaleZ / 2 - 0.22]}>
         <boxGeometry args={[grateScaleX, 0.012, 0.018]} />

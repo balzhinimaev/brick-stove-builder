@@ -29,9 +29,10 @@ export function useEditor() {
       customBrick: state.customBrick,
       plateSpec: state.plateSpec,
       doorSpec: state.doorSpec,
-      damperSpec: state.damperSpec
+      damperSpec: state.damperSpec,
+      grateSpec: state.grateSpec
     }),
-    [state.currentRow, state.activeTool, state.orientation, state.notchCorner, state.rebateDepthMm, state.customBrick, state.plateSpec, state.doorSpec, state.damperSpec]
+    [state.currentRow, state.activeTool, state.orientation, state.notchCorner, state.rebateDepthMm, state.customBrick, state.plateSpec, state.doorSpec, state.damperSpec, state.grateSpec]
   );
 
   /**
@@ -129,6 +130,7 @@ export function useEditor() {
     plateSpec: state.plateSpec,
     doorSpec: state.doorSpec,
     damperSpec: state.damperSpec,
+    grateSpec: state.grateSpec,
     viewMode: state.viewMode,
     camera: state.camera,
     allBricks,
@@ -144,6 +146,7 @@ export function useEditor() {
     setPlateSize: useCallback((lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) => dispatch({ type: "setPlateSize", lengthMm, widthMm, thicknessMm, flush }), []),
     setDoorSize: useCallback((widthMm: number, heightMm: number) => dispatch({ type: "setDoorSize", widthMm, heightMm }), []),
     setDamperSize: useCallback((lengthMm: number, widthMm: number) => dispatch({ type: "setDamperSize", lengthMm, widthMm }), []),
+    setGrateSize: useCallback((lengthMm: number, widthMm: number, thicknessMm: number) => dispatch({ type: "setGrateSize", lengthMm, widthMm, thicknessMm }), []),
     toggleDamper: useCallback((id: string) => dispatch({ type: "toggleDamper", id }), []),
     setViewMode: useCallback((mode: ViewMode) => dispatch({ type: "setViewMode", mode }), []),
     updateParameter: useCallback((key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }), []),

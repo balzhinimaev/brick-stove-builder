@@ -2,7 +2,6 @@ import { DEFAULT_CAMERA, DEFAULT_PARAMETERS, INITIAL_ROWS, MM_PER_CELL } from ".
 import {
   brickSizeFor,
   cloneRows,
-  grateAssemblyBricks,
   gridFromParameters,
   overlaps3D,
   placeBricksInRows,
@@ -55,6 +54,8 @@ export type EditorState = {
   doorSpec: CustomBrickSpec;
   /** Размер задвижки дымохода (проём, мм), применяется при установке задвижки. */
   damperSpec: CustomBrickSpec;
+  /** Размер колосниковой решётки (мм), применяется при установке колосника. */
+  grateSpec: CustomBrickSpec;
   viewMode: ViewMode;
   camera: CameraState;
 };
@@ -78,6 +79,7 @@ export type EditorAction =
   | { type: "setPlateSize"; lengthMm: number; widthMm: number; thicknessMm: number; flush: boolean }
   | { type: "setDoorSize"; widthMm: number; heightMm: number }
   | { type: "setDamperSize"; lengthMm: number; widthMm: number }
+  | { type: "setGrateSize"; lengthMm: number; widthMm: number; thicknessMm: number }
   | { type: "toggleDamper"; id: string }
   | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
@@ -144,6 +146,19 @@ export function damperSpecFromMm(lengthMm: number, widthMm: number): CustomBrick
 /** Проём 250×130 — самый ходовой типоразмер печной задвижки. */
 export const DEFAULT_DAMPER = damperSpecFromMm(250, 130);
 
+export function grateSpecFromMm(lengthMm: number, widthMm: number, thicknessMm = 22): CustomBrickSpec {
+  return {
+    name: `Колосник ${lengthMm}×${widthMm}×${thicknessMm}`,
+    w: lengthMm / MM_PER_CELL,
+    h: widthMm / MM_PER_CELL,
+    notch: null,
+    thicknessMm
+  };
+}
+
+/** РУ 375×250×22 — совпадает с прежним фиксированным колосником 3×2 ячейки. */
+export const DEFAULT_GRATE = grateSpecFromMm(375, 250);
+
 /** Классическая четверть в полкирпича — годится и под колосник (нужно ≥22 мм). */
 export const DEFAULT_REBATE_DEPTH_MM = 32.5;
 
@@ -164,6 +179,7 @@ export function initialEditorState(): EditorState {
     plateSpec: DEFAULT_PLATE,
     doorSpec: DEFAULT_DOOR,
     damperSpec: DEFAULT_DAMPER,
+    grateSpec: DEFAULT_GRATE,
     viewMode: "3d",
     camera: DEFAULT_CAMERA
   };
@@ -176,7 +192,7 @@ function isLocked(state: EditorState, row = state.currentRow): boolean {
 /** Выбор инструмента, достаточный, чтобы построить черновики размещения. */
 export type PlacementSelection = Pick<
   EditorState,
-  "currentRow" | "activeTool" | "orientation" | "notchCorner" | "rebateDepthMm" | "customBrick" | "plateSpec" | "doorSpec" | "damperSpec"
+  "currentRow" | "activeTool" | "orientation" | "notchCorner" | "rebateDepthMm" | "customBrick" | "plateSpec" | "doorSpec" | "damperSpec" | "grateSpec"
 >;
 
 /**
@@ -187,9 +203,11 @@ export type PlacementSelection = Pick<
  */
 export function buildPlacementDrafts(sel: PlacementSelection, x: number, y: number, nextId: () => number): PlacedBrick[] | null {
   if (sel.activeTool === "eraser") return null;
-  if (sel.activeTool === "grate") return grateAssemblyBricks(sel.currentRow, x, y, sel.orientation, nextId);
 
   const brick: PlacedBrick = { id: `r${sel.currentRow}-${nextId()}-${x}-${y}`, row: sel.currentRow, x, y, kind: sel.activeTool, orientation: sel.orientation };
+  // Колосник, как и плита, — одиночный элемент со своим размером: опору ему
+  // даёт автоподрез кирпичей при установке (бывшая сборка из 4 подрезок убрана).
+  if (sel.activeTool === "grate") brick.custom = sel.grateSpec;
   if (sel.activeTool === "rebate") {
     brick.notchCorner = sel.notchCorner;
     // Глубина полки — на элементе (спека всегда в h-ориентации): полка под
@@ -236,6 +254,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, doorSpec: doorSpecFromMm(action.widthMm, action.heightMm) };
     case "setDamperSize":
       return { ...state, damperSpec: damperSpecFromMm(action.lengthMm, action.widthMm) };
+    case "setGrateSize":
+      return { ...state, grateSpec: grateSpecFromMm(action.lengthMm, action.widthMm, action.thicknessMm) };
 
     case "toggleDamper": {
       const row = Object.entries(state.rows).find(([, bricks]) =>
@@ -431,6 +451,7 @@ function restoreDocument(snapshot: EditorState, view: EditorState): EditorState 
     plateSpec: view.plateSpec,
     doorSpec: view.doorSpec,
     damperSpec: view.damperSpec,
+    grateSpec: view.grateSpec,
     viewMode: view.viewMode,
     camera: view.camera
   };

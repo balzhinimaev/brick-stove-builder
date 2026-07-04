@@ -6,8 +6,9 @@ import { getToolColor, toolLabelKey } from "../../domain/tools";
 import { PlateSizePanel } from "./PlateSizePanel";
 import { DoorSizePanel } from "./DoorSizePanel";
 import { DamperSizePanel } from "./DamperSizePanel";
+import { GrateSizePanel } from "./GrateSizePanel";
 
-export function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, rebateDepthMm, setRebateDepth, plateThicknessMm, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter, plateSpec, setPlateSize, doorSpec, setDoorSize, damperSpec, setDamperSize }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; rebateDepthMm: number; setRebateDepth: (depthMm: number) => void; plateThicknessMm: number; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) => void; doorSpec: CustomBrickSpec; setDoorSize: (widthMm: number, heightMm: number) => void; damperSpec: CustomBrickSpec; setDamperSize: (lengthMm: number, widthMm: number) => void }) {
+export function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, rebateDepthMm, setRebateDepth, plateThicknessMm, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter, plateSpec, setPlateSize, doorSpec, setDoorSize, damperSpec, setDamperSize, grateSpec, setGrateSize }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; rebateDepthMm: number; setRebateDepth: (depthMm: number) => void; plateThicknessMm: number; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) => void; doorSpec: CustomBrickSpec; setDoorSize: (widthMm: number, heightMm: number) => void; damperSpec: CustomBrickSpec; setDamperSize: (lengthMm: number, widthMm: number) => void; grateSpec: CustomBrickSpec; setGrateSize: (lengthMm: number, widthMm: number, thicknessMm: number) => void }) {
   return (
     <section className="space-y-2">
       <div className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
@@ -70,6 +71,7 @@ export function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientat
       {activeTool === "plate" && <PlateSizePanel t={t} plateSpec={plateSpec} setPlateSize={setPlateSize} />}
       {activeTool === "cleanout" && <DoorSizePanel t={t} doorSpec={doorSpec} setDoorSize={setDoorSize} />}
       {activeTool === "damper" && <DamperSizePanel t={t} damperSpec={damperSpec} setDamperSize={setDamperSize} />}
+      {activeTool === "grate" && <GrateSizePanel t={t} grateSpec={grateSpec} setGrateSize={setGrateSize} />}
       {activeTool === "rebate" && (
         <>
           <Segmented

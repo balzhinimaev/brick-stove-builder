@@ -98,6 +98,8 @@ export default function App() {
             damperSpec={studio.damperSpec}
             setDamperSize={studio.setDamperSize}
             toggleDamper={studio.toggleDamper}
+            grateSpec={studio.grateSpec}
+            setGrateSize={studio.setGrateSize}
             userLogin={userLogin}
             viewMode={studio.viewMode}
             setViewMode={studio.setViewMode}

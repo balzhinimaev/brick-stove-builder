@@ -61,6 +61,8 @@ export type BuilderScreenProps = {
   damperSpec: CustomBrickSpec;
   setDamperSize: (lengthMm: number, widthMm: number) => void;
   toggleDamper: (id: string) => void;
+  grateSpec: CustomBrickSpec;
+  setGrateSize: (lengthMm: number, widthMm: number, thicknessMm: number) => void;
   userLogin: string;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
@@ -92,7 +94,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   const {
     t, grid, rows, rowCount, currentRow, setCurrentRow, lockedRows, activeTool, setActiveTool,
     orientation, setOrientation, notchCorner, setNotchCorner, rebateDepthMm, setRebateDepth, snapStep, setSnapStep,
-    customBrick, pickCustomBrick, plateSpec, setPlateSize, doorSpec, setDoorSize, damperSpec, setDamperSize, toggleDamper, userLogin, viewMode, setViewMode, placeAt, canPlaceAt, rejectedIds, addRow, deleteCurrentRow,
+    customBrick, pickCustomBrick, plateSpec, setPlateSize, doorSpec, setDoorSize, damperSpec, setDamperSize, toggleDamper, grateSpec, setGrateSize, userLogin, viewMode, setViewMode, placeAt, canPlaceAt, rejectedIds, addRow, deleteCurrentRow,
     copyPreviousRow, fillCurrentRow, clearCurrentRow, lockRow, unlockRow, canUndo, canRedo,
     undo, redo, parameters, materials, camera, cameraZoom, cameraRotate,
     cameraPan, cameraReset, saveCurrentProject
@@ -165,6 +167,8 @@ export function BuilderScreen(props: BuilderScreenProps) {
             setDoorSize={setDoorSize}
             damperSpec={damperSpec}
             setDamperSize={setDamperSize}
+            grateSpec={grateSpec}
+            setGrateSize={setGrateSize}
           />
           {cutterOpen && (
             <BrickCutter
@@ -182,11 +186,11 @@ export function BuilderScreen(props: BuilderScreenProps) {
         <section className="space-y-3">
           <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2 shadow-md shadow-[#3D2B1F]/10 min-h-[620px] xl:min-h-[min(70dvh,900px)]">
             {viewMode === "2d"
-              ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} placeAt={placeAt} canPlaceAt={canPlaceAt} rejectedIds={rejectedIds} t={t} />
+              ? <PlanGrid grid={grid} bricks={currentBricks.filter((brick) => isInsideGrid(brick, grid))} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} grateSpec={grateSpec} placeAt={placeAt} canPlaceAt={canPlaceAt} rejectedIds={rejectedIds} t={t} />
               : (
                 <ErrorBoundary fallback={<CanvasFallback>{t("aria3d")}</CanvasFallback>}>
                   <Suspense fallback={<CanvasFallback>{t("view3d")}…</CanvasFallback>}>
-                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} rejectedIds={rejectedIds} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} onToggleDamper={toggleDamper} />
+                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} rejectedIds={rejectedIds} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} grateSpec={grateSpec} onToggleDamper={toggleDamper} />
                   </Suspense>
                 </ErrorBoundary>
               )}

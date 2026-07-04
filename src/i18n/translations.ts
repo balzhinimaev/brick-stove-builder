@@ -191,7 +191,9 @@ const ru = {
   dampers: "Задвижки",
   damperSizeTitle: "Проём задвижки, мм",
   damperHint: "Ставится над дымовым каналом (V). Клик инструментом по установленной задвижке — открыть/закрыть.",
-  damperBlocked: "Канал под задвижкой перекрыт кладкой"
+  damperBlocked: "Канал под задвижкой перекрыт кладкой",
+  grateSizeTitle: "Размер колосника, мм",
+  grateHint: "Колосник сам подрежет кирпичи под собой на свою толщину и ляжет заподлицо; готовые глубокие полки — сядет глубже. Клик по стоящему колоснику — применить текущий размер."
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -384,7 +386,9 @@ const en: Record<TranslationKey, string> = {
   dampers: "Flue dampers",
   damperSizeTitle: "Damper opening, mm",
   damperHint: "Place over a flue channel (V). Click a placed damper with the tool to open/close it.",
-  damperBlocked: "Masonry blocks the flue under the damper"
+  damperBlocked: "Masonry blocks the flue under the damper",
+  grateSizeTitle: "Grate size, mm",
+  grateHint: "The grate auto-cuts the bricks beneath it to its own thickness and sits flush; deeper existing ledges seat it lower. Click a placed grate to apply the current size."
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -575,7 +579,9 @@ const lt: Record<TranslationKey, string> = {
   dampers: "Sklendės",
   damperSizeTitle: "Sklendės anga, mm",
   damperHint: "Dedama virš dūmų kanalo (V). Spustelėkite pastatytą sklendę įrankiu — atidaryti/uždaryti.",
-  damperBlocked: "Mūras užstoja kanalą po sklende"
+  damperBlocked: "Mūras užstoja kanalą po sklende",
+  grateSizeTitle: "Grotelių dydis, mm",
+  grateHint: "Grotelės pačios įpjauna plytas po savimi per savo storį ir gula lygiai; gilesnės esamos atbrailos — nusileidžia giliau. Spustelėkite pastatytas groteles — pritaikyti dabartinį dydį."
 };
 
 export const translations = { ru, en, lt } as const;

@@ -37,6 +37,7 @@ export function ThreeStack({
   plateSpec,
   doorSpec,
   damperSpec,
+  grateSpec,
   onToggleDamper
 }: {
   grid: GridSpec;
@@ -56,6 +57,7 @@ export function ThreeStack({
   plateSpec: CustomBrickSpec;
   doorSpec: CustomBrickSpec;
   damperSpec: CustomBrickSpec;
+  grateSpec: CustomBrickSpec;
   onToggleDamper?: (id: string) => void;
 }) {
   const [hoverCell3d, setHoverCell3d] = useState<HoverCell>(null);
@@ -104,7 +106,7 @@ export function ThreeStack({
               </mesh>
             );
           })}
-          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} unit={unit} />
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} grateSpec={grateSpec} unit={unit} />
         </group>
       </Canvas>
     </div>
@@ -153,6 +155,7 @@ function PlacementCells({
   plateSpec,
   doorSpec,
   damperSpec,
+  grateSpec,
   unit
 }: {
   grid: GridSpec;
@@ -170,6 +173,7 @@ function PlacementCells({
   plateSpec: CustomBrickSpec;
   doorSpec: CustomBrickSpec;
   damperSpec: CustomBrickSpec;
+  grateSpec: CustomBrickSpec;
   unit: string;
 }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
@@ -197,7 +201,7 @@ function PlacementCells({
     <group>
       {hoverCell ? (() => {
         if (previewKind === "custom" && !customBrick) return null;
-        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : previewKind === "cleanout" ? doorSpec : previewKind === "damper" ? damperSpec : previewKind === "rebate" ? { name: "", w: 2, h: 1, notch: null, notchDepthMm: rebateDepthMm } : undefined } as PlacedBrick;
+        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : previewKind === "cleanout" ? doorSpec : previewKind === "damper" ? damperSpec : previewKind === "grate" ? grateSpec : previewKind === "rebate" ? { name: "", w: 2, h: 1, notch: null, notchDepthMm: rebateDepthMm } : undefined } as PlacedBrick;
         const geom = brickWorldGeometry(draft, grid);
         // честное превью: та же проверка, что и настоящая установка (3D-коллизии)
         const fits = activeTool === "eraser" ? true : isInsideGrid(draft, grid) && canPlaceAt(hoverCell.x, hoverCell.y);

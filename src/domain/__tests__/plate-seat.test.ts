@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cutBrickForPlate, gridFromParameters, planPlacement, plateSeatZ, brickSolids } from "../geometry";
-import { plateSpecFromMm } from "../editor";
+import { grateSpecFromMm, plateSpecFromMm } from "../editor";
 import { DEFAULT_PARAMETERS } from "../constants";
 import type { PlacedBrick } from "../types";
 
@@ -157,5 +157,50 @@ describe("planPlacement — клик плитой по плите = замена
     const plan = planPlacement(rows, 2, [big], grid);
     expect(plan.rows).toBeNull();
     expect(plan.conflicts.map((b) => b.id)).toContain("door");
+  });
+});
+
+describe("колосник садится в вырезы, как плита", () => {
+  const grate = (id: string, x: number, y: number, l = 375, w = 250, t = 22): PlacedBrick => ({
+    id, row: 2, x, y, kind: "grate", orientation: "h",
+    custom: { ...grateSpecFromMm(l, w, t) }
+  });
+
+  it("колосник на целых кирпичах: автоподрез на 22 мм, верх заподлицо", () => {
+    const bricks: PlacedBrick[] = [
+      { id: "a", row: 2, x: 1, y: 1, kind: "standard", orientation: "h" },
+      { id: "b", row: 2, x: 1, y: 2, kind: "standard", orientation: "h" }
+    ];
+    const plan = planPlacement({ 2: bricks }, 2, [grate("g", 1, 1)], grid);
+    expect(plan.rows).not.toBeNull();
+    const placed = plan.rows![2].find((b) => b.kind === "grate")!;
+    expect(placed.custom?.seatZMm).toBe(43); // 65 − 22
+    const solid = brickSolids(placed)[0];
+    expect(solid.z1).toBe(43);
+    expect(solid.z2).toBe(65);
+    const cut = plan.rows![2].find((b) => b.id === "a")!;
+    expect(cut.kind).toBe("custom");
+    expect(cut.custom?.notchDepthMm).toBe(22);
+  });
+
+  it("колосник над готовыми глубокими полками садится на них", () => {
+    const seat = plateSeatZ([rebate("r", 1, 1, 32.5)], grate("g", 1.5, 1, 250, 125));
+    expect(seat).toBe(32.5);
+  });
+
+  it("клик колосником по колоснику — замена (смена размера)", () => {
+    const rows = planPlacement({ 2: [] }, 2, [grate("g1", 1, 1)], grid).rows!;
+    const plan = planPlacement(rows, 2, [grate("g2", 1, 1, 250, 250)], grid);
+    expect(plan.rows).not.toBeNull();
+    const grates = plan.rows![2].filter((b) => b.kind === "grate");
+    expect(grates).toHaveLength(1);
+    expect(grates[0].id).toBe("g2");
+  });
+
+  it("колосник не подрезается плитой (нережимое)", () => {
+    const rows = planPlacement({ 2: [] }, 2, [grate("g", 1, 1)], grid).rows!;
+    const plan = planPlacement(rows, 2, [flushPlate("p", 1, 1, 410, 340)], grid);
+    expect(plan.rows).toBeNull();
+    expect(plan.conflicts.map((b) => b.id)).toContain("g");
   });
 });

@@ -210,6 +210,8 @@ export function useStudioState() {
     damperSpec: editor.damperSpec,
     setDamperSize: editor.setDamperSize,
     toggleDamper: editor.toggleDamper,
+    grateSpec: editor.grateSpec,
+    setGrateSize: editor.setGrateSize,
     viewMode: editor.viewMode,
     setViewMode: editor.setViewMode,
     camera: editor.camera,

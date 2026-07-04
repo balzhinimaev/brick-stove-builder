@@ -22,6 +22,7 @@ export function PlanGrid({
   plateSpec,
   doorSpec,
   damperSpec,
+  grateSpec,
   placeAt,
   canPlaceAt,
   rejectedIds,
@@ -37,6 +38,7 @@ export function PlanGrid({
   plateSpec: CustomBrickSpec;
   doorSpec: CustomBrickSpec;
   damperSpec: CustomBrickSpec;
+  grateSpec: CustomBrickSpec;
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   canPlaceAt: (x: number, y: number) => boolean;
   rejectedIds: ReadonlySet<string>;
@@ -44,7 +46,7 @@ export function PlanGrid({
 }) {
   const width = grid.cols * CELL + PAD * 2;
   const height = grid.rows * CELL + PAD * 2 + HEADER;
-  const ghostCustom = activeTool === "plate" ? plateSpec : activeTool === "cleanout" ? doorSpec : activeTool === "damper" ? damperSpec : activeTool === "custom" ? customBrick : null;
+  const ghostCustom = activeTool === "plate" ? plateSpec : activeTool === "cleanout" ? doorSpec : activeTool === "damper" ? damperSpec : activeTool === "grate" ? grateSpec : activeTool === "custom" ? customBrick : null;
   const ghost = activeTool === "eraser" || (activeTool === "custom" && !customBrick)
     ? null
     : footprintSizeOf({ x: 0, y: 0, kind: activeTool as BrickKind, orientation, custom: ghostCustom ?? undefined });

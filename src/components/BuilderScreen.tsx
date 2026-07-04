@@ -190,7 +190,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
               : (
                 <ErrorBoundary fallback={<CanvasFallback>{t("aria3d")}</CanvasFallback>}>
                   <Suspense fallback={<CanvasFallback>{t("view3d")}…</CanvasFallback>}>
-                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} rejectedIds={rejectedIds} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} grateSpec={grateSpec} onToggleDamper={toggleDamper} />
+                    <ThreeStack grid={grid} bricks={visibleBricks} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} rejectedIds={rejectedIds} t={t} camera={camera} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} grateSpec={grateSpec} onToggleDamper={toggleDamper} onZoomDelta={cameraZoom} />
                   </Suspense>
                 </ErrorBoundary>
               )}

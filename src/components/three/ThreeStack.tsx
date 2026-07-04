@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useState } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera, Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
@@ -38,7 +38,8 @@ export function ThreeStack({
   doorSpec,
   damperSpec,
   grateSpec,
-  onToggleDamper
+  onToggleDamper,
+  onZoomDelta
 }: {
   grid: GridSpec;
   bricks: PlacedBrick[];
@@ -59,13 +60,61 @@ export function ThreeStack({
   damperSpec: CustomBrickSpec;
   grateSpec: CustomBrickSpec;
   onToggleDamper?: (id: string) => void;
+  /** Пошаговый зум из жестов (пинч/колесо) — тот же стейт, что у кнопок «+/−». */
+  onZoomDelta?: (delta: number) => void;
 }) {
   const [hoverCell3d, setHoverCell3d] = useState<HoverCell>(null);
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.006;
   const unit = t("unitCm");
+
+  // Пинч и колесо. Зум канваса живёт ТОЛЬКО в React-стейте (enableZoom у
+  // OrbitControls выключен) — до сих пор жесты никуда не были подключены и
+  // масштабирование работало только кнопками «+/−».
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pinchDist = useRef<number | null>(null);
+  const touchDist = (touches: React.TouchList) =>
+    Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+
+  useEffect(() => {
+    // колесо мыши: слушатель обязан быть non-passive, иначе preventDefault не
+    // сработает и страница будет скроллить вместо зума
+    const el = containerRef.current;
+    if (!el || !onZoomDelta) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      onZoomDelta(event.deltaY < 0 ? 0.06 : -0.06);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [onZoomDelta]);
+
+  const handleTouchStart = (event: React.TouchEvent) => {
+    if (event.touches.length === 2) pinchDist.current = touchDist(event.touches);
+  };
+  const handleTouchMove = (event: React.TouchEvent) => {
+    if (event.touches.length !== 2 || pinchDist.current === null || !onZoomDelta) return;
+    const dist = touchDist(event.touches);
+    // ~35px разведения пальцев = один шаг кнопки зума
+    const delta = (dist - pinchDist.current) / 440;
+    if (Math.abs(delta) >= 0.02) {
+      onZoomDelta(Number(delta.toFixed(3)));
+      pinchDist.current = dist;
+    }
+  };
+  const handleTouchEnd = (event: React.TouchEvent) => {
+    if (event.touches.length < 2) pinchDist.current = null;
+  };
   return (
-    <div className="relative h-[390px] overflow-hidden rounded-[22px] bg-[#FFF7E8] md:h-[460px] xl:h-[min(62dvh,780px)] 2xl:h-[min(68dvh,860px)]" aria-label={t("aria3d")}>
+    <div
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      className="relative h-[390px] overflow-hidden rounded-[22px] bg-[#FFF7E8] md:h-[460px] xl:h-[min(62dvh,780px)] 2xl:h-[min(68dvh,860px)]"
+      aria-label={t("aria3d")}
+    >
       <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-2xl border border-[#3D2B1F]/10 bg-[#F5E6C8]/90 px-3 py-2 text-xs font-black shadow-sm">{t("view3d")} · {grid.widthCm}×{grid.lengthCm} {unit}</div>
       <Canvas shadows dpr={[1, 2]} gl={{ antialias: true, powerPreference: "high-performance" }}>
         <color attach="background" args={[COLORS.skyCream]} />

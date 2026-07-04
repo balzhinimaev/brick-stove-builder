@@ -185,7 +185,13 @@ const ru = {
   pendingSync: "ждут сети",
   sessionExpired: "Сессия истекла — войдите заново.",
   draftReplaceConfirm: "Загрузить сохранённый черновик? Текущая кладка в редакторе будет заменена.",
-  vents: "Вентканалы"
+  vents: "Вентканалы",
+  rebateDepthForPlate: "Под плиту",
+  damper: "Задвижка",
+  dampers: "Задвижки",
+  damperSizeTitle: "Проём задвижки, мм",
+  damperHint: "Ставится над дымовым каналом (V). Клик инструментом по установленной задвижке — открыть/закрыть.",
+  damperBlocked: "Канал под задвижкой перекрыт кладкой"
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -372,7 +378,13 @@ const en: Record<TranslationKey, string> = {
   pendingSync: "awaiting network",
   sessionExpired: "Session expired — please sign in again.",
   draftReplaceConfirm: "Load the saved draft? The current masonry in the editor will be replaced.",
-  vents: "Vent channels"
+  vents: "Vent channels",
+  rebateDepthForPlate: "For plate",
+  damper: "Flue damper",
+  dampers: "Flue dampers",
+  damperSizeTitle: "Damper opening, mm",
+  damperHint: "Place over a flue channel (V). Click a placed damper with the tool to open/close it.",
+  damperBlocked: "Masonry blocks the flue under the damper"
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -557,7 +569,13 @@ const lt: Record<TranslationKey, string> = {
   pendingSync: "laukia tinklo",
   sessionExpired: "Sesija baigėsi — prisijunkite iš naujo.",
   draftReplaceConfirm: "Įkelti išsaugotą juodraštį? Dabartinis mūras redaktoriuje bus pakeistas.",
-  vents: "Ventiliacijos kanalai"
+  vents: "Ventiliacijos kanalai",
+  rebateDepthForPlate: "Plokštei",
+  damper: "Sklendė",
+  dampers: "Sklendės",
+  damperSizeTitle: "Sklendės anga, mm",
+  damperHint: "Dedama virš dūmų kanalo (V). Spustelėkite pastatytą sklendę įrankiu — atidaryti/uždaryti.",
+  damperBlocked: "Mūras užstoja kanalą po sklende"
 };
 
 export const translations = { ru, en, lt } as const;

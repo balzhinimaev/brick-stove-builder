@@ -138,11 +138,13 @@ function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
   frame(5);
   frame(6);
 
-  // ряд 7: посадочный — четверти пазами внутрь, плита ложится ЗАПОДЛИЦО
-  for (const x of [1, 3, 5]) add(7, x, 2, "rebate", "h", { notchCorner: "s" });
-  add(7, 1, 3, "rebate", "v", { notchCorner: "e" });
-  add(7, 6, 3, "rebate", "v", { notchCorner: "w" });
-  for (const x of [1, 3, 5]) add(7, x, 5, "rebate", "h", { notchCorner: "n" });
+  // ряд 7: посадочный — четверти пазами внутрь, глубина реза = толщине плиты:
+  // плита ложится на полки ВПЛОТНУЮ, а не парит над ними (спека в h-ориентации)
+  const seat = { name: "", w: 2, h: 1, notch: null, notchDepthMm: 15 };
+  for (const x of [1, 3, 5]) add(7, x, 2, "rebate", "h", { notchCorner: "s", custom: seat });
+  add(7, 1, 3, "rebate", "v", { notchCorner: "e", custom: seat });
+  add(7, 6, 3, "rebate", "v", { notchCorner: "w", custom: seat });
+  for (const x of [1, 3, 5]) add(7, x, 5, "rebate", "h", { notchCorner: "n", custom: seat });
   add(7, 1.5, 2.5, "plate", "h", { custom: { name: "Плита 625×375×15", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true } });
 
   return rows;

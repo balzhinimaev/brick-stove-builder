@@ -14,6 +14,7 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
       <MaterialRow label={t("grates")} value={materials.grates} />
       <MaterialRow label={t("plates")} value={materials.plates} />
       <MaterialRow label={t("doors")} value={materials.doors} />
+      <MaterialRow label={t("dampers")} value={materials.dampers} />
       <MaterialRow label={t("vents")} value={materials.vents} />
       <MaterialRow label={t("mortarEstimate")} value={formatM3(materials.mortarM3)} />
       <MaterialRow label={t("foundationConcrete")} value={formatM3(materials.concreteVolumeM3)} />

@@ -5,8 +5,9 @@ import { notchedShape } from "../../domain/outline";
 import { getToolColor, toolLabelKey } from "../../domain/tools";
 import { PlateSizePanel } from "./PlateSizePanel";
 import { DoorSizePanel } from "./DoorSizePanel";
+import { DamperSizePanel } from "./DamperSizePanel";
 
-export function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter, plateSpec, setPlateSize, doorSpec, setDoorSize }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) => void; doorSpec: CustomBrickSpec; setDoorSize: (widthMm: number, heightMm: number) => void }) {
+export function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientation, notchCorner, setNotchCorner, rebateDepthMm, setRebateDepth, plateThicknessMm, snapStep, setSnapStep, viewMode, setViewMode, customBricks, activeCustom, onPickCustom, onRemoveCustom, onOpenCutter, plateSpec, setPlateSize, doorSpec, setDoorSize, damperSpec, setDamperSize }: { t: Translate; activeTool: ToolKind; setActiveTool: (tool: ToolKind) => void; orientation: Orientation; setOrientation: (orientation: Orientation) => void; notchCorner: NotchCorner; setNotchCorner: (corner: NotchCorner) => void; rebateDepthMm: number; setRebateDepth: (depthMm: number) => void; plateThicknessMm: number; snapStep: SnapStep; setSnapStep: (step: SnapStep) => void; viewMode: ViewMode; setViewMode: (mode: ViewMode) => void; customBricks: Array<{ id: string; spec: CustomBrickSpec }>; activeCustom: CustomBrickSpec | null; onPickCustom: (spec: CustomBrickSpec) => void; onRemoveCustom: (id: string) => void; onOpenCutter: () => void; plateSpec: CustomBrickSpec; setPlateSize: (lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) => void; doorSpec: CustomBrickSpec; setDoorSize: (widthMm: number, heightMm: number) => void; damperSpec: CustomBrickSpec; setDamperSize: (lengthMm: number, widthMm: number) => void }) {
   return (
     <section className="space-y-2">
       <div className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
@@ -68,22 +69,53 @@ export function Toolbox({ t, activeTool, setActiveTool, orientation, setOrientat
       </div>
       {activeTool === "plate" && <PlateSizePanel t={t} plateSpec={plateSpec} setPlateSize={setPlateSize} />}
       {activeTool === "cleanout" && <DoorSizePanel t={t} doorSpec={doorSpec} setDoorSize={setDoorSize} />}
+      {activeTool === "damper" && <DamperSizePanel t={t} damperSpec={damperSpec} setDamperSize={setDamperSize} />}
       {activeTool === "rebate" && (
-        <Segmented
-          title={t("notchCornerTitle")}
-          options={[
-            { key: "nw", label: "◰ " + t("notchNW") },
-            { key: "ne", label: "◳ " + t("notchNE") },
-            { key: "sw", label: "◱ " + t("notchSW") },
-            { key: "se", label: "◲ " + t("notchSE") },
-            { key: "n", label: "⬒ " + t("notchN") },
-            { key: "e", label: "◨ " + t("notchE") },
-            { key: "s", label: "⬓ " + t("notchS") },
-            { key: "w", label: "◧ " + t("notchW") }
-          ]}
-          value={notchCorner}
-          onChange={(value) => setNotchCorner(value as NotchCorner)}
-        />
+        <>
+          <Segmented
+            title={t("notchCornerTitle")}
+            options={[
+              { key: "nw", label: "◰ " + t("notchNW") },
+              { key: "ne", label: "◳ " + t("notchNE") },
+              { key: "sw", label: "◱ " + t("notchSW") },
+              { key: "se", label: "◲ " + t("notchSE") },
+              { key: "n", label: "⬒ " + t("notchN") },
+              { key: "e", label: "◨ " + t("notchE") },
+              { key: "s", label: "⬓ " + t("notchS") },
+              { key: "w", label: "◧ " + t("notchW") }
+            ]}
+            value={notchCorner}
+            onChange={(value) => setNotchCorner(value as NotchCorner)}
+          />
+          <div className="rounded-[22px] border border-[#3D2B1F]/10 bg-[#FFF7E8] p-2">
+            <div className="mb-1 flex items-baseline justify-between px-1">
+              <span className="text-[11px] font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterDepth")}</span>
+              <span className="text-sm font-black">{rebateDepthMm} мм</span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={65}
+              step={1}
+              value={rebateDepthMm}
+              onChange={(event) => setRebateDepth(Number(event.target.value))}
+              aria-label={t("cutterDepth")}
+              className="w-full accent-[#C1440E]"
+            />
+            <div className="mt-1 flex items-center justify-between gap-2 px-1">
+              <span className="text-[10px] font-bold text-[#3D2B1F]/55">
+                {rebateDepthMm >= 65 ? t("cutterThrough") : `${t("cutterLedgeLeft")}: ${65 - rebateDepthMm} мм`}
+              </span>
+              {/* полка точно под текущую толщину плиты — плита ляжет на неё, а не повиснет */}
+              <button
+                onClick={() => setRebateDepth(plateThicknessMm)}
+                className="min-h-8 shrink-0 rounded-full border border-[#C1440E]/40 px-2.5 text-[10px] font-black text-[#C1440E]"
+              >
+                {t("rebateDepthForPlate")}: {plateThicknessMm} мм
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </section>
   );

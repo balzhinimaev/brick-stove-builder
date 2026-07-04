@@ -17,7 +17,7 @@ export const BRICK_LAYER_HEIGHT = 0.34;
 /** Mortar joint width carved out of every brick footprint in the 3D preview. */
 export const BRICK_GAP = 0.035;
 
-export const TOOLS: ToolKind[] = ["standard", "cut", "rebate", "firebrick", "vent", "cleanout", "grate", "plate", "eraser"];
+export const TOOLS: ToolKind[] = ["standard", "cut", "rebate", "firebrick", "vent", "cleanout", "grate", "plate", "damper", "eraser"];
 
 export const DEFAULT_PARAMETERS: Parameters = {
   foundationWidth: 120,

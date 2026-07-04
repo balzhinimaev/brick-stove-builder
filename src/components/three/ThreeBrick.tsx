@@ -12,10 +12,11 @@ function fmtCm(cells: number): string {
   return (cells * 12.5).toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
 }
 
-export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, unit }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; unit: string }) {
+export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, unit, onToggleDamper }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; unit: string; onToggleDamper?: (id: string) => void }) {
   if (brick.kind === "grate") return <ThreeGrate grid={grid} brick={brick} currentRow={currentRow} unit={unit} />;
   if (brick.kind === "rebate" || brick.kind === "custom") return <ThreeRebate grid={grid} brick={brick} currentRow={currentRow} />;
   if (brick.kind === "plate") return <ThreePlate grid={grid} brick={brick} currentRow={currentRow} />;
+  if (brick.kind === "damper") return <ThreeDamper grid={grid} brick={brick} currentRow={currentRow} onToggle={onToggleDamper} />;
   if (brick.kind === "cleanout") return <ThreeDoor grid={grid} brick={brick} currentRow={currentRow} />;
 
   const geometry = brickWorldGeometry(brick, grid);
@@ -204,6 +205,100 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
       )}
       <Text position={[geometry.position[0], topY + 0.05, geometry.position[2] + size.h / 2 - 0.35]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#e6d7bd" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
         {`Плита ${Math.round(size.w * 125)}×${Math.round(size.h * 125)}×${thicknessMm} мм${flush ? " · заподлицо" : ""}`}
+      </Text>
+    </group>
+  );
+}
+
+/**
+ * Задвижка дымохода: чугунная рамка в шве над своим рядом + выдвижное полотно
+ * с ручкой. damperOpen 0..1 — полотно выезжает за габарит вдоль длинной оси
+ * следа. Клик по задвижке — открыть/закрыть (если передан onToggle).
+ */
+export function ThreeDamper({ grid, brick, currentRow, opacity = 1, onToggle }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number; onToggle?: (id: string) => void }) {
+  const geometry = brickWorldGeometry(brick, grid);
+  const size = footprintSizeOf(brick);
+  const thicknessMm = brick.custom?.thicknessMm ?? 20;
+  const open = (brick.damperOpen ?? 0) >= 0.5;
+  const frameH = (thicknessMm / 65) * BRICK_LAYER_HEIGHT * 0.92;
+  const bladeH = frameH * 0.45;
+  const rowTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
+  const frameY = rowTopY + frameH / 2 - 0.006; // рамка в шве, следующий ряд ляжет сверху
+  const isCurrent = brick.row === currentRow;
+  const transparent = opacity < 1;
+  const alongX = size.w >= size.h;
+  const long = alongX ? size.w : size.h;
+  // полотно чуть длиннее проёма (перекрывает раму) и выезжает на ~70% длины
+  const slide = open ? long * 0.7 : 0;
+  const bladeLong = long - 0.1;
+  const bladeShort = (alongX ? size.h : size.w) - 0.22;
+  const bladeOffset: [number, number] = alongX ? [slide, 0] : [0, slide];
+  const knobOffset = bladeLong / 2 + 0.08;
+  const mat = (color: string, metal = 0.5) => <meshStandardMaterial color={color} roughness={0.5} metalness={metal} transparent={transparent} opacity={opacity} />;
+  const handleClick = onToggle
+    ? (event: { stopPropagation: () => void; delta?: number }) => {
+        // после drag-вращения OrbitControls click тоже приходит — не переключаем
+        if ((event.delta ?? 0) > 2) return;
+        event.stopPropagation();
+        onToggle(brick.id);
+      }
+    : undefined;
+
+  return (
+    <group onClick={handleClick}>
+      {/* рамка: две щеки вдоль хода полотна + торец с дальней от ручки стороны */}
+      <mesh
+        position={alongX
+          ? [geometry.position[0], frameY, geometry.position[2] - (size.h - 0.15) / 2]
+          : [geometry.position[0] - (size.w - 0.15) / 2, frameY, geometry.position[2]]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={alongX ? [size.w - 0.06, frameH, 0.09] : [0.09, frameH, size.h - 0.06]} />
+        {mat(COLORS.damper, 0.55)}
+      </mesh>
+      <mesh
+        position={alongX
+          ? [geometry.position[0], frameY, geometry.position[2] + (size.h - 0.15) / 2]
+          : [geometry.position[0] + (size.w - 0.15) / 2, frameY, geometry.position[2]]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={alongX ? [size.w - 0.06, frameH, 0.09] : [0.09, frameH, size.h - 0.06]} />
+        {mat(COLORS.damper, 0.55)}
+      </mesh>
+      <mesh
+        position={alongX
+          ? [geometry.position[0] - (size.w - 0.15) / 2, frameY, geometry.position[2]]
+          : [geometry.position[0], frameY, geometry.position[2] - (size.h - 0.15) / 2]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={alongX ? [0.09, frameH, size.h - 0.06] : [size.w - 0.06, frameH, 0.09]} />
+        {mat(COLORS.damper, 0.55)}
+      </mesh>
+      {/* полотно: в закрытом состоянии перекрывает проём, в открытом торчит из кладки */}
+      <mesh position={[geometry.position[0] + bladeOffset[0], frameY + frameH * 0.1, geometry.position[2] + bladeOffset[1]]} castShadow>
+        <boxGeometry args={alongX ? [bladeLong, bladeH, bladeShort] : [bladeShort, bladeH, bladeLong]} />
+        {mat("#3a4046", 0.62)}
+      </mesh>
+      {/* ручка на торце полотна */}
+      <mesh position={[
+        geometry.position[0] + bladeOffset[0] + (alongX ? knobOffset : 0),
+        frameY + frameH * 0.1,
+        geometry.position[2] + bladeOffset[1] + (alongX ? 0 : knobOffset)
+      ]}>
+        <boxGeometry args={alongX ? [0.16, 0.09, 0.09] : [0.09, 0.09, 0.16]} />
+        {mat("#15181a", 0.7)}
+      </mesh>
+      {isCurrent && !transparent && (
+        <mesh position={[geometry.position[0], frameY + frameH / 2 + 0.03, geometry.position[2]]}>
+          <boxGeometry args={[size.w + 0.05, 0.012, size.h + 0.05]} />
+          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.18} />
+        </mesh>
+      )}
+      <Text position={[geometry.position[0], frameY + frameH / 2 + 0.06, geometry.position[2] + (alongX ? size.h / 2 + 0.14 : 0)]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.15} color={COLORS.sageDark} outlineWidth={0.01} outlineColor="#FFF7E8" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
+        {`Задвижка ${Math.round((alongX ? size.w : size.h) * 125)}×${Math.round((alongX ? size.h : size.w) * 125)} мм · ${open ? "открыта" : "закрыта"}`}
       </Text>
     </group>
   );

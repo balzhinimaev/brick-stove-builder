@@ -70,6 +70,7 @@ export function PrintOrder({
             [t("grates"), materials.grates],
             [t("plates"), materials.plates],
             [t("doors"), materials.doors],
+            [t("dampers"), materials.dampers],
             [t("vents"), materials.vents],
             [t("mortarEstimate"), formatM3(materials.mortarM3)],
             [t("foundationConcrete"), formatM3(materials.concreteVolumeM3)]

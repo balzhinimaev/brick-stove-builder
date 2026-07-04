@@ -27,6 +27,8 @@ export function brickSizeFor(kind: BrickFootprint["kind"], orientation: Orientat
   if (kind === "grate") return orientation === "h" ? { w: 3, h: 2 } : { w: 2, h: 3 };
   // Варочная плита: 5×3 ячейки = 625×375 мм (близко к двухконфорочной чугунной).
   if (kind === "plate") return orientation === "h" ? { w: 5, h: 3 } : { w: 3, h: 5 };
+  // Задвижка дымохода: проём 250×130 мм = 2×1 ячейки (ходовой типоразмер).
+  if (kind === "damper") return orientation === "h" ? { w: 2, h: 1 } : { w: 1, h: 2 };
   if (kind === "trim") return orientation === "h" ? { w: 0.5, h: 1 } : { w: 1, h: 0.5 };
   const isCutLike = kind === "cut" || kind === "cleanout";
   if (orientation === "h") return { w: isCutLike ? 1 : 2, h: 1 };
@@ -159,16 +161,22 @@ export function overlaps(a: BrickFootprint, b: BrickFootprint): boolean {
   return aBoxes.some((ab) => bBoxes.some((bb) => boxesIntersect(ab, bb)));
 }
 
-/** Плита — накладной элемент: лежит ПОВЕРХ ряда и с кирпичами не конфликтует. */
+/**
+ * Накладные элементы: лежат ПОВЕРХ ряда и с кирпичами не конфликтуют.
+ * Плита — на кладке; задвижка — в шве над рядом (рамка закладывается между
+ * рядами, следующий ряд ложится сверху).
+ */
 export function isOverlayKind(kind: BrickFootprint["kind"]): boolean {
-  return kind === "plate";
+  return kind === "plate" || kind === "damper";
 }
 
 /**
- * Накладная ли КОНКРЕТНАЯ плита: в режиме «заподлицо» (flush) плита утоплена
- * в ряд, участвует в честных 3D-коллизиях и ложится в вырезы кирпичей.
+ * Накладной ли КОНКРЕТНЫЙ элемент: плита в режиме «заподлицо» (flush) утоплена
+ * в ряд, участвует в честных 3D-коллизиях и ложится в вырезы кирпичей;
+ * задвижка накладная всегда.
  */
 export function isOverlayBrick(brick: BrickFootprint): boolean {
+  if (brick.kind === "damper") return true;
   return brick.kind === "plate" && brick.custom?.flush !== true;
 }
 
@@ -179,6 +187,8 @@ export const BRICK_MM = 65;
 const GRATE_THICKNESS_MM = 22;
 /** Толщина варочной плиты по умолчанию. */
 const PLATE_THICKNESS_MM = 14;
+/** Высота рамки задвижки в шве (см. DAMPER_THICKNESS_MM в editor.ts). */
+const DAMPER_MM = 20;
 /** Подрезка колосникового узла лежит на посадочной полке — верхняя половина. */
 const TRIM_SEAT_MM = BRICK_MM / 2;
 
@@ -199,6 +209,11 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
     return brick.custom?.flush === true
       ? [{ box: bounds, z1: BRICK_MM - t, z2: BRICK_MM }]
       : [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
+  }
+  if (brick.kind === "damper") {
+    // рамка в шве над своим рядом: конфликтует только с другими накладными
+    const t = brick.custom?.thicknessMm ?? DAMPER_MM;
+    return [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
   }
   if (brick.kind === "grate") return [{ box: bounds, z1: BRICK_MM - GRATE_THICKNESS_MM, z2: BRICK_MM }];
   if (brick.kind === "cleanout") return [{ box: bounds, z1: 0, z2: brick.custom?.heightMm ?? BRICK_MM }];
@@ -243,6 +258,13 @@ export function placeBricksInRow(rowBricks: PlacedBrick[], drafts: PlacedBrick[]
   return result ? result[row] : rowBricks;
 }
 
+export type PlacementPlan = {
+  /** Новый rows или null, если размещение отклонено. */
+  rows: Record<number, PlacedBrick[]> | null;
+  /** Кто помешал (для подсветки отказа); пуст при выходе за сетку. */
+  conflicts: PlacedBrick[];
+};
+
 /**
  * Правила размещения (честные, 3D, между рядами):
  * - конфликт = пересечение и в плане, и по ВЫСОТЕ (overlaps3D): дверца из
@@ -253,37 +275,62 @@ export function placeBricksInRow(rowBricks: PlacedBrick[], drafts: PlacedBrick[]
  *   заменил»); конфликт с элементом ДРУГОГО ряда — отказ, чужие ряды молча
  *   не трогаем;
  * - сборка из нескольких частей на занятое место — отказ без изменений.
- * Возвращает новый rows или null, если размещение отклонено.
+ * Возвращает и результат, и виновников отказа — UI подсвечивает их печнику.
  */
+export function planPlacement(
+  rows: Record<number, PlacedBrick[]>,
+  row: number,
+  drafts: PlacedBrick[],
+  grid: GridSpec
+): PlacementPlan {
+  if (!drafts.length) return { rows: null, conflicts: [] };
+  if (drafts.some((draft) => !isInsideGrid(draft, grid))) return { rows: null, conflicts: [] };
+
+  const conflicts = Object.values(rows)
+    .flat()
+    .filter((brick) => drafts.some((draft) => overlaps3D(draft, brick)));
+
+  // плита и задвижка никого не заменяют: занято — отказ
+  if (drafts.some((draft) => draft.kind === "plate" || draft.kind === "damper")) {
+    if (conflicts.length) return { rows: null, conflicts };
+    return { rows: { ...rows, [row]: [...(rows[row] ?? []), ...drafts] }, conflicts: [] };
+  }
+
+  if (drafts.length === 1) {
+    // «тап — заменил» действует только в своём ряду; плиту/задвижку тапом не
+    // стираем — их снимают ластиком осознанно
+    const blocking = conflicts.filter((brick) => brick.row !== row || brick.kind === "plate" || brick.kind === "damper");
+    if (blocking.length) return { rows: null, conflicts: blocking };
+    const replaced = new Set(conflicts.map((brick) => brick.id));
+    return {
+      rows: { ...rows, [row]: [...(rows[row] ?? []).filter((brick) => !replaced.has(brick.id)), ...drafts] },
+      conflicts: []
+    };
+  }
+
+  if (conflicts.length) return { rows: null, conflicts };
+  return { rows: { ...rows, [row]: [...(rows[row] ?? []), ...drafts] }, conflicts: [] };
+}
+
 export function placeBricksInRows(
   rows: Record<number, PlacedBrick[]>,
   row: number,
   drafts: PlacedBrick[],
   grid: GridSpec
 ): Record<number, PlacedBrick[]> | null {
-  if (!drafts.length) return null;
-  if (drafts.some((draft) => !isInsideGrid(draft, grid))) return null;
+  return planPlacement(rows, row, drafts, grid).rows;
+}
 
-  const conflicts = Object.values(rows)
-    .flat()
-    .filter((brick) => drafts.some((draft) => overlaps3D(draft, brick)));
-
-  // плита (и накладная, и заподлицо) никого не заменяет: занято — отказ
-  if (drafts.some((draft) => draft.kind === "plate")) {
-    if (conflicts.length) return null;
-    return { ...rows, [row]: [...(rows[row] ?? []), ...drafts] };
-  }
-
-  if (drafts.length === 1) {
-    // «тап — заменил» действует только в своём ряду; плиту тапом не стираем —
-    // её снимают ластиком осознанно
-    if (conflicts.some((brick) => brick.row !== row || brick.kind === "plate")) return null;
-    const replaced = new Set(conflicts.map((brick) => brick.id));
-    return { ...rows, [row]: [...(rows[row] ?? []).filter((brick) => !replaced.has(brick.id)), ...drafts] };
-  }
-
-  if (conflicts.length) return null;
-  return { ...rows, [row]: [...(rows[row] ?? []), ...drafts] };
+/**
+ * Кирпичи, физически перекрывающие канал под задвижкой: сплошная кладка её
+ * ряда в плане под рамкой. Вентканалы (размеченные пустоты) и накладные
+ * элементы каналом не считаются помехой. Мягкое правило — только предупреждение
+ * в UI, размещение не блокирует.
+ */
+export function damperBlockers(rowBricks: PlacedBrick[], damper: BrickFootprint): PlacedBrick[] {
+  return rowBricks.filter(
+    (brick) => brick.kind !== "vent" && !isOverlayKind(brick.kind) && overlaps(brick, damper)
+  );
 }
 
 export function grateAssemblyBricks(row: number, x: number, y: number, orientation: Orientation, nextId: () => number): PlacedBrick[] {

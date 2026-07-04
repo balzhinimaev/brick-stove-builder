@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from "react";
 import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
 import type { BrickKind, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../domain/types";
-import { brickBounds, footprintSizeOf, isInsideGrid, isOverlayKind, notchBox, snapToStep } from "../domain/geometry";
+import { brickBounds, damperBlockers, footprintSizeOf, isInsideGrid, isOverlayKind, notchBox, snapToStep } from "../domain/geometry";
 import { notchedShape } from "../domain/outline";
 import { plateBurnerCenters } from "../domain/plate";
 import { getToolColor } from "../domain/tools";
@@ -21,7 +21,10 @@ export function PlanGrid({
   customBrick,
   plateSpec,
   doorSpec,
+  damperSpec,
   placeAt,
+  canPlaceAt,
+  rejectedIds,
   t
 }: {
   grid: GridSpec;
@@ -33,12 +36,15 @@ export function PlanGrid({
   customBrick: CustomBrickSpec | null;
   plateSpec: CustomBrickSpec;
   doorSpec: CustomBrickSpec;
+  damperSpec: CustomBrickSpec;
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
+  canPlaceAt: (x: number, y: number) => boolean;
+  rejectedIds: ReadonlySet<string>;
   t: Translate;
 }) {
   const width = grid.cols * CELL + PAD * 2;
   const height = grid.rows * CELL + PAD * 2 + HEADER;
-  const ghostCustom = activeTool === "plate" ? plateSpec : activeTool === "cleanout" ? doorSpec : activeTool === "custom" ? customBrick : null;
+  const ghostCustom = activeTool === "plate" ? plateSpec : activeTool === "cleanout" ? doorSpec : activeTool === "damper" ? damperSpec : activeTool === "custom" ? customBrick : null;
   const ghost = activeTool === "eraser" || (activeTool === "custom" && !customBrick)
     ? null
     : footprintSizeOf({ x: 0, y: 0, kind: activeTool as BrickKind, orientation, custom: ghostCustom ?? undefined });
@@ -46,6 +52,8 @@ export function PlanGrid({
   const unit = t("unitCm");
 
   const hoverGhostFits = hoverCell && ghost ? isInsideGrid({ ...hoverCell, kind: activeTool as BrickKind, orientation, custom: ghostCustom ?? undefined }, grid) : false;
+  // честное превью: то же правило, что и настоящая установка (коллизии по 3D)
+  const hoverOk = hoverGhostFits && hoverCell ? canPlaceAt(hoverCell.x, hoverCell.y) : false;
   const hoverGhostX = hoverCell ? PAD + hoverCell.x * CELL + 3 : 0;
   const hoverGhostY = hoverCell ? PAD + HEADER + hoverCell.y * CELL + 3 : 0;
 
@@ -108,23 +116,40 @@ export function PlanGrid({
         {lines.horizontal}
         {lines.xTicks}
         {lines.yTicks}
-        {/* накладные элементы (плита) рисуются последними — они лежат поверх кладки */}
-        {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).map((brick) => <Brick2D key={brick.id} brick={brick} cell={CELL} pad={PAD} />)}
+        {/* накладные элементы (плита, задвижка) рисуются последними — они лежат поверх кладки */}
+        {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).map((brick) => (
+          <Brick2D
+            key={brick.id}
+            brick={brick}
+            cell={CELL}
+            pad={PAD}
+            // мягкое предупреждение: под задвижкой сплошная кладка — канал перекрыт
+            warning={brick.kind === "damper" && damperBlockers(bricks, brick).length > 0 ? t("damperBlocked") : null}
+          />
+        ))}
+        {/* вспышка отказа: кто помешал последней установке */}
+        {bricks.filter((brick) => rejectedIds.has(brick.id)).map((brick) => {
+          const size = footprintSizeOf(brick);
+          return <rect key={`rej-${brick.id}`} x={PAD + brick.x * CELL + 1} y={PAD + HEADER + brick.y * CELL + 1} width={size.w * CELL - 2} height={size.h * CELL - 2} rx="10" fill="rgba(155,44,44,0.35)" stroke="#9b2c2c" strokeWidth="2.5" className="animate-pulse" />;
+        })}
 
-        {hoverCell ? <rect x={PAD + hoverCell.x * CELL + 1.5} y={PAD + HEADER + hoverCell.y * CELL + 1.5} width={CELL * snapStep - 3} height={CELL * snapStep - 3} rx={snapStep === 1 ? 8 : 5} fill="rgba(143,175,118,0.18)" stroke="rgba(95,126,77,0.75)" strokeWidth="1.5" /> : null}
+        {hoverCell ? <rect x={PAD + hoverCell.x * CELL + 1.5} y={PAD + HEADER + hoverCell.y * CELL + 1.5} width={CELL * snapStep - 3} height={CELL * snapStep - 3} rx={snapStep === 1 ? 8 : 5} fill={hoverOk || activeTool === "eraser" ? "rgba(143,175,118,0.18)" : "rgba(155,44,44,0.16)"} stroke={hoverOk || activeTool === "eraser" ? "rgba(95,126,77,0.75)" : "rgba(155,44,44,0.75)"} strokeWidth="1.5" /> : null}
 
         {hoverCell && ghost && hoverGhostFits ? (
-          <g>
+          <g opacity={hoverOk ? 1 : 0.75}>
             {activeTool === "grate"
               ? <Grate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} orientation={orientation} opacity={0.72} />
               : activeTool === "plate"
               ? <Plate2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} burners={plateBurnerCenters(ghost.w, ghost.h)} opacity={0.72} />
+              : activeTool === "damper"
+              ? <Damper2D x={hoverGhostX} y={hoverGhostY} w={ghost.w * CELL - 6} h={ghost.h * CELL - 6} open={false} opacity={0.72} />
               : activeTool === "rebate"
               ? <Rebate2D brick={{ id: "ghost", row: 0, x: hoverCell.x, y: hoverCell.y, kind: "rebate", orientation, notchCorner }} cell={CELL} pad={PAD} opacity={0.5} />
               : activeTool === "custom" && customBrick?.notch
               ? <Rebate2D brick={{ id: "ghost", row: 0, x: hoverCell.x, y: hoverCell.y, kind: "custom", orientation, custom: customBrick }} cell={CELL} pad={PAD} opacity={0.5} />
               : <rect x={hoverGhostX} y={hoverGhostY} width={ghost.w * CELL - 6} height={ghost.h * CELL - 6} rx="10" fill={getToolColor(activeTool)} opacity="0.34" stroke={COLORS.charcoal} strokeDasharray="4 4" />}
-            <text x={hoverGhostX + (ghost.w * CELL - 6) / 2} y={hoverGhostY + (ghost.h * CELL - 6) / 2 + 5} textAnchor="middle" fontSize="18" fontWeight="900" fill="#2f5d38">+</text>
+            {!hoverOk ? <rect x={hoverGhostX} y={hoverGhostY} width={ghost.w * CELL - 6} height={ghost.h * CELL - 6} rx="10" fill="rgba(155,44,44,0.28)" stroke="#9b2c2c" strokeWidth="2" strokeDasharray="5 4" /> : null}
+            <text x={hoverGhostX + (ghost.w * CELL - 6) / 2} y={hoverGhostY + (ghost.h * CELL - 6) / 2 + 5} textAnchor="middle" fontSize="18" fontWeight="900" fill={hoverOk ? "#2f5d38" : "#9b2c2c"}>{hoverOk ? "+" : "×"}</text>
           </g>
         ) : null}
 
@@ -140,7 +165,7 @@ export function PlanGrid({
   );
 }
 
-const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick; cell: number; pad: number }) {
+const Brick2D = memo(function Brick2D({ brick, cell, pad, warning = null }: { brick: PlacedBrick; cell: number; pad: number; warning?: string | null }) {
   const size = footprintSizeOf(brick);
   const x = pad + brick.x * cell + 3;
   const y = pad + HEADER + brick.y * cell + 3;
@@ -151,6 +176,7 @@ const Brick2D = memo(function Brick2D({ brick, cell, pad }: { brick: PlacedBrick
   if (brick.kind === "grate") return <Grate2D x={x} y={y} w={w} h={h} orientation={brick.orientation} />;
   if (brick.kind === "rebate" || (brick.kind === "custom" && brick.custom?.notch)) return <Rebate2D brick={brick} cell={cell} pad={pad} />;
   if (brick.kind === "plate") return <Plate2D x={x} y={y} w={w} h={h} burners={plateBurnerCenters(size.w, size.h)} />;
+  if (brick.kind === "damper") return <Damper2D x={x} y={y} w={w} h={h} open={(brick.damperOpen ?? 0) >= 0.5} warning={warning} />;
 
   return (
     <g>
@@ -222,6 +248,43 @@ function Plate2D({ x, y, w, h, burners, opacity = 1 }: { x: number; y: number; w
   );
 }
 
+
+/**
+ * Задвижка дымохода на плане: рамка + полотно. Открытая — полотно выдвинуто
+ * за габарит вдоль длинной оси (там же ручка); стрелка показывает ход.
+ * warning — канал под рамкой перекрыт кладкой (мягкая подсветка, не запрет).
+ */
+function Damper2D({ x, y, w, h, open, warning = null, opacity = 1 }: { x: number; y: number; w: number; h: number; open: boolean; warning?: string | null; opacity?: number }) {
+  const alongX = w >= h;
+  // выдвижение полотна: на ~70% длинной стороны за габарит
+  const slide = open ? (alongX ? w : h) * 0.7 : 0;
+  const bladeX = x + 4 + (alongX ? slide : 0);
+  const bladeY = y + 4 + (alongX ? 0 : slide);
+  const bladeW = w - 8;
+  const bladeH = h - 8;
+  // ручка на торце полотна
+  const knobX = alongX ? bladeX + bladeW + 3 : bladeX + bladeW / 2;
+  const knobY = alongX ? bladeY + bladeH / 2 : bladeY + bladeH + 3;
+  return (
+    <g opacity={opacity}>
+      {warning ? <title>{warning}</title> : null}
+      <rect x={x + 3} y={y + 4} width={w} height={h} rx="8" fill="rgba(61,43,31,0.18)" />
+      {/* рамка с проёмом: открытая задвижка показывает «дыру» канала */}
+      <rect x={x} y={y} width={w} height={h} rx="8" fill={open ? "#1b1d20" : COLORS.damper} stroke={COLORS.charcoal} strokeWidth="2" />
+      {/* полотно */}
+      <rect x={bladeX} y={bladeY} width={bladeW} height={bladeH} rx="5" fill="#3a4046" stroke="#1e2124" strokeWidth="1.5" />
+      <circle cx={knobX} cy={knobY} r="3.5" fill="#15181a" />
+      {/* стрелка хода полотна */}
+      <text x={x + w / 2} y={y + h / 2 + 4} textAnchor="middle" fontSize="11" fontWeight="900" fill="#e6d7bd">{open ? (alongX ? "⇢" : "⇣") : "З"}</text>
+      {warning ? (
+        <>
+          <rect x={x - 2} y={y - 2} width={w + 4} height={h + 4} rx="10" fill="none" stroke="#d97706" strokeWidth="2.5" strokeDasharray="6 4" />
+          <text x={x + w - 4} y={y + 12} textAnchor="end" fontSize="12" fontWeight="900" fill="#d97706">⚠</text>
+        </>
+      ) : null}
+    </g>
+  );
+}
 
 function Grate2D({ x, y, w, h, orientation, opacity = 1 }: { x: number; y: number; w: number; h: number; orientation: Orientation; opacity?: number }) {
   const barCount = 5;

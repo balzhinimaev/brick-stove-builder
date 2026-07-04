@@ -7,7 +7,7 @@ import { brickWorldGeometry, cellToWorld, isInsideGrid, snapToStep } from "../..
 import { getToolColor } from "../../domain/tools";
 import type { Translate } from "../../i18n";
 import type { BrickKind, CameraState, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../../domain/types";
-import { ThreeBrick, ThreeDoor, ThreeGrate, ThreePlate, ThreeRebate } from "./ThreeBrick";
+import { ThreeBrick, ThreeDamper, ThreeDoor, ThreeGrate, ThreePlate, ThreeRebate } from "./ThreeBrick";
 
 type HoverCell = { x: number; y: number } | null;
 
@@ -24,29 +24,39 @@ export function ThreeStack({
   bricks,
   currentRow,
   placeAt,
+  canPlaceAt,
+  rejectedIds,
   t,
   camera,
   activeTool,
   orientation,
   notchCorner,
+  rebateDepthMm,
   snapStep,
   customBrick,
   plateSpec,
-  doorSpec
+  doorSpec,
+  damperSpec,
+  onToggleDamper
 }: {
   grid: GridSpec;
   bricks: PlacedBrick[];
   currentRow: number;
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
+  canPlaceAt: (x: number, y: number) => boolean;
+  rejectedIds: ReadonlySet<string>;
   t: Translate;
   camera: CameraState;
   activeTool: ToolKind;
   orientation: Orientation;
   notchCorner: NotchCorner;
+  rebateDepthMm: number;
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
   plateSpec: CustomBrickSpec;
   doorSpec: CustomBrickSpec;
+  damperSpec: CustomBrickSpec;
+  onToggleDamper?: (id: string) => void;
 }) {
   const [hoverCell3d, setHoverCell3d] = useState<HoverCell>(null);
   const sorted = useMemo(() => [...bricks].sort((a, b) => a.row - b.row || a.y - b.y || a.x - b.x), [bricks]);
@@ -82,8 +92,19 @@ export function ThreeStack({
           <FoundationSlab grid={grid} />
           <ThreeGrid grid={grid} gridY={gridY} />
           <DimensionLabels grid={grid} gridY={gridY} unit={unit} />
-          {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} unit={unit} />)}
-          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} unit={unit} />
+          {sorted.map((brick) => <ThreeBrick key={brick.id} grid={grid} brick={brick} currentRow={currentRow} unit={unit} onToggleDamper={onToggleDamper} />)}
+          {/* вспышка отказа: красным подсвечиваются элементы, помешавшие установке
+              (в т.ч. дверца из нижнего ряда — видно, ЧТО именно держит объём) */}
+          {sorted.filter((brick) => rejectedIds.has(brick.id)).map((brick) => {
+            const geom = brickWorldGeometry(brick, grid);
+            return (
+              <mesh key={`rej-${brick.id}`} position={geom.position}>
+                <boxGeometry args={[geom.scale[0] + 0.08, geom.scale[1] + 0.08, geom.scale[2] + 0.08]} />
+                <meshBasicMaterial color="#9b2c2c" transparent opacity={0.45} depthWrite={false} />
+              </mesh>
+            );
+          })}
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} unit={unit} />
         </group>
       </Canvas>
     </div>
@@ -120,29 +141,35 @@ function PlacementCells({
   grid,
   currentRow,
   placeAt,
+  canPlaceAt,
   hoverCell,
   setHoverCell,
   activeTool,
   orientation,
   notchCorner,
+  rebateDepthMm,
   snapStep,
   customBrick,
   plateSpec,
   doorSpec,
+  damperSpec,
   unit
 }: {
   grid: GridSpec;
   currentRow: number;
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
+  canPlaceAt: (x: number, y: number) => boolean;
   hoverCell: HoverCell;
   setHoverCell: React.Dispatch<React.SetStateAction<HoverCell>>;
   activeTool: ToolKind;
   orientation: Orientation;
   notchCorner: NotchCorner;
+  rebateDepthMm: number;
   snapStep: SnapStep;
   customBrick: CustomBrickSpec | null;
   plateSpec: CustomBrickSpec;
   doorSpec: CustomBrickSpec;
+  damperSpec: CustomBrickSpec;
   unit: string;
 }) {
   const gridY = (currentRow - 1) * BRICK_LAYER_HEIGHT + 0.02;
@@ -170,9 +197,10 @@ function PlacementCells({
     <group>
       {hoverCell ? (() => {
         if (previewKind === "custom" && !customBrick) return null;
-        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : previewKind === "cleanout" ? doorSpec : undefined } as PlacedBrick;
+        const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : previewKind === "cleanout" ? doorSpec : previewKind === "damper" ? damperSpec : previewKind === "rebate" ? { name: "", w: 2, h: 1, notch: null, notchDepthMm: rebateDepthMm } : undefined } as PlacedBrick;
         const geom = brickWorldGeometry(draft, grid);
-        const fits = activeTool === "eraser" ? true : isInsideGrid(draft, grid);
+        // честное превью: та же проверка, что и настоящая установка (3D-коллизии)
+        const fits = activeTool === "eraser" ? true : isInsideGrid(draft, grid) && canPlaceAt(hoverCell.x, hoverCell.y);
         const color = activeTool === "eraser" ? "#c94f4f" : getToolColor(previewKind);
 
         return (
@@ -183,6 +211,8 @@ function PlacementCells({
               ? <ThreeRebate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
               : previewKind === "plate"
               ? <ThreePlate grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
+              : previewKind === "damper"
+              ? <ThreeDamper grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
               : previewKind === "cleanout"
               ? <ThreeDoor grid={grid} brick={draft} currentRow={currentRow} opacity={fits ? 0.42 : 0.22} />
               : (
@@ -191,7 +221,13 @@ function PlacementCells({
                   <meshStandardMaterial color={color} transparent opacity={fits ? 0.35 : 0.22} />
                 </mesh>
               )}
-            <Text position={[geom.position[0], gridY + Math.max(0.08, geom.scale[1] * 0.75), geom.position[2]]} fontSize={0.22} color={fits ? "#2f5d38" : "#9b2c2c"} anchorX="center" anchorY="middle">{activeTool === "eraser" ? "−" : previewOrientation === "h" ? "+ H" : "+ V"}</Text>
+            {!fits && activeTool !== "eraser" ? (
+              <mesh position={[geom.position[0], gridY + geom.scale[1] / 2, geom.position[2]]}>
+                <boxGeometry args={[geom.scale[0] + 0.06, Math.max(0.08, geom.scale[1] * 0.7), geom.scale[2] + 0.06]} />
+                <meshBasicMaterial color="#9b2c2c" transparent opacity={0.3} depthWrite={false} />
+              </mesh>
+            ) : null}
+            <Text position={[geom.position[0], gridY + Math.max(0.08, geom.scale[1] * 0.75), geom.position[2]]} fontSize={0.24} color={fits ? "#2f5d38" : "#9b2c2c"} outlineWidth={0.012} outlineColor="#FFF7E8" anchorX="center" anchorY="middle">{activeTool === "eraser" ? "−" : !fits ? "×" : previewOrientation === "h" ? "+ H" : "+ V"}</Text>
           </group>
         );
       })() : null}

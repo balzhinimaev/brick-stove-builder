@@ -1,5 +1,14 @@
 import { DEFAULT_CAMERA, DEFAULT_PARAMETERS, INITIAL_ROWS, MM_PER_CELL } from "./constants";
-import { cloneRows, gridFromParameters, overlaps3D, placeBricksInRows, pruneRowsToGrid, removeBrickAt } from "./geometry";
+import {
+  brickSizeFor,
+  cloneRows,
+  grateAssemblyBricks,
+  gridFromParameters,
+  overlaps3D,
+  placeBricksInRows,
+  pruneRowsToGrid,
+  removeBrickAt
+} from "./geometry";
 import { PARAM_BOUNDS, clamp } from "./parameters";
 import { makeDemoRows } from "./projects";
 import type {
@@ -31,6 +40,12 @@ export type EditorState = {
   activeTool: ToolKind;
   orientation: Orientation;
   notchCorner: NotchCorner;
+  /**
+   * Глубина выреза инструмента «Четверть» по высоте кирпича, мм. Полка под
+   * плиту/колосник = 65 − глубина: печник подгоняет её под толщину плиты,
+   * чтобы та легла на полку, а не парила над ней.
+   */
+  rebateDepthMm: number;
   snapStep: SnapStep;
   /** Выбранный в палитре кирпич из резака (активен при activeTool === "custom"). */
   customBrick: CustomBrickSpec | null;
@@ -38,6 +53,8 @@ export type EditorState = {
   plateSpec: CustomBrickSpec;
   /** Размер дверцы (ширина × высота, мм), применяется при установке дверцы. */
   doorSpec: CustomBrickSpec;
+  /** Размер задвижки дымохода (проём, мм), применяется при установке задвижки. */
+  damperSpec: CustomBrickSpec;
   viewMode: ViewMode;
   camera: CameraState;
 };
@@ -55,10 +72,13 @@ export type EditorAction =
   | { type: "setTool"; tool: ToolKind }
   | { type: "setOrientation"; orientation: Orientation }
   | { type: "setNotchCorner"; corner: NotchCorner }
+  | { type: "setRebateDepth"; depthMm: number }
   | { type: "setSnapStep"; step: SnapStep }
   | { type: "pickCustomBrick"; spec: CustomBrickSpec }
   | { type: "setPlateSize"; lengthMm: number; widthMm: number; thicknessMm: number; flush: boolean }
   | { type: "setDoorSize"; widthMm: number; heightMm: number }
+  | { type: "setDamperSize"; lengthMm: number; widthMm: number }
+  | { type: "toggleDamper"; id: string }
   | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
   | { type: "reset" }
@@ -108,6 +128,25 @@ export function doorSpecFromMm(widthMm: number, heightMm: number): CustomBrickSp
 /** Топочная ДТ-3 250×210 — базовый типоразмер. */
 export const DEFAULT_DOOR = doorSpecFromMm(250, 210);
 
+/** Высота чугунной рамки задвижки (визуальная толщина в шве). */
+export const DAMPER_THICKNESS_MM = 20;
+
+export function damperSpecFromMm(lengthMm: number, widthMm: number): CustomBrickSpec {
+  return {
+    name: `Задвижка ${lengthMm}×${widthMm}`,
+    w: lengthMm / MM_PER_CELL,
+    h: widthMm / MM_PER_CELL,
+    notch: null,
+    thicknessMm: DAMPER_THICKNESS_MM
+  };
+}
+
+/** Проём 250×130 — самый ходовой типоразмер печной задвижки. */
+export const DEFAULT_DAMPER = damperSpecFromMm(250, 130);
+
+/** Классическая четверть в полкирпича — годится и под колосник (нужно ≥22 мм). */
+export const DEFAULT_REBATE_DEPTH_MM = 32.5;
+
 export function initialEditorState(): EditorState {
   return {
     parameters: DEFAULT_PARAMETERS,
@@ -119,10 +158,12 @@ export function initialEditorState(): EditorState {
     activeTool: "standard",
     orientation: "h",
     notchCorner: "ne",
+    rebateDepthMm: DEFAULT_REBATE_DEPTH_MM,
     snapStep: 1,
     customBrick: null,
     plateSpec: DEFAULT_PLATE,
     doorSpec: DEFAULT_DOOR,
+    damperSpec: DEFAULT_DAMPER,
     viewMode: "3d",
     camera: DEFAULT_CAMERA
   };
@@ -130,6 +171,43 @@ export function initialEditorState(): EditorState {
 
 function isLocked(state: EditorState, row = state.currentRow): boolean {
   return state.lockedRows.includes(row);
+}
+
+/** Выбор инструмента, достаточный, чтобы построить черновики размещения. */
+export type PlacementSelection = Pick<
+  EditorState,
+  "currentRow" | "activeTool" | "orientation" | "notchCorner" | "rebateDepthMm" | "customBrick" | "plateSpec" | "doorSpec" | "damperSpec"
+>;
+
+/**
+ * Черновики элементов для клика инструментом в (x, y): один кирпич или сборка
+ * (колосник с подрезками). Используется и настоящей установкой, и превью
+ * наведения — оба обязаны видеть ОДИНАКОВУЮ геометрию, иначе превью врёт.
+ * null — инструментом ничего не ставится (ластик, резак без выбранной формы).
+ */
+export function buildPlacementDrafts(sel: PlacementSelection, x: number, y: number, nextId: () => number): PlacedBrick[] | null {
+  if (sel.activeTool === "eraser") return null;
+  if (sel.activeTool === "grate") return grateAssemblyBricks(sel.currentRow, x, y, sel.orientation, nextId);
+
+  const brick: PlacedBrick = { id: `r${sel.currentRow}-${nextId()}-${x}-${y}`, row: sel.currentRow, x, y, kind: sel.activeTool, orientation: sel.orientation };
+  if (sel.activeTool === "rebate") {
+    brick.notchCorner = sel.notchCorner;
+    // Глубина полки — на элементе (спека всегда в h-ориентации): полка под
+    // толщину плиты делает посадку честной и в коллизиях, и в 3D.
+    const size = brickSizeFor("rebate", "h");
+    brick.custom = { name: "", w: size.w, h: size.h, notch: null, notchDepthMm: sel.rebateDepthMm };
+  }
+  if (sel.activeTool === "custom") {
+    if (!sel.customBrick) return null;
+    brick.custom = sel.customBrick;
+  }
+  if (sel.activeTool === "plate") brick.custom = sel.plateSpec;
+  if (sel.activeTool === "cleanout") brick.custom = sel.doorSpec;
+  if (sel.activeTool === "damper") {
+    brick.custom = sel.damperSpec;
+    brick.damperOpen = 0; // новая задвижка закрыта
+  }
+  return [brick];
 }
 
 function withRow(state: EditorState, bricks: PlacedBrick[]): EditorState {
@@ -146,6 +224,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, orientation: action.orientation };
     case "setNotchCorner":
       return { ...state, notchCorner: action.corner };
+    case "setRebateDepth":
+      return { ...state, rebateDepthMm: clamp(Math.round(action.depthMm), 5, 65) };
     case "setSnapStep":
       return { ...state, snapStep: action.step };
     case "pickCustomBrick":
@@ -154,6 +234,20 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, plateSpec: plateSpecFromMm(action.lengthMm, action.widthMm, action.thicknessMm, action.flush) };
     case "setDoorSize":
       return { ...state, doorSpec: doorSpecFromMm(action.widthMm, action.heightMm) };
+    case "setDamperSize":
+      return { ...state, damperSpec: damperSpecFromMm(action.lengthMm, action.widthMm) };
+
+    case "toggleDamper": {
+      const row = Object.entries(state.rows).find(([, bricks]) =>
+        bricks.some((brick) => brick.id === action.id && brick.kind === "damper")
+      );
+      if (!row) return state;
+      const [key, bricks] = row;
+      const next = bricks.map((brick) =>
+        brick.id === action.id ? { ...brick, damperOpen: (brick.damperOpen ?? 0) >= 0.5 ? 0 : 1 } : brick
+      );
+      return { ...state, rows: { ...state.rows, [Number(key)]: next } };
+    }
     case "setViewMode":
       return { ...state, viewMode: action.mode };
 
@@ -244,8 +338,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "copyRow": {
       if (state.currentRow <= 1 || isLocked(state)) return state;
       const target = state.rows[state.currentRow] ?? [];
-      // Плиту, как и везде, молча не стираем — сначала ластик.
-      if (target.some((brick) => brick.kind === "plate")) return state;
+      // Плиту и задвижку, как и везде, молча не стираем — сначала ластик.
+      if (target.some((brick) => brick.kind === "plate" || brick.kind === "damper")) return state;
       if (!action.bricks.length) return target.length ? withRow(state, []) : state;
       // Копия проходит те же ворота, что и ручное размещение: дверца из
       // нижнего ряда, тянущаяся в текущий, делает копирование невозможным.
@@ -307,6 +401,7 @@ const HISTORY_LIMIT = 50;
 const TRACKED_ACTIONS: ReadonlySet<EditorAction["type"]> = new Set([
   "place",
   "erase",
+  "toggleDamper",
   "addRow",
   "deleteRow",
   "copyRow",
@@ -330,10 +425,12 @@ function restoreDocument(snapshot: EditorState, view: EditorState): EditorState 
     activeTool: view.activeTool,
     orientation: view.orientation,
     notchCorner: view.notchCorner,
+    rebateDepthMm: view.rebateDepthMm,
     snapStep: view.snapStep,
     customBrick: view.customBrick,
     plateSpec: view.plateSpec,
     doorSpec: view.doorSpec,
+    damperSpec: view.damperSpec,
     viewMode: view.viewMode,
     camera: view.camera
   };

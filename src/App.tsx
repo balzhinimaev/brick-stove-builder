@@ -85,6 +85,8 @@ export default function App() {
             setOrientation={studio.setOrientation}
             notchCorner={studio.notchCorner}
             setNotchCorner={studio.setNotchCorner}
+            rebateDepthMm={studio.rebateDepthMm}
+            setRebateDepth={studio.setRebateDepth}
             snapStep={studio.snapStep}
             setSnapStep={studio.setSnapStep}
             customBrick={studio.customBrick}
@@ -93,10 +95,15 @@ export default function App() {
             setPlateSize={studio.setPlateSize}
             doorSpec={studio.doorSpec}
             setDoorSize={studio.setDoorSize}
+            damperSpec={studio.damperSpec}
+            setDamperSize={studio.setDamperSize}
+            toggleDamper={studio.toggleDamper}
             userLogin={userLogin}
             viewMode={studio.viewMode}
             setViewMode={studio.setViewMode}
             placeAt={studio.placeAt}
+            canPlaceAt={studio.canPlaceAt}
+            rejectedIds={studio.rejectedIds}
             addRow={studio.addRow}
             deleteCurrentRow={studio.deleteCurrentRow}
             copyPreviousRow={studio.copyPreviousRow}

@@ -16,6 +16,7 @@ export const COLORS = {
   cleanout: "#8B5E3C",
   grate: "#4A4A4A",
   plate: "#33383E",
+  damper: "#55616C",
   foundation: "#B8A38D",
   skyCream: "#FFF7E8",
   gridLine: "rgba(61,43,31,0.18)"

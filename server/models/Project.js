@@ -25,10 +25,12 @@ export const brickSchema = new mongoose.Schema(
     x: { type: Number, required: true, min: 0 },
     y: { type: Number, required: true, min: 0 },
     row: { type: Number, required: true, min: 1 },
-    kind: { type: String, enum: ["standard", "cut", "trim", "firebrick", "vent", "cleanout", "grate", "rebate", "plate", "custom"], required: true },
+    kind: { type: String, enum: ["standard", "cut", "trim", "firebrick", "vent", "cleanout", "grate", "rebate", "plate", "damper", "custom"], required: true },
     orientation: { type: String, enum: ["h", "v"], required: true },
     // Кирпич с четвертью: угол или грань, где выбрана посадочная четверть.
     notchCorner: { type: String, enum: ["nw", "ne", "sw", "se", "n", "e", "s", "w"], required: false },
+    // Задвижка: степень выдвижения полотна (0 — закрыта, 1 — открыта).
+    damperOpen: { type: Number, min: 0, max: 1, required: false },
     // Кирпич из резака: форма в ячейках (описана для горизонтальной ориентации).
     custom: {
       type: new mongoose.Schema(
@@ -50,7 +52,9 @@ export const brickSchema = new mongoose.Schema(
           heightMm: { type: Number, min: 0, required: false },
           // толщина плиты, мм; flush — утоплена заподлицо в вырезы
           thicknessMm: { type: Number, min: 0, required: false },
-          flush: { type: Boolean, required: false }
+          flush: { type: Boolean, required: false },
+          // посадка flush-плиты: низ плиты от низа ряда, мм (из полок вырезов)
+          seatZMm: { type: Number, min: 0, required: false }
         },
         { _id: false }
       ),

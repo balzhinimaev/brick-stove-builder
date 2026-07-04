@@ -167,10 +167,16 @@ export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: Gri
   const thicknessMm = brick.custom?.thicknessMm ?? 14;
   const flush = brick.custom?.flush === true;
   const plateHeight = (thicknessMm / 65) * BRICK_LAYER_HEIGHT * 0.92;
-  const rowTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
-  // «Заподлицо»: верх плиты = верх ряда (утоплена в вырезы кирпичей);
+  const brickHeight = BRICK_LAYER_HEIGHT * 0.92;
+  const rowBottomY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT - brickHeight / 2;
+  const rowTopY = rowBottomY + brickHeight;
+  // «В вырезы»: низ плиты — на посадке из полок (seatZMm, считается при
+  // установке); без полок верх остаётся заподлицо с рядом.
   // «Поверх»: лежит на ряду, кирпичи под ней не пересекают её объём.
-  const plateY = flush ? rowTopY - plateHeight / 2 + 0.004 : rowTopY + plateHeight / 2 - 0.008;
+  const seatMm = brick.custom?.seatZMm ?? 65 - thicknessMm;
+  const plateY = flush
+    ? rowBottomY + (seatMm / 65) * brickHeight + plateHeight / 2 + 0.004
+    : rowTopY + plateHeight / 2 - 0.008;
   const topY = plateY + plateHeight / 2;
   const isCurrent = brick.row === currentRow;
   const transparent = opacity < 1;

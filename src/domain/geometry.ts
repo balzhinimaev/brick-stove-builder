@@ -204,11 +204,14 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
   const bounds = brickBounds(brick);
   if (brick.kind === "plate") {
     const t = brick.custom?.thicknessMm ?? PLATE_THICKNESS_MM;
-    // заподлицо: верх плиты = верх ряда, опирается на полки вырезов;
+    if (brick.custom?.flush === true) {
+      // в вырезы: низ плиты — на посадке, вычисленной при установке из полок
+      // под следом (plateSeatZ); без полок — верх заподлицо с верхом ряда
+      const seat = brick.custom?.seatZMm ?? BRICK_MM - t;
+      return [{ box: bounds, z1: seat, z2: seat + t }];
+    }
     // поверх: лежит на ряду
-    return brick.custom?.flush === true
-      ? [{ box: bounds, z1: BRICK_MM - t, z2: BRICK_MM }]
-      : [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
+    return [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
   }
   if (brick.kind === "damper") {
     // рамка в шве над своим рядом: конфликтует только с другими накладными
@@ -226,6 +229,26 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
   const ledgeTop = Math.max(0, BRICK_MM - depthMm);
   if (ledgeTop > 0) solids.push({ box: notch, z1: 0, z2: ledgeTop });
   return solids;
+}
+
+/**
+ * Посадка flush-плиты: высота опоры (низа плиты) от низа ряда, мм. Плита
+ * ложится на САМУЮ ВЫСОКУЮ полку выреза под её следом (глубже рез — глубже
+ * сядет). Полок нет — верх плиты остаётся заподлицо с верхом ряда (65 − t).
+ */
+export function plateSeatZ(rowBricks: BrickFootprint[], plate: BrickFootprint): number {
+  const t = plate.custom?.thicknessMm ?? PLATE_THICKNESS_MM;
+  const bounds = brickBounds(plate);
+  let seat = -1;
+  for (const brick of rowBricks) {
+    const notch = notchBox(brick);
+    if (!notch || !boxesIntersect(notch, bounds)) continue;
+    // та же формула полки, что в brickSolids
+    const depthMm = brick.custom?.notchDepthMm ?? (brick.custom?.ledge === false ? BRICK_MM : BRICK_MM / 2);
+    const ledgeTop = Math.max(0, BRICK_MM - depthMm);
+    if (ledgeTop > 0) seat = Math.max(seat, ledgeTop);
+  }
+  return seat >= 0 ? seat : BRICK_MM - t;
 }
 
 /**
@@ -280,15 +303,48 @@ export type PlacementPlan = {
 export function planPlacement(
   rows: Record<number, PlacedBrick[]>,
   row: number,
-  drafts: PlacedBrick[],
+  rawDrafts: PlacedBrick[],
   grid: GridSpec
 ): PlacementPlan {
-  if (!drafts.length) return { rows: null, conflicts: [] };
-  if (drafts.some((draft) => !isInsideGrid(draft, grid))) return { rows: null, conflicts: [] };
+  if (!rawDrafts.length) return { rows: null, conflicts: [] };
+  if (rawDrafts.some((draft) => !isInsideGrid(draft, grid))) return { rows: null, conflicts: [] };
+
+  // Flush-плита получает посадку НА УСТАНОВКЕ: низ = самая высокая полка под
+  // следом (plateSeatZ). Считаем до коллизий — занятые объёмы зависят от неё.
+  const seatContext = rows[row] ?? [];
+  const drafts = rawDrafts.map((draft) =>
+    draft.kind === "plate" && draft.custom?.flush === true
+      ? {
+          ...draft,
+          custom: {
+            ...draft.custom,
+            seatZMm: plateSeatZ([...seatContext, ...rawDrafts.filter((d) => d !== draft)], draft)
+          }
+        }
+      : draft
+  );
 
   const conflicts = Object.values(rows)
     .flat()
     .filter((brick) => drafts.some((draft) => overlaps3D(draft, brick)));
+
+  // Повторный клик плитой по плите СВОЕГО ряда — замена: так печник меняет
+  // размер/посадку уже стоящей плиты, не стирая её ластиком. Сравниваем в
+  // плане (не 3D): плиты «поверх» и «заподлицо» живут на разных высотах,
+  // но занимают одно место на ряду.
+  if (drafts.length === 1 && drafts[0].kind === "plate") {
+    const target = drafts[0];
+    const replacedPlates = (rows[row] ?? []).filter((brick) => brick.kind === "plate" && overlaps(brick, target));
+    if (replacedPlates.length) {
+      const replaced = new Set(replacedPlates.map((brick) => brick.id));
+      const remaining = conflicts.filter((brick) => !replaced.has(brick.id));
+      if (remaining.length) return { rows: null, conflicts: remaining };
+      return {
+        rows: { ...rows, [row]: [...(rows[row] ?? []).filter((brick) => !replaced.has(brick.id)), ...drafts] },
+        conflicts: []
+      };
+    }
+  }
 
   // плита и задвижка никого не заменяют: занято — отказ
   if (drafts.some((draft) => draft.kind === "plate" || draft.kind === "damper")) {

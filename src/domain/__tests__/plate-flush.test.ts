@@ -53,11 +53,12 @@ describe("плита заподлицо в вырезы кирпичей", () =>
     expect(plan.rows).not.toBeNull();
   });
 
-  it("отклоняется, когда вырез МЕЛЬЧЕ толщины плиты, и называет виновников", () => {
-    const rows = { 3: seat(10) }; // полка на 55 мм, плита опускается до 51 — упирается
+  it("вырез МЕЛЬЧЕ толщины плиты: плита садится на полку и выступает над рядом", () => {
+    const rows = { 3: seat(10) }; // полка на 55 мм — низ плиты 55, верх 69 (торчит над рядом)
     const plan = planPlacement(rows, 3, [flushPlate("p", 1.5, 1, 2, 1, 14)], grid);
-    expect(plan.rows).toBeNull();
-    expect(plan.conflicts.map((brick) => brick.id).sort()).toEqual(["east", "west"]);
+    expect(plan.rows).not.toBeNull();
+    const placed = plan.rows![3].find((b) => b.kind === "plate")!;
+    expect(placed.custom?.seatZMm).toBe(55);
   });
 
   it("отклоняется, когда край плиты заходит за паз в тело кирпича", () => {

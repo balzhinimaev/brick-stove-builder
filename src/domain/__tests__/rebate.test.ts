@@ -129,11 +129,11 @@ describe("правила размещения (не стираем молча)",
     expect(next.filter((b) => b.kind === "standard")).toHaveLength(2);
   });
 
-  it("две плиты внахлёст — отказ", () => {
+  it("плита на плиту — замена (пересадка размером/посадкой), не дубль", () => {
     const plate1: PlacedBrick = { id: "p1", row: 1, x: 1, y: 4, kind: "plate", orientation: "h" };
     const plate2: PlacedBrick = { id: "p2", row: 1, x: 3, y: 4, kind: "plate", orientation: "h" };
     const next = placeBricksInRow([plate1], [plate2], grid);
-    expect(next).toEqual([plate1]);
+    expect(next.map((b) => b.id)).toEqual(["p2"]);
   });
 
   it("сборка колосника на занятое место — отказ, ничего не удалено", () => {

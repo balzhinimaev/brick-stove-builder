@@ -291,10 +291,14 @@ describe("плита заподлицо (flush) ложится в вырезы",
     expect(overlaps3D(onTop, standard(3, 4))).toBe(false);
   });
 
-  it("плита никогда не заменяет кирпичи: конфликт — отказ", async () => {
+  it("плита не стирает кирпичи молча: целый кирпич под ней подрезается, а не исчезает", async () => {
     const { placeBricksInRows } = await import("../geometry");
     const rows = { 1: [standard(3, 4)] };
-    expect(placeBricksInRows(rows, 1, [flushPlate(15)], grid)).toBeNull();
+    const placed = placeBricksInRows(rows, 1, [flushPlate(15)], grid);
+    expect(placed).not.toBeNull();
+    const kept = placed![1].find((b) => b.id === standard(3, 4).id || b.x === 3);
+    expect(kept?.kind).toBe("custom"); // тот же кирпич, но с полкой под плиту
+    expect(kept?.custom?.notchDepthMm).toBe(15);
     const seated = { 1: [shelf(20, 0.5, "e"), shelf(20, 7.5, "w")] };
     expect(placeBricksInRows(seated, 1, [flushPlate(15)], grid)).not.toBeNull();
   });

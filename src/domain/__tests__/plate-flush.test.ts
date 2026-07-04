@@ -53,12 +53,15 @@ describe("плита заподлицо в вырезы кирпичей", () =>
     expect(plan.rows).not.toBeNull();
   });
 
-  it("вырез МЕЛЬЧЕ толщины плиты: плита садится на полку и выступает над рядом", () => {
-    const rows = { 3: seat(10) }; // полка на 55 мм — низ плиты 55, верх 69 (торчит над рядом)
+  it("вырез МЕЛЬЧЕ толщины плиты: автоподрез углубляет полку, плита заподлицо", () => {
+    const rows = { 3: seat(10) }; // полка на 55 мм — мелковата для плиты 14
     const plan = planPlacement(rows, 3, [flushPlate("p", 1.5, 1, 2, 1, 14)], grid);
     expect(plan.rows).not.toBeNull();
     const placed = plan.rows![3].find((b) => b.kind === "plate")!;
-    expect(placed.custom?.seatZMm).toBe(55);
+    expect(placed.custom?.seatZMm).toBe(51); // полка углублена до 65 − 14
+    for (const id of ["west", "east"]) {
+      expect(plan.rows![3].find((b) => b.id === id)?.custom?.notchDepthMm).toBe(14);
+    }
   });
 
   it("отклоняется, когда край плиты заходит за паз в тело кирпича", () => {
@@ -69,11 +72,13 @@ describe("плита заподлицо в вырезы кирпичей", () =>
     expect(plan.conflicts.map((brick) => brick.id)).toEqual(["west"]);
   });
 
-  it("отклоняется над полнотелым кирпичом в центре и не заменяет его молча", () => {
+  it("полнотелый кирпич в центре автоматически подрезается под плиту", () => {
     const middle: PlacedBrick = { id: "mid", row: 3, x: 1.5, y: 1, kind: "standard", orientation: "h" };
     const plan = planPlacement({ 3: [...seat(14), middle] }, 3, [flushPlate("p", 1.5, 1, 2, 1, 14)], grid);
-    expect(plan.rows).toBeNull();
-    expect(plan.conflicts.map((brick) => brick.id)).toContain("mid");
+    expect(plan.rows).not.toBeNull();
+    const cut = plan.rows![3].find((b) => b.id === "mid")!;
+    expect(cut.kind).toBe("custom");
+    expect(cut.custom?.notchDepthMm).toBe(14);
   });
 
   it("накладная плита (не заподлицо) ложится ПОВЕРХ того же гнезда без конфликтов", () => {

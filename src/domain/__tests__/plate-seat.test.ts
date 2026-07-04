@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gridFromParameters, planPlacement, plateSeatZ, brickSolids } from "../geometry";
+import { cutBrickForPlate, gridFromParameters, planPlacement, plateSeatZ, brickSolids } from "../geometry";
 import { plateSpecFromMm } from "../editor";
 import { DEFAULT_PARAMETERS } from "../constants";
 import type { PlacedBrick } from "../types";
@@ -74,6 +74,65 @@ describe("planPlacement — посадка штампуется при уста�
   });
 });
 
+describe("автоподрез кирпичей под flush-плиту", () => {
+  const std = (id: string, x: number, y: number): PlacedBrick => ({
+    id, row: 2, x, y, kind: "standard", orientation: "h"
+  });
+
+  it("плита на целых кирпичах: кирпичи подрезаются полкой в её толщину, плита заподлицо", () => {
+    // плита 410×340 (3.28×2.72) при (1,1) поверх двух целых кирпичей
+    const rows = { 2: [std("a", 1, 1), std("b", 1, 2)] };
+    const plate = flushPlate("p", 1, 1, 410, 340);
+    const before = JSON.stringify(rows);
+    const plan = planPlacement(rows, 2, [plate], grid);
+    expect(plan.rows).not.toBeNull();
+    expect(JSON.stringify(rows)).toBe(before); // входные rows не мутированы (undo честный)
+
+    const placed = plan.rows![2].find((b) => b.kind === "plate")!;
+    expect(placed.custom?.seatZMm).toBe(51); // полка 65 − 14
+
+    const cutA = plan.rows![2].find((b) => b.id === "a")!;
+    expect(cutA.kind).toBe("custom");
+    expect(cutA.custom?.notchDepthMm).toBe(14);
+    expect(cutA.custom?.name).toBe("Подрез под плиту");
+    // кирпич «a» 2×1 при (1,1) целиком в следе плиты → срез по всему верху
+    expect(cutA.custom?.notch).toEqual({ x1: 0, y1: 0, x2: 2, y2: 1 });
+  });
+
+  it("частичное перекрытие: вырез только в зоне следа, заякорен в грань", () => {
+    // кирпич при (0,1), плита начинается с x=1 → срезается восточная часть
+    const rows = { 2: [std("a", 0, 1)] };
+    const plan = planPlacement(rows, 2, [flushPlate("p", 1, 1, 410, 340)], grid);
+    expect(plan.rows).not.toBeNull();
+    const cut = plan.rows![2].find((b) => b.id === "a")!;
+    expect(cut.custom?.notch).toEqual({ x1: 1, y1: 0, x2: 2, y2: 1 });
+  });
+
+  it("мелкая полка углубляется до толщины плиты", () => {
+    const shallow = rebate("r", 0, 0, 8); // полка на 57 — выше, чем нужно плите 14
+    const plan = planPlacement({ 2: [shallow] }, 2, [flushPlate("p", 0.5, 0.5)], grid);
+    expect(plan.rows).not.toBeNull();
+    const deepened = plan.rows![2].find((b) => b.id === "r")!;
+    expect(deepened.custom?.notchDepthMm).toBe(14);
+    expect(plan.rows![2].find((b) => b.kind === "plate")!.custom?.seatZMm).toBe(51);
+  });
+
+  it("нережимое под плитой (дверца) — честный отказ с виновником", () => {
+    const door: PlacedBrick = {
+      id: "door", row: 2, x: 1, y: 1, kind: "cleanout", orientation: "h",
+      custom: { name: "Дверца", w: 2, h: 1, notch: null, heightMm: 210 }
+    };
+    const plan = planPlacement({ 2: [door] }, 2, [flushPlate("p", 1, 1, 410, 340)], grid);
+    expect(plan.rows).toBeNull();
+    expect(plan.conflicts.map((b) => b.id)).toContain("door");
+  });
+
+  it("cutBrickForPlate: кирпич вне следа возвращается как есть", () => {
+    const far = std("far", 7, 7);
+    expect(cutBrickForPlate(far, flushPlate("p", 1, 1), 14)).toBe(far);
+  });
+});
+
 describe("planPlacement — клик плитой по плите = замена (пересадка)", () => {
   it("«поверх» → «в вырезы»: плита заменяется, а не дублируется", () => {
     const onTop: PlacedBrick = { ...flushPlate("p1", 1, 1), custom: { ...plateSpecFromMm(125, 125, 14, false) } };
@@ -86,14 +145,17 @@ describe("planPlacement — клик плитой по плите = замена
     expect(plates[0].custom?.flush).toBe(true);
   });
 
-  it("замена отклоняется, если новой плите мешает не-плита", () => {
-    const wall: PlacedBrick = { id: "w", row: 2, x: 1, y: 1, kind: "standard", orientation: "h" };
+  it("замена отклоняется, если новой плите мешает нережимое (дверца)", () => {
+    const door: PlacedBrick = {
+      id: "door", row: 2, x: 1, y: 1, kind: "cleanout", orientation: "h",
+      custom: { name: "Дверца", w: 2, h: 1, notch: null, heightMm: 210 }
+    };
     const onTop: PlacedBrick = { ...flushPlate("p1", 3, 1), custom: { ...plateSpecFromMm(250, 125, 14, false) } };
-    const rows = planPlacement({ 2: [wall] }, 2, [onTop], grid).rows!;
-    // новая flush-плита 3×1 накрывает и старую плиту, и целый кирпич → отказ с виновником-кирпичом
+    const rows = planPlacement({ 2: [door] }, 2, [onTop], grid).rows!;
+    // новая flush-плита 3×1 накрывает и старую плиту, и дверцу → отказ с виновником-дверцей
     const big = { ...flushPlate("p2", 1, 1, 500, 125), id: "p2" };
     const plan = planPlacement(rows, 2, [big], grid);
     expect(plan.rows).toBeNull();
-    expect(plan.conflicts.map((b) => b.id)).toContain("w");
+    expect(plan.conflicts.map((b) => b.id)).toContain("door");
   });
 });

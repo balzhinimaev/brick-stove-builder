@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main, refactor/deep-refactor]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc -b tsconfig.json
+      - name: Tests
+        run: npx vitest run
+      - name: Build
+        run: npm run build
+      - name: Server smoke (health + API 404 + graceful stop)
+        run: |
+          node server/index.js &
+          SERVER_PID=$!
+          sleep 3
+          curl -sf http://127.0.0.1:4174/api/health | grep -q '"ok":true'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4174/api/nope)" = "404"
+          kill -TERM $SERVER_PID
+          wait $SERVER_PID

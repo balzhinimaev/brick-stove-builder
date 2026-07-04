@@ -21,6 +21,12 @@ services:
       TG_CHAT_IDS: ${TG_CHAT_IDS:-}
     ports:
       - "127.0.0.1:4174:4174"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4174/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
     depends_on:
       mongo:
         condition: service_healthy

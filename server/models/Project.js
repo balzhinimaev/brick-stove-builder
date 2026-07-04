@@ -54,7 +54,9 @@ export const brickSchema = new mongoose.Schema(
           thicknessMm: { type: Number, min: 0, required: false },
           flush: { type: Boolean, required: false },
           // посадка flush-плиты: низ плиты от низа ряда, мм (из полок вырезов)
-          seatZMm: { type: Number, min: 0, required: false }
+          seatZMm: { type: Number, min: 0, required: false },
+          // исходный кирпич автоподреза (шамот остаётся шамотом в смете)
+          cutFrom: { type: String, enum: ["standard", "cut", "firebrick"], required: false }
         },
         { _id: false }
       ),

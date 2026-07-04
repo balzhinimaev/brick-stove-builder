@@ -204,3 +204,45 @@ describe("колосник садится в вырезы, как плита", (
     expect(plan.conflicts.map((b) => b.id)).toContain("g");
   });
 });
+
+describe("глубокая проверка: найденные недочёты", () => {
+  it("шамот под плитой остаётся шамотом: cutFrom + смета", async () => {
+    const { estimateMaterials } = await import("../materials");
+    const { DEFAULT_PARAMETERS } = await import("../constants");
+    const fire: PlacedBrick = { id: "f", row: 2, x: 1, y: 1, kind: "firebrick", orientation: "h" };
+    const plan = planPlacement({ 2: [fire] }, 2, [flushPlate("p", 1, 1, 410, 340)], grid);
+    expect(plan.rows).not.toBeNull();
+    const cut = plan.rows![2].find((b) => b.id === "f")!;
+    expect(cut.custom?.cutFrom).toBe("firebrick");
+    const est = estimateMaterials(plan.rows![2], DEFAULT_PARAMETERS);
+    expect(est.firebricks).toBe(1); // не превратился в «резаный»
+    expect(est.cutBricks).toBe(0);
+  });
+
+  it("тап обычным кирпичом по полностью срезанному — замена, а не наслоение", () => {
+    const rows = planPlacement(
+      { 2: [{ id: "a", row: 2, x: 1, y: 1, kind: "standard", orientation: "h" } as PlacedBrick] },
+      2,
+      [flushPlate("p", 1, 1, 410, 340)],
+      grid
+    ).rows!;
+    // плиту сняли, кладём целый кирпич на место полностью срезанного «a»
+    const withoutPlate = { 2: rows[2].filter((b) => b.kind !== "plate") };
+    const tap: PlacedBrick = { id: "new", row: 2, x: 1, y: 1, kind: "standard", orientation: "h" };
+    const plan = planPlacement(withoutPlate, 2, [tap], grid);
+    expect(plan.rows).not.toBeNull();
+    const atCell = plan.rows![2].filter((b) => b.x === 1 && b.y === 1);
+    expect(atCell.map((b) => b.id)).toEqual(["new"]); // старый подрез заменён, дубля нет
+  });
+
+  it("copyRow не затирает ряд с колосником молча", async () => {
+    const { editorReducer, initialEditorState } = await import("../editor");
+    let state = { ...initialEditorState(), currentRow: 2, rows: { 2: [
+      { id: "g", row: 2, x: 1, y: 1, kind: "grate", orientation: "h" } as PlacedBrick
+    ] } };
+    const next = editorReducer(state, { type: "copyRow", bricks: [
+      { id: "c", row: 2, x: 5, y: 5, kind: "standard", orientation: "h" } as PlacedBrick
+    ] });
+    expect(next).toBe(state); // отказ: сначала ластик
+  });
+});

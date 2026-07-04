@@ -1,6 +1,6 @@
 import { COLORS } from "../theme/colors";
 import type { GridSpec, PlacedBrick } from "../domain/types";
-import { brickBoxes, isOverlayKind } from "../domain/geometry";
+import { brickBoxes, isOverlayKind, notchBox } from "../domain/geometry";
 import { getToolColor } from "../domain/tools";
 
 /**
@@ -61,9 +61,11 @@ export function RowMap({ grid, bricks, variant }: { grid: GridSpec; bricks: Plac
       {Array.from({ length: grid.rows + 1 }).map((_, y) => (
         <line key={`rmy-${y}`} x1={s.pad} y1={s.pad + y * cell} x2={s.pad + grid.cols * cell} y2={s.pad + y * cell} stroke={s.gridLine.stroke} strokeWidth={s.gridLine.strokeWidth} />
       ))}
-      {/* накладные элементы (плита) рисуются последними — поверх кладки */}
-      {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).flatMap((brick) =>
-        brickBoxes(brick).map((box, index) => (
+      {/* накладные элементы (плита, задвижка) рисуются последними — поверх кладки */}
+      {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).flatMap((brick) => {
+        // автоподрез из шамота остаётся шамотного цвета
+        const fill = brick.custom?.cutFrom === "firebrick" ? COLORS.firebrick : getToolColor(brick.kind);
+        const body = brickBoxes(brick).map((box, index) => (
           <rect
             key={`${brick.id}-${index}`}
             x={s.pad + box.x1 * cell + s.brick.inset}
@@ -71,12 +73,31 @@ export function RowMap({ grid, bricks, variant }: { grid: GridSpec; bricks: Plac
             width={(box.x2 - box.x1) * cell - s.brick.inset * 2}
             height={(box.y2 - box.y1) * cell - s.brick.inset * 2}
             rx={s.brick.rx}
-            fill={getToolColor(brick.kind)}
+            fill={fill}
             stroke={s.brick.stroke}
             strokeWidth={s.brick.strokeWidth}
           />
-        ))
-      )}
+        ));
+        // полка выреза (в т.ч. полностью срезанный кирпич, у которого тела нет) —
+        // бледным, чтобы печник видел посадочные места на печати и карточках
+        const notch = notchBox(brick);
+        const ledge = notch && brick.custom?.ledge !== false ? (
+          <rect
+            key={`${brick.id}-ledge`}
+            x={s.pad + notch.x1 * cell + s.brick.inset}
+            y={s.pad + notch.y1 * cell + s.brick.inset}
+            width={(notch.x2 - notch.x1) * cell - s.brick.inset * 2}
+            height={(notch.y2 - notch.y1) * cell - s.brick.inset * 2}
+            rx={s.brick.rx}
+            fill={fill}
+            opacity={0.38}
+            stroke={s.brick.stroke}
+            strokeWidth={s.brick.strokeWidth * 0.8}
+            strokeDasharray="3 2"
+          />
+        ) : null;
+        return ledge ? [ledge, ...body] : body;
+      })}
     </svg>
   );
 }

@@ -90,6 +90,16 @@ export function useEditor() {
     (x: number, y: number): boolean => {
       if (state.activeTool === "eraser") return true;
       if (state.lockedRows.includes(state.currentRow)) return false;
+      // клик инструментом «Задвижка» по своей задвижке — валидное действие (toggle),
+      // превью не должно краснеть
+      if (state.activeTool === "damper") {
+        const hit = (state.rows[state.currentRow] ?? []).some((brick) => {
+          if (brick.kind !== "damper") return false;
+          const b = brickBounds(brick);
+          return x >= b.x1 && x < b.x2 && y >= b.y1 && y < b.y2;
+        });
+        if (hit) return true;
+      }
       const drafts = buildPlacementDrafts(selection, x, y, () => 0);
       if (!drafts) return false;
       return planPlacement(state.rows, state.currentRow, drafts, state.grid).rows !== null;

@@ -45,7 +45,8 @@ export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, un
  * плита или кирпич следующего элемента — вырез в коллизиях свободен.
  */
 export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
-  const color = getToolColor(brick.kind);
+  // автоподрез из шамота остаётся шамотного цвета
+  const color = brick.custom?.cutFrom === "firebrick" ? COLORS.firebrick : getToolColor(brick.kind);
   // глубина реза по высоте: из резака (notchDepthMm), для «четверти» — полвысоты
   const depthMm = brick.custom?.notchDepthMm ?? (brick.custom?.ledge === false ? 65 : 32.5);
   const ledgeFrac = Math.max(0, 1 - depthMm / 65);

@@ -29,8 +29,12 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
         rebatedBricks++;
         break;
       case "cut":
-      case "custom":
         cutLike++;
+        break;
+      case "custom":
+        // автоподрез из шамота — по-прежнему шамот в смете
+        if (brick.custom?.cutFrom === "firebrick") firebricks++;
+        else cutLike++;
         break;
       case "cleanout":
         doors++;

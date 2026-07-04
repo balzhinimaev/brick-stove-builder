@@ -214,7 +214,8 @@ function Rebate2D({ brick, cell, pad, opacity = 1 }: { brick: PlacedBrick; cell:
   const ny1 = mapY(notch.y1);
   const ny2 = mapY(notch.y2);
 
-  const fill = getToolColor(brick.kind);
+  // автоподрез из шамота остаётся шамотного цвета
+  const fill = brick.custom?.cutFrom === "firebrick" ? COLORS.firebrick : getToolColor(brick.kind);
   return (
     <g opacity={opacity}>
       {shape.kind === "polygon" ? (

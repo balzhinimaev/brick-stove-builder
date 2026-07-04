@@ -358,8 +358,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "copyRow": {
       if (state.currentRow <= 1 || isLocked(state)) return state;
       const target = state.rows[state.currentRow] ?? [];
-      // Плиту и задвижку, как и везде, молча не стираем — сначала ластик.
-      if (target.some((brick) => brick.kind === "plate" || brick.kind === "damper")) return state;
+      // Плиту, задвижку и колосник, как и везде, молча не стираем — сначала ластик.
+      if (target.some((brick) => brick.kind === "plate" || brick.kind === "damper" || brick.kind === "grate")) return state;
       if (!action.bricks.length) return target.length ? withRow(state, []) : state;
       // Копия проходит те же ворота, что и ручное размещение: дверца из
       // нижнего ряда, тянущаяся в текущий, делает копирование невозможным.

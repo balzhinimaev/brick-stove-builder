@@ -291,7 +291,9 @@ export function cutBrickForPlate(
         h,
         notch: { x1: nx1, y1: ny1, x2: nx2, y2: ny2 },
         ledge: true,
-        notchDepthMm: plateThicknessMm
+        notchDepthMm: plateThicknessMm,
+        // шамот остаётся шамотом в смете и цвете
+        cutFrom: brick.kind as "standard" | "cut" | "firebrick"
       }
     };
   }

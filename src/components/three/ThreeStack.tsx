@@ -3,7 +3,7 @@ import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera, Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT } from "../../domain/constants";
-import { brickWorldGeometry, cellToWorld, isInsideGrid, plateSeatZ, snapToStep } from "../../domain/geometry";
+import { brickWorldGeometry, cellToWorld, isInsideGrid, snapToStep } from "../../domain/geometry";
 import { getToolColor } from "../../domain/tools";
 import type { Translate } from "../../i18n";
 import type { BrickKind, CameraState, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../../domain/types";
@@ -155,7 +155,7 @@ export function ThreeStack({
               </mesh>
             );
           })}
-          <PlacementCells grid={grid} currentRow={currentRow} rowBricks={sorted.filter((brick) => brick.row === currentRow)} placeAt={placeAt} canPlaceAt={canPlaceAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} grateSpec={grateSpec} unit={unit} />
+          <PlacementCells grid={grid} currentRow={currentRow} placeAt={placeAt} canPlaceAt={canPlaceAt} hoverCell={hoverCell3d} setHoverCell={setHoverCell3d} activeTool={activeTool} orientation={orientation} notchCorner={notchCorner} rebateDepthMm={rebateDepthMm} snapStep={snapStep} customBrick={customBrick} plateSpec={plateSpec} doorSpec={doorSpec} damperSpec={damperSpec} grateSpec={grateSpec} unit={unit} />
         </group>
       </Canvas>
     </div>
@@ -191,7 +191,6 @@ const DimensionLabels = memo(function DimensionLabels({ grid, gridY, unit }: { g
 function PlacementCells({
   grid,
   currentRow,
-  rowBricks,
   placeAt,
   canPlaceAt,
   hoverCell,
@@ -210,7 +209,6 @@ function PlacementCells({
 }: {
   grid: GridSpec;
   currentRow: number;
-  rowBricks: PlacedBrick[];
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   canPlaceAt: (x: number, y: number) => boolean;
   hoverCell: HoverCell;
@@ -253,11 +251,9 @@ function PlacementCells({
       {hoverCell ? (() => {
         if (previewKind === "custom" && !customBrick) return null;
         const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : previewKind === "cleanout" ? doorSpec : previewKind === "damper" ? damperSpec : previewKind === "grate" ? grateSpec : previewKind === "rebate" ? { name: "", w: 2, h: 1, notch: null, notchDepthMm: rebateDepthMm } : undefined } as PlacedBrick;
-        // честное превью посадки: над готовыми глубокими полками призрак плиты/колосника
-        // опускается туда же, куда сядет настоящая установка
-        if (draft.custom && (previewKind === "grate" || (previewKind === "plate" && draft.custom.flush === true))) {
-          draft.custom = { ...draft.custom, seatZMm: plateSeatZ(rowBricks, draft) };
-        }
+        // честное превью посадки: установка пере-резает кирпичи под толщину
+        // элемента, поэтому плита/колосник всегда ложатся заподлицо с верхом
+        // ряда — это и есть дефолт рендера (seatZMm не штампуем)
         const geom = brickWorldGeometry(draft, grid);
         // честное превью: та же проверка, что и настоящая установка (3D-коллизии)
         const fits = activeTool === "eraser" ? true : isInsideGrid(draft, grid) && canPlaceAt(hoverCell.x, hoverCell.y);

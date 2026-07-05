@@ -253,40 +253,45 @@ function intersectBox(a: BrickBox, b: BrickBox): BrickBox | null {
 }
 
 /**
- * Автоподрез кирпича под flush-плиту: верх кирпича в зоне следа плиты
- * срезается на её толщину — остаётся полка, на которую плита садится
- * заподлицо. Целый кирпич превращается в «резаный» (kind custom с вырезом);
- * у уже подрезанного мелкая полка углубляется, если вырез накрывает зону.
+ * Автоподрез кирпича под садящийся элемент (flush-плита, колосник): верх
+ * кирпича в зоне следа срезается на толщину элемента — остаётся полка, на
+ * которую элемент ложится заподлицо с верхом ряда. Целый кирпич превращается
+ * в «резаный» (kind custom с вырезом); уже подрезанный ПЕРЕ-РЕЗАЕТСЯ под
+ * посадку: вырез расширяется до зоны следа, глубина полки выравнивается на
+ * толщину элемента (и мелкая, и слишком глубокая) — иначе элемент либо
+ * упирался в тело кирпича, либо проваливался ниже ряда.
  * Возвращает кирпич без изменений, когда резать нечего, и null, когда подрез
  * невозможен (элемент не режется — останется честный конфликт).
  */
 export function cutBrickForPlate(
   brick: PlacedBrick,
   plate: BrickFootprint,
-  plateThicknessMm: number
+  plateThicknessMm: number,
+  label = "Подрез под плиту"
 ): PlacedBrick | null {
   const bounds = brickBounds(brick);
   const inter = intersectBox(bounds, brickBounds(plate));
   if (!inter) return brick;
 
+  // локальный вырез, заякоренный в грань/угол (контракт brickBoxes):
+  // «плавающую» сторону дотягиваем до ближайшей грани — рез с небольшим запасом
+  const w = bounds.x2 - bounds.x1;
+  const h = bounds.y2 - bounds.y1;
+  let nx1 = inter.x1 - bounds.x1;
+  let nx2 = inter.x2 - bounds.x1;
+  let ny1 = inter.y1 - bounds.y1;
+  let ny2 = inter.y2 - bounds.y1;
+  if (nx1 > EPS && nx2 < w - EPS) { if (nx1 <= w - nx2) nx1 = 0; else nx2 = w; }
+  if (ny1 > EPS && ny2 < h - EPS) { if (ny1 <= h - ny2) ny1 = 0; else ny2 = h; }
+
   if (PLATE_CUTTABLE_KINDS.has(brick.kind)) {
-    // локальный вырез, заякоренный в грань/угол (контракт brickBoxes):
-    // «плавающую» сторону дотягиваем до ближайшей грани — рез с небольшим запасом
-    const w = bounds.x2 - bounds.x1;
-    const h = bounds.y2 - bounds.y1;
-    let nx1 = inter.x1 - bounds.x1;
-    let nx2 = inter.x2 - bounds.x1;
-    let ny1 = inter.y1 - bounds.y1;
-    let ny2 = inter.y2 - bounds.y1;
-    if (nx1 > EPS && nx2 < w - EPS) { if (nx1 <= w - nx2) nx1 = 0; else nx2 = w; }
-    if (ny1 > EPS && ny2 < h - EPS) { if (ny1 <= h - ny2) ny1 = 0; else ny2 = h; }
     return {
       ...brick,
       kind: "custom",
       orientation: "h", // форма описана прямо в координатах следа
       notchCorner: undefined,
       custom: {
-        name: "Подрез под плиту",
+        name: label,
         w,
         h,
         notch: { x1: nx1, y1: ny1, x2: nx2, y2: ny2 },
@@ -298,21 +303,47 @@ export function cutBrickForPlate(
     };
   }
 
-  // уже подрезанный кирпич: если вырез накрывает зону плиты — углубляем мелкую полку
+  // Уже подрезанный кирпич (четверть/резак с полкой). Сквозной вырез
+  // (ledge: false) не пере-резаем: полку из дыры не вернуть — честный конфликт,
+  // если элемент заходит на тело.
   const notch = notchBox(brick);
-  if (
-    notch &&
-    brick.custom?.ledge !== false &&
-    notch.x1 <= inter.x1 + EPS &&
-    notch.y1 <= inter.y1 + EPS &&
-    notch.x2 >= inter.x2 - EPS &&
-    notch.y2 >= inter.y2 - EPS
-  ) {
+  if ((brick.kind === "rebate" || brick.kind === "custom") && notch && brick.custom?.ledge !== false) {
     const depth = brick.custom?.notchDepthMm ?? BRICK_MM / 2;
-    if (depth >= plateThicknessMm - EPS) return brick;
+    const covers =
+      notch.x1 <= inter.x1 + EPS &&
+      notch.y1 <= inter.y1 + EPS &&
+      notch.x2 >= inter.x2 - EPS &&
+      notch.y2 >= inter.y2 - EPS;
+    if (covers && Math.abs(depth - plateThicknessMm) < EPS) return brick;
+    if (covers) {
+      // вырез уже накрывает след — только выравниваем глубину полки под толщину
+      return {
+        ...brick,
+        custom: { ...(brick.custom ?? { name: "", w, h, notch: null }), notchDepthMm: plateThicknessMm }
+      };
+    }
+    // вырез не накрывает след — расширяем: bbox-объединение старого выреза с
+    // зоной следа (обе части заякорены в грани, объединение тоже — контракт
+    // brickBoxes сохраняется; возможный лишний запас между ними уходит в рез)
     return {
       ...brick,
-      custom: { ...(brick.custom ?? { name: "", w: 2, h: 1, notch: null }), notchDepthMm: plateThicknessMm }
+      kind: "custom",
+      orientation: "h",
+      notchCorner: undefined,
+      custom: {
+        name: label,
+        w,
+        h,
+        notch: {
+          x1: Math.min(nx1, notch.x1 - bounds.x1),
+          y1: Math.min(ny1, notch.y1 - bounds.y1),
+          x2: Math.max(nx2, notch.x2 - bounds.x1),
+          y2: Math.max(ny2, notch.y2 - bounds.y1)
+        },
+        ledge: true,
+        notchDepthMm: plateThicknessMm,
+        cutFrom: brick.custom?.cutFrom
+      }
     };
   }
 
@@ -399,8 +430,10 @@ export function planPlacement(
 
   // «Садящиеся» элементы (flush-плита, колосник) при одиночной установке САМИ
   // подрезают кирпичи своего ряда под след: полновысотные получают полку
-  // глубиной в толщину элемента, мелкие полки углубляются. Нережимое (дверца,
-  // обвязка…) остаётся честным конфликтом.
+  // глубиной в толщину элемента, уже вырезанные пере-резаются под посадку
+  // (вырез расширяется до следа, глубина выравнивается) — элемент всегда
+  // ложится заподлицо с верхом ряда. Нережимое (дверца, обвязка…) остаётся
+  // честным конфликтом.
   const isSeated = (b: PlacedBrick) => b.kind === "grate" || (b.kind === "plate" && b.custom?.flush === true);
   const seatedThickness = (b: PlacedBrick) =>
     b.custom?.thicknessMm ?? (b.kind === "grate" ? GRATE_THICKNESS_MM : PLATE_THICKNESS_MM);
@@ -408,9 +441,10 @@ export function planPlacement(
   let baseRow = rows[row] ?? [];
   if (singleSeated) {
     const t = seatedThickness(singleSeated);
+    const cutLabel = singleSeated.kind === "grate" ? "Подрез под колосник" : "Подрез под плиту";
     baseRow = baseRow.map((brick) => {
       if (isOverlayKind(brick.kind) || brick.kind === "grate") return brick;
-      return cutBrickForPlate(brick, singleSeated, t) ?? brick;
+      return cutBrickForPlate(brick, singleSeated, t, cutLabel) ?? brick;
     });
   }
   const workRows = singleSeated ? { ...rows, [row]: baseRow } : rows;

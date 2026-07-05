@@ -48,9 +48,13 @@ describe("плита заподлицо в вырезы кирпичей", () =>
     expect(ledgeTop).toBe(51);
   });
 
-  it("ложится и в более глубокий вырез (полка ниже плиты)", () => {
+  it("глубокий вырез пере-резается на толщину плиты — плита заподлицо", () => {
     const plan = planPlacement({ 3: seat(DEFAULT_REBATE_DEPTH_MM) }, 3, [flushPlate("p", 1.5, 1, 2, 1, 14)], grid);
     expect(plan.rows).not.toBeNull();
+    for (const id of ["west", "east"]) {
+      expect(plan.rows![3].find((b) => b.id === id)?.custom?.notchDepthMm).toBe(14);
+    }
+    expect(plan.rows![3].find((b) => b.kind === "plate")?.custom?.seatZMm).toBe(51);
   });
 
   it("вырез МЕЛЬЧЕ толщины плиты: автоподрез углубляет полку, плита заподлицо", () => {
@@ -64,12 +68,17 @@ describe("плита заподлицо в вырезы кирпичей", () =>
     }
   });
 
-  it("отклоняется, когда край плиты заходит за паз в тело кирпича", () => {
+  it("край плиты заходит за паз в тело кирпича — вырез расширяется, плита заподлицо", () => {
     const rows = { 3: seat(14) };
-    // сдвиг влево на полячейки: левый край в теле кирпича west (за пазом)
+    // сдвиг влево на полячейки: левый край в теле кирпича west (за пазом) —
+    // движок пере-резает кирпич: паз (1.5..2) объединяется с зоной следа (1..2)
     const plan = planPlacement(rows, 3, [flushPlate("p", 1, 1, 2, 1, 14)], grid);
-    expect(plan.rows).toBeNull();
-    expect(plan.conflicts.map((brick) => brick.id)).toEqual(["west"]);
+    expect(plan.rows).not.toBeNull();
+    const west = plan.rows![3].find((b) => b.id === "west")!;
+    expect(west.kind).toBe("custom");
+    expect(west.custom?.notch).toEqual({ x1: 1, y1: 0, x2: 2, y2: 1 });
+    expect(west.custom?.notchDepthMm).toBe(14);
+    expect(plan.rows![3].find((b) => b.kind === "plate")?.custom?.seatZMm).toBe(51);
   });
 
   it("полнотелый кирпич в центре автоматически подрезается под плиту", () => {

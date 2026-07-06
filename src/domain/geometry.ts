@@ -449,9 +449,26 @@ export function planPlacement(
   }
   const workRows = singleSeated ? { ...rows, [row]: baseRow } : rows;
 
-  // Садящийся элемент получает посадку НА УСТАНОВКЕ: низ = самая высокая полка
-  // под следом (plateSeatZ, уже с учётом автоподреза). Считаем до коллизий —
-  // занятые объёмы зависят от неё.
+  // Авто-обвязка колосника: вокруг следа само выкладывается посадочное кольцо
+  // из резаных кирпичей с пазами в его толщину — колосник «обставляется»
+  // кирпичами и ложится заподлицо даже на пустом месте. Куски, которым мешает
+  // существующая кладка (под следом она уже пере-резана), элемент другого ряда
+  // (дверца) или край сетки, просто не ставятся. Заменяемый колосник помехой
+  // не считается — его сейчас снимут.
+  let ring: PlacedBrick[] = [];
+  if (singleSeated && singleSeated.kind === "grate" && singleSeated.custom) {
+    const replacedIds = new Set(
+      baseRow.filter((b) => b.kind === "grate" && overlaps(b, singleSeated)).map((b) => b.id)
+    );
+    const obstacles = Object.values(workRows).flat().filter((b) => !replacedIds.has(b.id));
+    ring = grateRingBricks(singleSeated, seatedThickness(singleSeated), row, singleSeated.id).filter(
+      (piece) => isInsideGrid(piece, grid) && !obstacles.some((b) => overlaps3D(piece, b))
+    );
+  }
+
+  // Садящийся элемент получает посадку НА УСТАНОВКЕ: заподлицо при опоре
+  // (plateSeatZ, уже с учётом автоподреза и кольца обвязки), на низ ряда без.
+  // Считаем до коллизий — занятые объёмы зависят от неё.
   // (элемент без custom-спеки — легаси из старых проектов: посадку не штампуем,
   // solids/рендер используют дефолт «верх заподлицо»)
   const drafts = rawDrafts.map((draft) =>
@@ -460,7 +477,7 @@ export function planPlacement(
           ...draft,
           custom: {
             ...draft.custom,
-            seatZMm: plateSeatZ([...baseRow, ...rawDrafts.filter((d) => d !== draft)], draft)
+            seatZMm: plateSeatZ([...baseRow, ...ring, ...rawDrafts.filter((d) => d !== draft)], draft)
           }
         }
       : draft
@@ -482,7 +499,7 @@ export function planPlacement(
       const remaining = conflicts.filter((brick) => !replaced.has(brick.id));
       if (remaining.length) return { rows: null, conflicts: remaining };
       return {
-        rows: { ...workRows, [row]: [...baseRow.filter((brick) => !replaced.has(brick.id)), ...drafts] },
+        rows: { ...workRows, [row]: [...baseRow.filter((brick) => !replaced.has(brick.id)), ...drafts, ...ring] },
         conflicts: []
       };
     }
@@ -491,7 +508,7 @@ export function planPlacement(
   // плита, колосник и задвижка никого не заменяют: занято — отказ
   if (drafts.some((draft) => draft.kind === "plate" || draft.kind === "damper" || draft.kind === "grate")) {
     if (conflicts.length) return { rows: null, conflicts };
-    return { rows: { ...workRows, [row]: [...baseRow, ...drafts] }, conflicts: [] };
+    return { rows: { ...workRows, [row]: [...baseRow, ...drafts, ...ring] }, conflicts: [] };
   }
 
   if (drafts.length === 1) {
@@ -534,6 +551,64 @@ export function damperBlockers(rowBricks: PlacedBrick[], damper: BrickFootprint)
 // Бывшая «сборка колосника» (grate + 4 подрезки-trim) удалена: колосник, как и
 // плита, получает опору автоподрезом кирпичей при установке. Kind "trim"
 // сохранён для старых проектов.
+
+/** Минимальная длина куска обвязки — 50 мм: слипы тоньше не кладём. */
+const RING_MIN_LEN = 0.4;
+
+/**
+ * Обвязка колосника: посадочное кольцо из резаных кирпичей вокруг следа.
+ * Каждый кусок — ячейка в ширину, на полячейки заходит ПОД решётку; по
+ * внутренней кромке — паз глубиной в толщину решётки, на его полку она и
+ * ложится. Северная/южная ленты накрывают углы (у угловых кусков полка
+ * Г-образно короче — заякорена в грань, контракт brickBoxes соблюдён),
+ * западная/восточная — между ними. Куски длиннее кирпича (2 ячеек) режутся
+ * поровну. Узкий колосник (шириной в ячейку) опирается только на две ленты.
+ */
+export function grateRingBricks(grate: BrickFootprint, thicknessMm: number, row: number, idPrefix: string): PlacedBrick[] {
+  const b = brickBounds(grate);
+  const pieces: PlacedBrick[] = [];
+  let n = 0;
+  const push = (x: number, y: number, w: number, h: number, notch: BrickBox) => {
+    pieces.push({
+      id: `${idPrefix}-ring-${n++}`,
+      row,
+      x,
+      y,
+      kind: "custom",
+      orientation: "h",
+      custom: { name: "Обвязка колосника", w, h, notch, ledge: true, notchDepthMm: thicknessMm }
+    });
+  };
+  const split = (len: number): number[] => {
+    const count = Math.max(1, Math.ceil(len / 2 - EPS));
+    return Array.from({ length: count }, () => len / count);
+  };
+
+  for (const side of ["n", "s"] as const) {
+    const py = side === "n" ? b.y1 - 0.5 : b.y2 - 0.5;
+    let px = b.x1 - 0.5;
+    for (const len of split(b.x2 - b.x1 + 1)) {
+      // полка только под следом решётки — угловые куски получают срез короче тела
+      const nx1 = Math.max(px, b.x1) - px;
+      const nx2 = Math.min(px + len, b.x2) - px;
+      push(px, py, len, 1, { x1: nx1, y1: side === "n" ? 0.5 : 0, x2: nx2, y2: side === "n" ? 1 : 0.5 });
+      px += len;
+    }
+  }
+
+  const sideLen = b.y2 - b.y1 - 1;
+  if (sideLen >= RING_MIN_LEN) {
+    for (const side of ["w", "e"] as const) {
+      const px = side === "w" ? b.x1 - 0.5 : b.x2 - 0.5;
+      let py = b.y1 + 0.5;
+      for (const len of split(sideLen)) {
+        push(px, py, 1, len, side === "w" ? { x1: 0.5, y1: 0, x2: 1, y2: len } : { x1: 0, y1: 0, x2: 0.5, y2: len });
+        py += len;
+      }
+    }
+  }
+  return pieces;
+}
 
 /**
  * Greedy row auto-fill: walks the grid and lays full bricks in the given

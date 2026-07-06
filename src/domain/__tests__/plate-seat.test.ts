@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cutBrickForPlate, gridFromParameters, planPlacement, plateSeatZ, brickSolids } from "../geometry";
+import { cutBrickForPlate, gridFromParameters, overlaps, planPlacement, plateSeatZ, brickSolids } from "../geometry";
 import { grateSpecFromMm, plateSpecFromMm } from "../editor";
 import { DEFAULT_PARAMETERS } from "../constants";
 import type { PlacedBrick } from "../types";
@@ -195,14 +195,62 @@ describe("колосник садится в вырезы, как плита", (
     expect(plateSeatZ([], grate("g", 1.5, 1, 250, 125))).toBe(0);
   });
 
-  it("колосник в пустоту: ложится на низ ряда (z 0..22), не висит в воздухе", () => {
+  it("колосник в пустоту: сам обставляется кольцом резаных кирпичей и ложится заподлицо", () => {
     const plan = planPlacement({ 2: [] }, 2, [grate("g", 3, 3)], grid);
     expect(plan.rows).not.toBeNull();
+    const ring = plan.rows![2].filter((b) => b.custom?.name === "Обвязка колосника");
+    // 375×250 (3×2): север/юг по 2 куска (лента 4 ячейки), запад/восток по 1
+    expect(ring).toHaveLength(6);
+    for (const piece of ring) {
+      expect(piece.kind).toBe("custom");
+      expect(piece.custom?.notchDepthMm).toBe(22);
+    }
+    // колосник опирается на полки кольца — верх заподлицо с верхом ряда
     const placed = plan.rows![2].find((b) => b.kind === "grate")!;
-    expect(placed.custom?.seatZMm).toBe(0);
-    const solid = brickSolids(placed)[0];
-    expect(solid.z1).toBe(0);
-    expect(solid.z2).toBe(22);
+    expect(placed.custom?.seatZMm).toBe(43);
+    expect(brickSolids(placed)[0].z2).toBe(65);
+    // полка углового куска — Г: срез только под следом решётки
+    const corner = ring.find((b) => b.x === 2.5 && b.y === 2.5)!;
+    expect(corner.custom?.notch).toEqual({ x1: 0.5, y1: 0.5, x2: 2, y2: 1 });
+  });
+
+  it("кольцо у края сетки: лишние куски отброшены, колосник всё равно заподлицо", () => {
+    const plan = planPlacement({ 2: [] }, 2, [grate("g", 0, 0)], grid);
+    expect(plan.rows).not.toBeNull();
+    const ring = plan.rows![2].filter((b) => b.custom?.name === "Обвязка колосника");
+    // север/запад за сеткой, юг начинается с x −0.5 (угол) — тоже отброшен:
+    // остаются второй южный кусок и восточный
+    expect(ring).toHaveLength(2);
+    expect(plan.rows![2].find((b) => b.kind === "grate")!.custom?.seatZMm).toBe(43);
+  });
+
+  it("кольцо не дублируется при замене колосника кликом", () => {
+    const first = planPlacement({ 2: [] }, 2, [grate("g1", 3, 3)], grid).rows!;
+    const ringBefore = first[2].filter((b) => b.custom?.name === "Обвязка колосника").length;
+    const plan = planPlacement(first, 2, [grate("g2", 3, 3, 250, 250)], grid);
+    expect(plan.rows).not.toBeNull();
+    expect(plan.rows![2].filter((b) => b.kind === "grate")).toHaveLength(1);
+    // куски старого кольца остались, дубликатов нет; под новый (меньший)
+    // колосник добавился один кусок — опора его нового восточного края
+    const ringAfter = plan.rows![2].filter((b) => b.custom?.name === "Обвязка колосника");
+    expect(ringAfter.length).toBe(ringBefore + 1);
+    for (let i = 0; i < ringAfter.length; i++)
+      for (let j = i + 1; j < ringAfter.length; j++)
+        expect(overlaps(ringAfter[i], ringAfter[j])).toBe(false);
+  });
+
+  it("кольцо обходит существующую кладку: занятые куски не ставятся, кирпичи режутся", () => {
+    // кирпич уже лежит под западным краем колосника — его пере-режут, а куски
+    // кольца в его зоне не появятся
+    const bricks: PlacedBrick[] = [{ id: "a", row: 2, x: 2, y: 3, kind: "standard", orientation: "v" }];
+    const plan = planPlacement({ 2: bricks }, 2, [grate("g", 2.5, 3)], grid);
+    expect(plan.rows).not.toBeNull();
+    const cut = plan.rows![2].find((b) => b.id === "a")!;
+    expect(cut.custom?.notchDepthMm).toBe(22);
+    const ring = plan.rows![2].filter((b) => b.custom?.name === "Обвязка колосника");
+    expect(ring.length).toBeLessThan(6);
+    expect(ring.every((piece) => !plan.rows![2].some((b) => b.id === "a" && overlaps(b, piece)))).toBe(true);
+    expect(plan.rows![2].find((b) => b.kind === "grate")!.custom?.seatZMm).toBe(43);
   });
 
   it("колосник в готовые четверти 32.5: полки пере-резаются на 22 — верх заподлицо", () => {

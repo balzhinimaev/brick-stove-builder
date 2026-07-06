@@ -3,7 +3,7 @@ import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, OrthographicCamera, Text } from "@react-three/drei";
 import { COLORS } from "../../theme/colors";
 import { BRICK_LAYER_HEIGHT } from "../../domain/constants";
-import { brickWorldGeometry, cellToWorld, isInsideGrid, plateSeatZ, snapToStep } from "../../domain/geometry";
+import { BRICK_MM, brickWorldGeometry, cellToWorld, isInsideGrid, plateSeatZ, snapToStep } from "../../domain/geometry";
 import { getToolColor } from "../../domain/tools";
 import type { Translate } from "../../i18n";
 import type { BrickKind, CameraState, CustomBrickSpec, GridSpec, NotchCorner, Orientation, PlacedBrick, SnapStep, ToolKind } from "../../domain/types";
@@ -253,9 +253,12 @@ function PlacementCells({
       {hoverCell ? (() => {
         if (previewKind === "custom" && !customBrick) return null;
         const draft = { id: "hover", row: currentRow, x: hoverCell.x, y: hoverCell.y, kind: previewKind, orientation: previewOrientation, notchCorner: previewKind === "rebate" ? notchCorner : undefined, custom: previewKind === "custom" ? customBrick ?? undefined : previewKind === "plate" ? plateSpec : previewKind === "cleanout" ? doorSpec : previewKind === "damper" ? damperSpec : previewKind === "grate" ? grateSpec : previewKind === "rebate" ? { name: "", w: 2, h: 1, notch: null, notchDepthMm: rebateDepthMm } : undefined } as PlacedBrick;
-        // честное превью посадки: есть опора под следом — заподлицо (пере-рез
-        // при установке), нет — призрак ложится на низ ряда, как и установка
-        if (draft.custom && (previewKind === "grate" || (previewKind === "plate" && draft.custom.flush === true))) {
+        // честное превью посадки: колосник всегда заподлицо (авто-обвязка при
+        // установке даёт опору), flush-плита — заподлицо при опоре, на низ
+        // ряда без неё — ровно как настоящая установка
+        if (draft.custom && previewKind === "grate") {
+          draft.custom = { ...draft.custom, seatZMm: BRICK_MM - (draft.custom.thicknessMm ?? 22) };
+        } else if (draft.custom && previewKind === "plate" && draft.custom.flush === true) {
           draft.custom = { ...draft.custom, seatZMm: plateSeatZ(rowBricks, draft) };
         }
         const geom = brickWorldGeometry(draft, grid);

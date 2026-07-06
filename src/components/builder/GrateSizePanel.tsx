@@ -37,7 +37,7 @@ export function GrateSizePanel({ t, grateSpec, setGrateSize }: { t: Translate; g
         {slider(lengthMm, 200, 500, 5, (v) => setGrateSize(v, widthMm, thicknessMm))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterWidth")}</div>
         {slider(widthMm, 125, 375, 5, (v) => setGrateSize(lengthMm, v, thicknessMm))}
-        <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("plateThickness")}</div>
+        <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("grateThickness")}</div>
         {slider(thicknessMm, 15, 40, 1, (v) => setGrateSize(lengthMm, widthMm, v))}
       </div>
       <p className="mt-2 px-1 text-[10px] font-bold leading-3.5 text-[#3D2B1F]/55">{t("grateHint")}</p>

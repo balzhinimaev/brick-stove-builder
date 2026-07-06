@@ -126,9 +126,13 @@ function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
   frame(2);
   add(2, 3, 5, "cleanout", "h", { custom: { name: "Дверца 250×140", w: 2, h: 1, notch: null, heightMm: 140 } });
 
-  // ряд 3: зольник, проём дверцы; колосник заподлицо с верхом ряда
+  // ряд 3: зольник, проём дверцы; колосник 375×250×22 лежит КРАЯМИ на двух
+  // опорных кирпичах с пазами глубиной в его толщину — заподлицо и не в воздухе
   frame(3);
-  add(3, 2.5, 3, "grate", "h");
+  const grateSeat = { name: "", w: 2, h: 1, notch: null, notchDepthMm: 22 };
+  add(3, 2, 3, "rebate", "v", { notchCorner: "e", custom: grateSeat });
+  add(3, 5, 3, "rebate", "v", { notchCorner: "w", custom: grateSeat });
+  add(3, 2.5, 3, "grate", "h", { custom: { name: "Колосник 375×250×22", w: 3, h: 2, notch: null, thicknessMm: 22, seatZMm: 43 } });
 
   // ряд 4: перемычка над поддувальной + топочная дверца 250×210 (ряды 4–6)
   frame(4);

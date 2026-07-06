@@ -351,23 +351,23 @@ export function cutBrickForPlate(
 }
 
 /**
- * Посадка flush-плиты: высота опоры (низа плиты) от низа ряда, мм. Плита
- * ложится на САМУЮ ВЫСОКУЮ полку выреза под её следом (глубже рез — глубже
- * сядет). Полок нет — верх плиты остаётся заподлицо с верхом ряда (65 − t).
+ * Посадка садящегося элемента (flush-плита, колосник): высота низа от низа
+ * ряда, мм. Есть ОПОРА под следом (кирпич телом или полкой — пере-рез при
+ * установке выравнивает полку на толщину элемента) — верх элемента ложится
+ * заподлицо с верхом ряда (65 − t). Опоры нет — элемент НЕ висит в воздухе,
+ * а ложится на низ своего ряда (на кладку ряда ниже). Сквозной вырез
+ * (ledge: false) опорой не считается — там дыра; накладные (плита поверх,
+ * задвижка) и другой колосник тоже не опора.
  */
 export function plateSeatZ(rowBricks: BrickFootprint[], plate: BrickFootprint): number {
-  const t = plate.custom?.thicknessMm ?? PLATE_THICKNESS_MM;
+  const t = plate.custom?.thicknessMm ?? (plate.kind === "grate" ? GRATE_THICKNESS_MM : PLATE_THICKNESS_MM);
   const bounds = brickBounds(plate);
-  let seat = -1;
-  for (const brick of rowBricks) {
-    const notch = notchBox(brick);
-    if (!notch || !boxesIntersect(notch, bounds)) continue;
-    // та же формула полки, что в brickSolids
-    const depthMm = brick.custom?.notchDepthMm ?? (brick.custom?.ledge === false ? BRICK_MM : BRICK_MM / 2);
-    const ledgeTop = Math.max(0, BRICK_MM - depthMm);
-    if (ledgeTop > 0) seat = Math.max(seat, ledgeTop);
-  }
-  return seat >= 0 ? seat : BRICK_MM - t;
+  const supported = rowBricks.some((brick) => {
+    if (isOverlayKind(brick.kind) || brick.kind === "grate") return false;
+    if (brick.custom?.ledge === false) return brickBoxes(brick).some((box) => boxesIntersect(box, bounds));
+    return boxesIntersect(brickBounds(brick), bounds);
+  });
+  return supported ? BRICK_MM - t : 0;
 }
 
 /**

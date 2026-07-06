@@ -176,7 +176,7 @@ const ru = {
   plateSeat: "Посадка",
   plateOnTop: "Поверх ряда",
   plateFlush: "В вырезы",
-  plateFlushHint: "Плита сама подрежет кирпичи под собой на свою толщину и ляжет заподлицо; готовые глубокие полки — сядет глубже. Дверцы и колосники не режутся. Клик по стоящей плите — применить текущие размер и посадку.",
+  plateFlushHint: "Плита пере-режет кирпичи под собой на свою толщину и ляжет заподлицо с верхом ряда; без кирпичей под следом ляжет на низ ряда. Дверцы и колосники не режутся. Клик по стоящей плите — применить текущие размер и посадку.",
   doorSizeTitle: "Размер дверцы, мм (ширина × высота)",
   doorWidth: "Ширина, мм",
   doorHeight: "Высота, мм",
@@ -193,7 +193,8 @@ const ru = {
   damperHint: "Ставится над дымовым каналом (V). Клик инструментом по установленной задвижке — открыть/закрыть.",
   damperBlocked: "Канал под задвижкой перекрыт кладкой",
   grateSizeTitle: "Размер колосника, мм",
-  grateHint: "Колосник сам подрежет кирпичи под собой на свою толщину и ляжет заподлицо; готовые глубокие полки — сядет глубже. Клик по стоящему колоснику — применить текущий размер."
+  grateHint: "Колосник пере-режет кирпичи под своими краями на свою толщину (высоту) и ляжет заподлицо с верхом ряда; без кирпичей под следом ляжет на низ ряда — в воздухе не висит. Клик по стоящему колоснику — применить текущий размер.",
+  grateThickness: "Высота (толщина), мм"
 } satisfies Record<string, string>;
 
 export type TranslationKey = keyof typeof ru;
@@ -371,7 +372,7 @@ const en: Record<TranslationKey, string> = {
   plateSeat: "Seating",
   plateOnTop: "On top of the row",
   plateFlush: "Into cuts",
-  plateFlushHint: "The plate auto-cuts the bricks beneath it to its own thickness and sits flush; deeper existing ledges seat it lower. Doors and grates are not cut. Click a placed plate to apply the current size and seating.",
+  plateFlushHint: "The plate re-cuts the bricks beneath it to its own thickness and sits flush with the course top; with no bricks under it, it rests on the course bottom. Doors and grates are not cut. Click a placed plate to apply the current size and seating.",
   doorSizeTitle: "Door size, mm (width × height)",
   doorWidth: "Width, mm",
   doorHeight: "Height, mm",
@@ -388,7 +389,8 @@ const en: Record<TranslationKey, string> = {
   damperHint: "Place over a flue channel (V). Click a placed damper with the tool to open/close it.",
   damperBlocked: "Masonry blocks the flue under the damper",
   grateSizeTitle: "Grate size, mm",
-  grateHint: "The grate auto-cuts the bricks beneath it to its own thickness and sits flush; deeper existing ledges seat it lower. Click a placed grate to apply the current size."
+  grateHint: "The grate re-cuts the bricks under its edges to its own thickness (height) and sits flush with the course top; with no bricks under it, it rests on the course bottom — it never floats. Click a placed grate to apply the current size.",
+  grateThickness: "Height (thickness), mm"
 };
 
 const lt: Record<TranslationKey, string> = {
@@ -564,7 +566,7 @@ const lt: Record<TranslationKey, string> = {
   plateSeat: "Įleidimas",
   plateOnTop: "Ant eilės",
   plateFlush: "Į išpjovas",
-  plateFlushHint: "Plokštė pati įpjauna plytas po savimi per savo storį ir gula lygiai; gilesnės esamos atbrailos — nusileidžia giliau. Durelės ir grotelės nepjaunamos. Spustelėkite pastatytą plokštę — pritaikyti dabartinį dydį ir įleidimą.",
+  plateFlushHint: "Plokštė perpjauna plytas po savimi per savo storį ir gula lygiai su eilės viršumi; be plytų po ja gula ant eilės dugno. Durelės ir grotelės nepjaunamos. Spustelėkite pastatytą plokštę — pritaikyti dabartinį dydį ir įleidimą.",
   doorSizeTitle: "Durelių dydis, mm (plotis × aukštis)",
   doorWidth: "Plotis, mm",
   doorHeight: "Aukštis, mm",
@@ -581,7 +583,8 @@ const lt: Record<TranslationKey, string> = {
   damperHint: "Dedama virš dūmų kanalo (V). Spustelėkite pastatytą sklendę įrankiu — atidaryti/uždaryti.",
   damperBlocked: "Mūras užstoja kanalą po sklende",
   grateSizeTitle: "Grotelių dydis, mm",
-  grateHint: "Grotelės pačios įpjauna plytas po savimi per savo storį ir gula lygiai; gilesnės esamos atbrailos — nusileidžia giliau. Spustelėkite pastatytas groteles — pritaikyti dabartinį dydį."
+  grateHint: "Grotelės perpjauna plytas po savo kraštais per savo storį (aukštį) ir gula lygiai su eilės viršumi; be plytų po jomis gula ant eilės dugno — ore nekybo. Spustelėkite pastatytas groteles — pritaikyti dabartinį dydį.",
+  grateThickness: "Aukštis (storis), mm"
 };
 
 export const translations = { ru, en, lt } as const;

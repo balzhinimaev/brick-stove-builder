@@ -32,6 +32,15 @@ draftRouter.get("/", async (req, res, next) => {
 draftRouter.put("/", async (req, res, next) => {
   try {
     const body = req.body ?? {};
+    if (!body.parameters || typeof body.parameters !== "object") {
+      return res.status(400).json({ error: "parameters are required" });
+    }
+    if (!Number.isInteger(body.rowCount) || body.rowCount < 1 || body.rowCount > 200) {
+      return res.status(400).json({ error: "rowCount must be an integer between 1 and 200" });
+    }
+    if (!Number.isInteger(body.currentRow) || body.currentRow < 1 || body.currentRow > body.rowCount) {
+      return res.status(400).json({ error: "currentRow must be within the draft rows" });
+    }
     const clientUpdatedAt = Number(body.updatedAt) || Date.now();
     let draft;
     try {

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/coverage",
+      "!**/.vite",
+      "!android/.gradle",
+      "!android/build",
+      "!android/app/build",
+      "!android/app/src/main/assets/public"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "trailingCommas": "none"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  }
+}

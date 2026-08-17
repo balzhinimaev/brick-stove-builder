@@ -2,8 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main, refactor/deep-refactor]
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -16,12 +20,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Typecheck
-        run: npx tsc -b tsconfig.json
-      - name: Tests
-        run: npx vitest run
-      - name: Build
-        run: npm run build
+      - name: Check formatting, lint, types, build, and tests
+        run: npm run check
       - name: Server smoke (health + API 404 + graceful stop)
         run: |
           node server/index.js &

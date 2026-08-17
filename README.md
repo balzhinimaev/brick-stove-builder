@@ -92,12 +92,29 @@ The frontend uses `/api` by default locally and `/brick-stove-builder/api` when 
 npm run build
 ```
 
+The build first runs the TypeScript project build and then creates the Vite
+production bundle in `dist/`.
+
 ## Test
 
 ```bash
 npm test          # run once
 npm run test:watch
 ```
+
+Biome is the shared formatter and linter for TypeScript, React (including React
+Hooks), and the server-side JavaScript:
+
+```bash
+npm run format        # format supported files in place
+npm run format:check  # verify formatting without changing files
+npm run lint          # run the linter
+npm run check         # formatting, linting, TypeScript/Vite build, then tests
+```
+
+Run `npm run check` before submitting a change. Generated output such as
+`dist/`, dependency directories, coverage, Vite caches, Gradle output, and
+Capacitor's generated web assets is excluded from Biome analysis.
 
 ## Authentication
 

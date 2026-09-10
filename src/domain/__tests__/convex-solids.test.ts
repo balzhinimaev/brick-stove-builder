@@ -139,5 +139,6 @@ it("accepts only fully bounded fan beds while preserving strict default contacts
   expect(contacts).toHaveLength(1);
   expect(contacts[0].areaMm2).toBeCloseTo(125 * 125);
   expect(convexFaceContacts(base, make(69, 71), 5, 0.02)).toEqual([]);
+  expect(convexFaceContacts(base, make(69, 70.001), 5, 0.02)).toEqual([]);
   expect(convexFaceContacts(base, make(64, 66), 5, 0.02)).toEqual([]);
 });

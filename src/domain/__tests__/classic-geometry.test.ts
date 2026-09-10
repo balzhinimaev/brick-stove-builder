@@ -30,7 +30,7 @@ it("has valid canonical profiles, no actual solid intersections and founded bear
         b = world[j];
       if (
         a.id === b.id ||
-        a.bounds.some(([lo, hi], k) => Math.max(lo, b.bounds[k][0]) - Math.min(hi, b.bounds[k][1]) > 5.1)
+        a.bounds.some(([lo, hi], k) => Math.max(lo, b.bounds[k][0]) - Math.min(hi, b.bounds[k][1]) > 5 + 1e-6)
       )
         continue;
       if (
@@ -41,7 +41,7 @@ it("has valid canonical profiles, no actual solid intersections and founded bear
       if (
         a.kind === "custom" &&
         b.kind === "custom" &&
-        convexFaceContacts(a.shape, b.shape, 5.1, 0.02).some((c) => c.areaMm2 >= 100 && Math.abs(c.normalA.z) > 0.01)
+        convexFaceContacts(a.shape, b.shape, 5, 0.02).some((c) => c.areaMm2 >= 100 && Math.abs(c.normalA.z) > 0.01)
       ) {
         graph[i].add(j);
         graph[j].add(i);
@@ -104,7 +104,7 @@ it("keeps real fan mortar beds no thicker than 5 mm, broad heels and staggered a
         if (neighbor < 1 || neighbor > n) continue;
         const contacts = wedges
           .filter((b) => index(b) === neighbor)
-          .flatMap((b) => convexFaceContacts(shape(wedge), shape(b), 5.01, 0.02));
+          .flatMap((b) => convexFaceContacts(shape(wedge), shape(b), 5, 0.02));
         expect(contacts.reduce((sum, c) => sum + c.areaMm2, 0)).toBeGreaterThan(3000);
         for (const c of contacts) {
           expect(c.gapMm).toBeGreaterThan(3);
@@ -119,7 +119,7 @@ it("keeps real fan mortar beds no thicker than 5 mm, broad heels and staggered a
             const gaps = b.vertices.map(
               (p) => a.normal.x * (p.x - a.point.x) + a.normal.y * (p.y - a.point.y) + a.normal.z * (p.z - a.point.z)
             );
-            return Math.min(...gaps) > 3 && Math.max(...gaps) <= 5.01 ? [gaps] : [];
+            return Math.min(...gaps) > 3 && Math.max(...gaps) <= 5 + 1e-6 ? [gaps] : [];
           })
         );
         expect(fan).toHaveLength(1);

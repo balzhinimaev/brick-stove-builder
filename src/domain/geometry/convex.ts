@@ -150,7 +150,9 @@ export function convexFaceContacts(
     for (const bf of polyhedronFaces(b)) {
       if (dot(af.normal, bf.normal) > -Math.cos(faceAngleTolerance) + 1e-8) continue;
       const distances = bf.vertices.map((p) => dot(af.normal, sub(p, af.point)));
-      // Inclined mortar beds must fit entirely inside the same gap budget.
+      // Signed distance to a plane is affine: extrema on a convex face occur
+      // at vertices. Bounding every vertex therefore bounds the entire bed,
+      // not just a sample or the first corner; overlap area is checked below.
       if (faceAngleTolerance > 0 && (Math.min(...distances) < -EPS || Math.max(...distances) > mortarToleranceMm + EPS))
         continue;
       const gapMm = dot(af.normal, sub(bf.point, af.point));

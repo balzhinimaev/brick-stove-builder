@@ -82,6 +82,7 @@ export default function App() {
           />
         ) : (
           <BuilderScreen
+            sceneRevision={studio.sceneRevision}
             inspection={studio.showTeplushkaGuide ? studio.teplushkaInspection : undefined}
             onExitSection={studio.exitTeplushkaSection}
             t={t}

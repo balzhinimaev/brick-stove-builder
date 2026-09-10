@@ -68,10 +68,10 @@ export function ProjectsScreen({
         {project.id === "russian-stove-hob" ? <RussianStoveGuide locale={locale} /> : null}
         {project.id === "russian-stove-hob" ? (
           <img
-            src={`${import.meta.env.BASE_URL}russian-stove-demo.webp`}
+            src={`${import.meta.env.BASE_URL}russian-stove-demo.png`}
             alt={project.title[locale]}
-            width={520}
-            height={610}
+            width={511}
+            height={388}
             className="mx-auto max-h-96 w-full object-contain bg-[#E2E5DF]"
           />
         ) : null}

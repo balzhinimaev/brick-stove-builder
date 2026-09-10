@@ -2,17 +2,36 @@ import type { Locale } from "../i18n";
 
 export const RUSSIAN_COURSES = [
   [1, 2, "Сплошное основание", "Solid base", "Pagrindas"],
-  [3, 3, "Подпечье и основание топки плиты", "Storage cavity and hob firebox base", "Pakūros pagrindas"],
+  [
+    3,
+    3,
+    "Сплошная опора пода и основание топки плиты",
+    "Solid hearth support and hob firebox base",
+    "Pado atrama ir pakuros pagrindas"
+  ],
   [4, 5, "Зольник, поддувальная дверца и колосник", "Ash chamber, ash door and grate", "Peleninė ir grotelės"],
   [6, 9, "Отдельная топка плиты и топочная дверца", "Separate hob firebox and fire door", "Atskira viryklės pakura"],
-  [10, 11, "Верх топки; подготовка уровня пода", "Firebox top; hearth support level", "Pakuros viršus"],
+  [
+    10,
+    11,
+    "Выход топки в боковой дымовой канал; опора пода",
+    "Firebox outlet into side flue; hearth support",
+    "Pakuros išėjimas į šoninį dūmtakį"
+  ],
   [12, 12, "Шамотный под и плита в четвертях", "Firebrick hearth and rebated hob", "Šamotinis padas ir viryklė"],
   [
     13,
+    18,
+    "Горнило, открытое устье и боковой канал плиты",
+    "Cooking chamber, open mouth and separate hob flue",
+    "Kamera, anga ir atskiras viryklės dūmtakis"
+  ],
+  [
+    19,
     20,
-    "Горнило и открытое устье над шестком",
-    "Cooking chamber and open mouth above the forehearth",
-    "Kamera ir anga"
+    "Ступенчатое перекрытие устья и опоры дымосборника",
+    "Corbelled mouth head and hood supports",
+    "Laiptuotas angos viršus ir gaubto atramos"
   ],
   [21, 25, "Условный ступенчатый свод и дымосборник", "Schematic stepped vault and smoke hood", "Sąlyginis skliautas"],
   [26, 36, "Труба; условная задвижка в ряду 29", "Chimney; schematic damper at course 29", "Kaminas; sklendė 29 eilėje"]

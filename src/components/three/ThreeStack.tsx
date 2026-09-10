@@ -1,3 +1,10 @@
+import {
+  CLASSIC_ARCH_NAMES,
+  classicArchAssembly,
+  archAssemblyFrame,
+  type ArchName
+} from "../builder/classicArchAssembly";
+import { ArchCentering, ArchPartLabels, archSceneBounds } from "./ClassicArchOverlay";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Plane, Vector3 } from "three";
@@ -47,6 +54,27 @@ export function ThreeStack({
   inspection,
   onExitSection
 }: ThreeStackProps) {
+  const [archName, setArchName] = useState<ArchName | null>(null);
+  const [archStep, setArchStep] = useState(0);
+  const [archSelected, setArchSelected] = useState<string | null>(null);
+  const assemblies = useMemo(
+    () => CLASSIC_ARCH_NAMES.map((name) => classicArchAssembly(bricks, name)).filter((a) => a !== null),
+    [bricks]
+  );
+  const assembly = assemblies.find((a) => a.name === archName) ?? null;
+  const frame = useMemo(() => (assembly ? archAssemblyFrame(assembly, archStep) : null), [assembly, archStep]);
+  const archBounds = useMemo(
+    () =>
+      assembly
+        ? archSceneBounds(
+            assembly.steps.flatMap((s) => s.parts),
+            grid
+          )
+        : null,
+    [assembly, grid]
+  );
+  const archSize = archBounds?.getSize(new Vector3()),
+    archCenter = archBounds?.getCenter(new Vector3());
   const [inspect, setInspect] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [point, setPoint] = useState<PlacementPoint | null>(null);
@@ -54,7 +82,7 @@ export function ThreeStack({
   const gesture = useRef(new PlacementGesture());
   const tap = useRef(false);
   const viewport = useRef<HTMLDivElement>(null);
-  const sectionActive = !!inspection && inspection.section !== "whole";
+  const sectionActive = !assembly && !!inspection && inspection.section !== "whole";
   const selectionContext = useRef({ currentRow, grid, inspect });
   const visible = useMemo(
     () => bricks.filter((brick) => inspect || brick.row <= currentRow),
@@ -69,12 +97,15 @@ export function ThreeStack({
     [visible, grid, currentRow]
   );
   const preview = useMemo(() => (point ? previewAt(point) : null), [point, previewAt]);
-  const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect;
+  const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect && !assembly;
   const sceneBricks = useMemo(
     () => withPlacementAdjustments(visible, valid ? preview : null),
     [visible, preview, valid]
   );
-  const clipPlane = useMemo(() => inspectionPlane(inspection, bricks, grid), [inspection, bricks, grid]);
+  const clipPlane = useMemo(
+    () => inspectionPlane(assembly ? undefined : inspection, bricks, grid),
+    [assembly, inspection, bricks, grid]
+  );
   const section = useMemo(
     () => (clipPlane ? sectionScene(sceneBricks, grid, clipPlane, foundationHeight) : null),
     [sceneBricks, grid, clipPlane, foundationHeight]
@@ -83,8 +114,9 @@ export function ThreeStack({
   // Omit fully removed draws as well as their caps. GPU clipping is still needed
   // for intersected bricks, but must not leave raster fragments of a removed chimney.
   const renderedBricks = useMemo(
-    () => (section ? sceneBricks.filter((brick) => section.retainedBrickIds.has(brick.id)) : sceneBricks),
-    [sceneBricks, section]
+    () =>
+      frame?.parts ?? (section ? sceneBricks.filter((brick) => section.retainedBrickIds.has(brick.id)) : sceneBricks),
+    [frame, sceneBricks, section]
   );
   const sectionSize = section?.bounds.getSize(new Vector3());
   const sectionCenter = section?.bounds.getCenter(new Vector3());
@@ -138,7 +170,7 @@ export function ThreeStack({
     return () => window.removeEventListener("keydown", onKey);
   });
   const select = (event: ThreeEvent<PointerEvent>) => {
-    if (!tap.current || inspect || locked || event.button !== 0) return;
+    if (!tap.current || assembly || inspect || locked || event.button !== 0) return;
     event.stopPropagation();
     const hit = event.ray.intersectPlane(
       new Plane(new Vector3(0, 1, 0), -(currentRow - 1) * BRICK_LAYER_HEIGHT),
@@ -164,10 +196,110 @@ export function ThreeStack({
                   : "placementReady";
   return (
     <div className="scene-workspace">
+      {assemblies.length > 0 && (
+        <section className="arch-assembly-panel" aria-label="Сборка арок и сводов">
+          <label>
+            Арки и своды · учебная сборка{" "}
+            <select
+              value={archName ?? ""}
+              onChange={(event) => {
+                setArchName((event.target.value || null) as ArchName | null);
+                setArchStep(0);
+                setArchSelected(null);
+                setPoint(null);
+                gesture.current.cancel();
+                act("fit");
+              }}
+            >
+              <option value="">Обычная сцена</option>
+              {assemblies.map((a) => (
+                <option key={a.name}>{a.name}</option>
+              ))}
+            </select>
+          </label>
+          {assembly && frame && (
+            <>
+              <p>
+                Изолированы реальные детали проекта. Это реконструкция, не утверждённая строительная порядовка. Шаги не
+                являются рядами кладки.
+              </p>
+              <div className="scene-toolbar">
+                <button
+                  type="button"
+                  disabled={archStep === 0}
+                  onClick={() => {
+                    setArchStep((s) => s - 1);
+                    setArchSelected(null);
+                  }}
+                >
+                  ← Назад
+                </button>
+                <label>
+                  Шаг {archStep + 1} / {assembly.steps.length}
+                  <input
+                    aria-label="Шаг сборки"
+                    type="range"
+                    min={0}
+                    max={assembly.steps.length - 1}
+                    value={archStep}
+                    onChange={(e) => {
+                      setArchStep(Number(e.target.value));
+                      setArchSelected(null);
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={archStep >= assembly.steps.length - 1}
+                  onClick={() => {
+                    setArchStep((s) => s + 1);
+                    setArchSelected(null);
+                  }}
+                >
+                  Далее →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArchName(null);
+                    setArchSelected(null);
+                    act("fit");
+                  }}
+                >
+                  Вернуться к печи
+                </button>
+              </div>
+              <output aria-live="polite">{frame.label}</output>
+              <p>
+                Новые детали пронумерованы в сцене. Продольные участки соседних пар смещены на полкирпича. Кружало
+                остаётся до высыхания раствора; сроки здесь не задаются.
+              </p>
+              <label>
+                Выбрать деталь{" "}
+                <select value={archSelected ?? ""} onChange={(e) => setArchSelected(e.target.value || null)}>
+                  <option value="">Номер / деталь</option>
+                  {frame.parts.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      №{assembly.numbers.get(b.id)} · {b.custom?.name} · ряд {b.row}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {archSelected && (
+                <p>
+                  №{assembly.numbers.get(archSelected)} · {archSelected} ·{" "}
+                  {frame.parts.find((b) => b.id === archSelected)?.custom?.name}
+                </p>
+              )}
+            </>
+          )}
+        </section>
+      )}
       <div className="scene-toolbar">
         <fieldset className="studio-segment" aria-label={t("interactionMode")}>
           <button
             type="button"
+            disabled={!!assembly}
             aria-pressed={!inspect}
             onClick={() => {
               onExitSection?.();
@@ -176,7 +308,7 @@ export function ThreeStack({
           >
             {t("buildMode")}
           </button>
-          <button type="button" aria-pressed={inspect} onClick={() => setInspect(true)}>
+          <button type="button" disabled={!!assembly} aria-pressed={inspect} onClick={() => setInspect(true)}>
             {t("inspectMode")}
           </button>
         </fieldset>
@@ -226,7 +358,13 @@ export function ThreeStack({
         }}
       >
         <div className="scene-badge">
-          {sectionActive ? t("sectionView") : inspect ? t("wholeModel") : `${t("currentRow")} ${currentRow}`}{" "}
+          {assembly
+            ? assembly.name
+            : sectionActive
+              ? t("sectionView")
+              : inspect
+                ? t("wholeModel")
+                : `${t("currentRow")} ${currentRow}`}{" "}
           <span>
             · {grid.widthCm} × {grid.lengthCm} {t("unitCm")}
           </span>
@@ -258,44 +396,75 @@ export function ThreeStack({
           />
           <directionalLight position={[-10, 6, -8]} intensity={0.65} />
           <SceneCamera
-            width={sectionSize?.x ?? grid.cols + 1}
-            depth={sectionSize?.z ?? grid.rows + 1}
-            height={sectionSize?.y ?? height + foundationHeight}
-            centerX={sectionCenter?.x ?? 0}
-            centerY={sectionCenter?.y ?? (height - foundationHeight) / 2}
-            centerZ={sectionCenter?.z ?? 0}
-            inspect={inspect}
+            width={archSize?.x ?? sectionSize?.x ?? grid.cols + 1}
+            depth={archSize?.z ?? sectionSize?.z ?? grid.rows + 1}
+            height={archSize?.y ?? sectionSize?.y ?? height + foundationHeight}
+            centerX={archCenter?.x ?? sectionCenter?.x ?? 0}
+            centerY={archCenter?.y ?? sectionCenter?.y ?? (height - foundationHeight) / 2}
+            centerZ={archCenter?.z ?? sectionCenter?.z ?? 0}
+            inspect={!!assembly || inspect}
             frontSign={inspection ? -1 : 1}
             command={command}
           />
-          <Foundation grid={grid} thickness={foundationHeight} sectionActive={sectionActive} />
+          {!assembly && <Foundation grid={grid} thickness={foundationHeight} sectionActive={sectionActive} />}
           {section && (
             <mesh geometry={section.geometry}>
               <meshStandardMaterial vertexColors roughness={0.94} />
             </mesh>
           )}
-          <Masonry bricks={renderedBricks} grid={grid} />
+          <group
+            onPointerUp={(event) => {
+              if (!assembly || !tap.current) return;
+              const id = event.object.userData.brickId;
+              if (typeof id === "string" && assembly.numbers.has(id)) {
+                event.stopPropagation();
+                setArchSelected(id);
+              }
+            }}
+          >
+            <Masonry bricks={renderedBricks} grid={grid} />
+          </group>
+          {assembly && frame && (
+            <>
+              {frame.centering && <ArchCentering assembly={assembly} grid={grid} />}
+              <ArchPartLabels
+                parts={
+                  frame.active.length < 30
+                    ? [...new Set([...frame.active, ...frame.parts.filter((b) => b.id === archSelected)])]
+                    : frame.parts.filter((b) => b.id === archSelected)
+                }
+                assembly={assembly}
+                grid={grid}
+                selectedId={archSelected}
+                onSelect={setArchSelected}
+              />
+            </>
+          )}
           {renderedBricks
             .filter((brick) => !isMasonry(brick))
             .map((brick) => (
               <ThreeBrick key={brick.id} grid={grid} brick={brick} />
             ))}
-          {showGrid && !inspect && (
+          {showGrid && !assembly && !inspect && (
             <WorkGrid grid={grid} elevation={(currentRow - 1) * BRICK_LAYER_HEIGHT + 0.006} step={snapStep} />
           )}
-          {!inspect &&
+          {!assembly &&
+            !inspect &&
             visible
               .filter((brick) => brick.kind === "vent" && brick.row === currentRow)
               .map((brick) => <BrickHighlight key={brick.id} brick={brick} grid={grid} color="#558fa4" />)}
-          {!inspect &&
+          {!assembly &&
+            !inspect &&
             preview?.bricks.map((brick) => (
               <BrickHighlight key={brick.id} brick={brick} grid={grid} color={valid ? "#25866d" : "#ba4a3d"} />
             ))}
-          {!inspect &&
+          {!assembly &&
+            !inspect &&
             preview?.adjustments.map((brick) => (
               <BrickHighlight key={brick.id} brick={brick} grid={grid} color="#ae863d" />
             ))}
-          {!inspect &&
+          {!assembly &&
+            !inspect &&
             preview?.affected.map((brick) => (
               <BrickHighlight
                 key={brick.id}
@@ -330,15 +499,17 @@ export function ThreeStack({
       </div>
       <div className="placement-panel">
         <output className="scene-instruction" aria-live="polite">
-          {inspect
-            ? t("inspectHint")
-            : locked
-              ? t("placementLocked")
-              : point
-                ? `${t(statusKey)}${preview?.adjustments.length ? ` ${t("autoSeatHint")}` : ""}`
-                : t("placeHint")}
+          {assembly
+            ? "Выбор номера подсвечивает ту же физическую деталь; редактирование в этой сцене выключено."
+            : inspect
+              ? t("inspectHint")
+              : locked
+                ? t("placementLocked")
+                : point
+                  ? `${t(statusKey)}${preview?.adjustments.length ? ` ${t("autoSeatHint")}` : ""}`
+                  : t("placeHint")}
         </output>
-        {!inspect && !locked && (
+        {!assembly && !inspect && !locked && (
           <div className="placement-controls">
             <div className="placement-position">
               <button

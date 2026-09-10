@@ -6,7 +6,7 @@ import type { PlacedBrick } from "../../types";
  * masonry only. Thin metal intersects voxels conservatively; never midpoint-only.
  * This is geometry/topology, not fluid dynamics or a proof of draft.
  */
-export function classicVolume(bricks: PlacedBrick[], removedIds: string[] = []) {
+export function classicVolume(bricks: PlacedBrick[], removedIds: string[] = [], sealArchMortar = true) {
   const step = 10,
     nx = 201,
     ny = 226,
@@ -19,6 +19,41 @@ export function classicVolume(bricks: PlacedBrick[], removedIds: string[] = []) 
     const profile = profilePolyhedron(b),
       faces = profile ? polyhedronFaces(profile) : null;
     const base = (b.row - 1) * 70;
+    // Reconstruct ONLY mortar bed planes cut out of the arch, not a blanket
+    // dilation of the soffit or the flues. This seals a real 5 mm joint, not air.
+    const arch = [
+      ["Большое подпечье", 800, 1750, 350, 170, 1],
+      ["Малое подпечье", 120, 650, 210, 70, 0],
+      ["Арка устья", 390, 810, 1050, 70, 0],
+      ["Свод горнила", 120, 1080, 1050, 180, 0]
+    ].find(([name]) => b.custom?.name.startsWith(`${name} ·`));
+    const mortar = (f: NonNullable<typeof faces>[number], p: { x: number; y: number; z: number }) => {
+      if (!sealArchMortar || !arch) return 1e-7;
+      const [, left, right, spring, rise, rotated] = arch as [string, number, number, number, number, number];
+      const half = (right - left) / 2,
+        radius = (half * half + rise * rise) / (2 * rise);
+      const center = rotated
+        ? { x: 0, y: 125 + (left + right) / 2, z: spring + rise - radius - base }
+        : { x: 625 + (left + right) / 2, y: 0, z: spring + rise - radius - base };
+      const axial = rotated ? Math.abs(f.normal.x) : Math.abs(f.normal.y);
+      if (axial > 0.999) return 2.5 + 1e-7;
+      if (!b.custom?.name.includes(" · клин")) return f.normal.z > 0.999 ? 5 + 1e-7 : 1e-7;
+      const distance = Math.abs(
+        f.normal.x * (center.x - f.point.x) + f.normal.y * (center.y - f.point.y) + f.normal.z * (center.z - f.point.z)
+      );
+      const angle = Math.asin(half / radius),
+        n = Math.ceil((2 * angle * (radius + 120)) / 60) | 1;
+      if (distance < 1e-5) {
+        // Restore the nominal radial plane, not a uniform dilation of the fan.
+        const radial = rotated ? p.y - center.y : p.x - center.x;
+        const normal = rotated ? f.normal.y : f.normal.x;
+        const along = Math.abs(-f.normal.z * radial + normal * (p.z - center.z));
+        const delta = Math.asin(2.5 / (radius + 120));
+        return along * Math.tan(delta) + 1e-7;
+      }
+      const extrados = (radius + 120) * Math.cos(angle / n) - 2.5;
+      return Math.abs(distance - 2.5) < 1e-5 || Math.abs(distance - extrados) < 1e-5 ? 2.5 + 1e-7 : 1e-7;
+    };
     const solids = profile
       ? [
           {
@@ -35,12 +70,15 @@ export function classicVolume(bricks: PlacedBrick[], removedIds: string[] = []) 
       : brickPhysicalSolids(b);
     for (const s of solids) {
       const masonry = !["plate", "grate", "damper", "cleanout", "vent"].includes(b.kind);
-      const x1 = Math.max(0, Math.floor((s.box.x1 * 125) / step)),
-        x2 = Math.min(nx, Math.ceil((s.box.x2 * 125) / step));
-      const y1 = Math.max(0, Math.floor((s.box.y1 * 125) / step)),
-        y2 = Math.min(ny, Math.ceil((s.box.y2 * 125) / step));
-      const z1 = Math.max(0, Math.floor((base + s.z1) / step)),
-        z2 = Math.min(nz, Math.ceil((base + s.z2 + (masonry && !profile ? 5 : 0)) / step));
+      const x1 = Math.max(0, Math.floor((s.box.x1 * 125 - (arch && sealArchMortar ? 2.5 : 0)) / step)),
+        x2 = Math.min(nx, Math.ceil((s.box.x2 * 125 + (arch && sealArchMortar ? 2.5 : 0)) / step));
+      const y1 = Math.max(0, Math.floor((s.box.y1 * 125 - (arch && sealArchMortar ? 2.5 : 0)) / step)),
+        y2 = Math.min(ny, Math.ceil((s.box.y2 * 125 + (arch && sealArchMortar ? 2.5 : 0)) / step));
+      const z1 = Math.max(0, Math.floor((base + s.z1 - (arch && sealArchMortar ? 2.5 : 0)) / step)),
+        z2 = Math.min(
+          nz,
+          Math.ceil((base + s.z2 + (masonry && (!profile || (arch && sealArchMortar)) ? 5 : 0)) / step)
+        );
       for (let z = z1; z < z2; z++)
         for (let y = y1; y < y2; y++)
           for (let x = x1; x < x2; x++) {
@@ -51,7 +89,7 @@ export function classicVolume(bricks: PlacedBrick[], removedIds: string[] = []) 
                 // Shared inclined faces must not become numerical pinhole leaks.
                 (f) =>
                   f.normal.x * (p.x - f.point.x) + f.normal.y * (p.y - f.point.y) + f.normal.z * (p.z - f.point.z) <=
-                  1e-7
+                  mortar(f, p)
               )
             )
               continue;

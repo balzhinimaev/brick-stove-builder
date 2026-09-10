@@ -116,7 +116,8 @@ export function makeClassicRussianStove(): ReadyProject {
       radius = (half * half + rise * rise) / (2 * rise),
       cz = spring + rise - radius;
     const angle = Math.asin(half / radius),
-      n = 15,
+      // A wedge fits a 65 × 120 × 250 blank in its radial frame.
+      n = Math.ceil((2 * angle * (radius + 120)) / 60) | 1,
       thick = 120;
     const inner: Point[] = [],
       outer: Point[] = [];
@@ -132,21 +133,87 @@ export function makeClassicRussianStove(): ReadyProject {
       [outer[n], { x: wallRight, z: outer[n].z }, { x: wallRight, z: top }, { x: outer[n].x, z: top }],
       ...outer.slice(0, -1).map((a, i) => [a, outer[i + 1], { x: outer[i + 1].x, z: top }, { x: a.x, z: top }])
     ];
-    for (let index = 0; index < Math.ceil(depth / 120); index++) {
-      const d = depth / Math.ceil(depth / 120),
-        bay = y + index * d;
-      for (let i = 0; i < n; i++)
-        profile(row, bay, d, [inner[i], inner[i + 1], outer[i + 1], outer[i]], `${name} · клин ${i + 1}`, rotated);
-      for (let course = row; (course - 1) * 70 < top; course++)
-        for (const poly of fill)
-          profile(
-            course,
-            bay,
-            d,
-            clip(clip(poly, (course - 1) * 70, true), Math.min(top, (course - 1) * 70 + 65), false),
-            `${name} · пята / пазуха`,
-            rotated
-          );
+    // Fan joints: angular trimming through the circle centre gives a thinner
+    // intrados and at most 5 mm at the extrados. End skewback beds remain 2.5 mm.
+    const halfPlane = (poly: Point[], nx: number, nz: number, limit: number) => {
+      const result: Point[] = [];
+      for (let j = 0; j < poly.length; j++) {
+        const a = poly[j],
+          b = poly[(j + 1) % poly.length];
+        const da = nx * a.x + nz * a.z - limit,
+          db = nx * b.x + nz * b.z - limit;
+        if (da <= 1e-8) result.push(a);
+        if (da < 0 !== db < 0) {
+          const t = da / (da - db);
+          result.push({ x: a.x + t * (b.x - a.x), z: a.z + t * (b.z - a.z) });
+        }
+      }
+      return result;
+    };
+    // Axial joints shift by half a module between adjacent radial courses.
+    // End closures are half bricks, not slivers; no through transverse joint.
+    const lengths = (shift: boolean, maximum = 250) => {
+      const pitch = depth / Math.ceil(depth / maximum);
+      const cuts = [0];
+      for (let v = shift ? pitch / 2 : pitch; v < depth - 1e-6; v += pitch) cuts.push(v);
+      cuts.push(depth);
+      return cuts.slice(0, -1).map((v, j) => ({
+        start: v + (j ? 2.5 : 0),
+        length: cuts[j + 1] - v - (j ? 2.5 : 0) - (j < cuts.length - 2 ? 2.5 : 0)
+      }));
+    };
+    for (let i = 0; i < n; i++) {
+      let poly = [inner[i], inner[i + 1], outer[i + 1], outer[i]];
+      for (const [edge, sign] of [
+        [i, -1],
+        [i + 1, 1]
+      ]) {
+        const end = edge === 0 || edge === n;
+        const a = -angle + (edge * 2 * angle) / n - (end ? 0 : sign * Math.asin(2.5 / (radius + thick)));
+        const nx = sign * Math.cos(a),
+          nz = -sign * Math.sin(a);
+        poly = halfPlane(poly, nx, nz, nx * cx + nz * cz - (end ? 2.5 : 0));
+      }
+      const middle = -angle + ((i + 0.5) * 2 * angle) / n;
+      poly = halfPlane(
+        poly,
+        Math.sin(middle),
+        Math.cos(middle),
+        Math.sin(middle) * cx + Math.cos(middle) * cz + (radius + thick) * Math.cos(angle / n) - 2.5
+      );
+      const actualRow = Math.floor((Math.min(...poly.map((p) => p.z)) + 1e-6) / 70) + 1;
+      for (const [bay, segment] of lengths(i % 2 === 1 && depth > 250).entries()) {
+        profile(
+          actualRow,
+          y + segment.start,
+          segment.length,
+          poly,
+          `${name} · клин ${i + 1} · пояс ${bay + 1}`,
+          rotated
+        );
+      }
+    }
+    for (let course = row; (course - 1) * 70 < top; course++) {
+      for (const segment of lengths(course % 2 === 1 && depth > 250, 120)) {
+        for (const poly of fill) {
+          const low = Math.min(...poly.map((p) => p.x)),
+            high = Math.max(...poly.map((p) => p.x));
+          const count = Math.max(1, Math.ceil((high - low) / 240));
+          for (let k = 0; k < count; k++) {
+            const lo = low + (k * (high - low)) / count,
+              hi = low + ((k + 1) * (high - low)) / count;
+            const piece = halfPlane(halfPlane(poly, -1, 0, -lo), 1, 0, hi);
+            profile(
+              course,
+              y + segment.start,
+              segment.length,
+              clip(clip(piece, (course - 1) * 70, true), Math.min(top, (course - 1) * 70 + 65), false),
+              `${name} · пята / пазуха`,
+              rotated
+            );
+          }
+        }
+      }
     }
   };
   const body = rect(0, 0, 1200, 2000),

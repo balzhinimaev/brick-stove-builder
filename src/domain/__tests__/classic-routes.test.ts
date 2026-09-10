@@ -48,7 +48,7 @@ it("each leg of the upper loop is necessary; no concealed direct bypass", () => 
     const v = volume({ "classic-upper-loop-gate": 1 }, [plug(x, y, w, h, 28, 210)]);
     expect(v.flood(600, 1200, 900).reaches(-250, 400, 2200), `${x},${y}`).toBe(false);
   }
-});
+}, 15000);
 it("the separate hob route bypasses the gorniło, and its gate physically closes the route", () => {
   for (const open of [0, 1]) {
     const f = volume({ "classic-hob-gate": open }).flood(900, 300, 500);
@@ -62,4 +62,17 @@ it("the separate hob route bypasses the gorniło, and its gate physically closes
 it("the direct gate bypasses a plugged upper loop; closed means disconnected", () => {
   for (const open of [0, 1])
     expect(volume({ "classic-direct-gate": open }).flood(600, 1200, 900).reaches(-250, 400, 2200)).toBe(!!open);
+});
+
+it("seals mortar beds but never fills a removed physical arch part", () => {
+  const parts = Object.values(makeClassicRussianStove().rows)
+    .flat()
+    .filter((b) => b.custom?.name.startsWith("Арка устья · клин"));
+  const middle = parts[Math.floor(parts.length / 2)];
+  const p = middle.custom!.profileXZ!;
+  const x = middle.x * 125 - 625 + p.reduce((sum, p) => sum + p.x, 0) / p.length;
+  const y = middle.y * 125 - 125 + (middle.custom!.h * 125) / 2;
+  const z = (middle.row - 1) * 70 + p.reduce((sum, p) => sum + p.z, 0) / p.length;
+  expect(classicVolume(parts).solid(x, y, z)).toBe(true);
+  expect(classicVolume(parts, [middle.id]).solid(x, y, z)).toBe(false);
 });

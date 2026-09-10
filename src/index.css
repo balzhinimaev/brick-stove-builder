@@ -597,3 +597,35 @@ body {
     height: auto;
   }
 }
+
+.arch-assembly-panel {
+  padding: 0.75rem;
+  background: #fff7e8;
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+}
+.arch-assembly-panel p {
+  font-size: 0.8rem;
+  margin: 0.4rem 0;
+}
+.arch-assembly-panel select {
+  max-width: 100%;
+  padding: 0.4rem;
+}
+.arch-assembly-panel output {
+  font-weight: 700;
+}
+.arch-part-number {
+  background: #fff9e8;
+  color: #252c29;
+  border: 2px solid #866342;
+  border-radius: 50%;
+  min-width: 26px;
+  height: 26px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.arch-part-number[aria-pressed="true"] {
+  background: #1685ac;
+  color: white;
+}

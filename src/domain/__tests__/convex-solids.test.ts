@@ -114,3 +114,30 @@ describe("canonical convex masonry", () => {
     expect(convexFaceContacts(shape(), profilePolyhedron({ ...wedge, x: 2, y: 1 })!)).toEqual([]);
   });
 });
+
+// A bounded nonparallel bed is mortar contact, but neither an oversized gap nor
+// an intersecting face becomes bearing merely because angle tolerance is enabled.
+it("accepts only fully bounded fan beds while preserving strict default contacts", () => {
+  const make = (bottomLeft: number, bottomRight: number) =>
+    profilePolyhedron({
+      ...wedge,
+      custom: {
+        ...wedge.custom!,
+        w: 1,
+        h: 1,
+        profileXZ: [
+          { x: 0, z: bottomLeft },
+          { x: 125, z: bottomRight },
+          { x: 125, z: bottomRight + 65 },
+          { x: 0, z: bottomLeft + 65 }
+        ]
+      }
+    })!;
+  const base = make(0, 0);
+  expect(convexFaceContacts(base, make(69, 70), 5)).toEqual([]);
+  const contacts = convexFaceContacts(base, make(69, 70), 5, 0.02);
+  expect(contacts).toHaveLength(1);
+  expect(contacts[0].areaMm2).toBeCloseTo(125 * 125);
+  expect(convexFaceContacts(base, make(69, 71), 5, 0.02)).toEqual([]);
+  expect(convexFaceContacts(base, make(64, 66), 5, 0.02)).toEqual([]);
+});

@@ -225,39 +225,42 @@ export function makeClassicRussianStove(): ReadyProject {
     masonry(row, [rect(0, 650, 120, 1350), rect(120, 650, 1080, 150), rect(120, 1750, 1080, 250)]);
   vault(6, 800, 1750, 650, 2000, 350, 170, 700, 120, 1080, "Большое подпечье", true);
   for (let row = 6; row <= 10; row++) masonry(row, [rect(0, 650, 120, 1350)]);
-  // Small front underoven beneath the hob flue; independently founded barrel.
-  for (let row = 2; row <= 3; row++) masonry(row, [rect(0, 0, 120, 650), rect(650, 0, 550, 650)]);
-  vault(4, 120, 650, 0, 770, 210, 70, 420, 0, 650, "Малое подпечье");
-  const ash = rect(825, 120, 190, 380),
+  // §63: the 190 × 380 ash cavity starts in R3, below the separate hob firebox.
+  const ash = rect(810, 120, 190, 380),
+    ashDoor = rect(810, 0, 190, 120),
+    ashHeader = rect(780, 0, 250, 120),
+    gratePocket = rect(790, 120, 230, 280),
     fire = rect(780, 120, 250, 400),
     duct = rect(-120, 270, 900, 200);
-  for (let row = 4; row <= 5; row++)
-    masonry(
-      row,
-      [rect(770, 0, 430, 650)],
-      [ash, rect(825, 0, 190, 120), ...(row === 5 ? [rect(810, 125, 220, 270), rect(795, 395, 250, 105)] : [])]
-    );
-  emit(5, rect(795, 395, 250, 105), "Задняя опора колосника");
-  for (const x of [810, 1015])
-    profile(
-      5,
-      125,
-      270,
-      [
-        { x, z: 280 },
-        { x: x + 15, z: 280 },
-        { x: x + 15, z: 325 },
-        { x, z: 325 }
-      ],
-      "Полка колосника"
-    );
-  // R6–9: stove fire and the passage over the small barrel to the independent chimney.
-  for (let row = 6; row <= 9; row++)
-    masonry(
-      row,
-      [rect(770, 0, 430, 650), ...(row >= 7 ? [rect(0, 0, 770, 650)] : [])],
-      [fire, rect(780, 0, 250, 120), ...(row >= 7 ? [duct] : [])]
-    );
+  // Small front underoven beneath the hob flue; independently founded barrel.
+  for (let row = 2; row <= 3; row++)
+    masonry(row, [rect(0, 0, 120, 650), rect(650, 0, 550, 650)], row === 3 ? [ash, ashDoor] : []);
+  vault(4, 120, 650, 0, 770, 210, 70, 420, 0, 650, "Малое подпечье");
+  for (let row = 4; row <= 5; row++) masonry(row, [rect(770, 0, 430, 650)], [ash, row === 4 ? ashDoor : ashHeader]);
+  // A full 250 mm brick bridges the 190 mm ash opening in R5: 30 mm on each jamb.
+  // R6 bonds over it. Neither the door frame nor the grate carries this header.
+  emit(5, ashHeader, "Перемычка зольника · полный кирпич · Школьник, 5-й ряд");
+  masonry(6, [rect(770, 0, 430, 650)], [gratePocket]);
+  // R6 grate rebate: 5 mm expansion clearance around 220 × 270 iron;
+  // lower side ledges support its frame and leave the ash-air passage open.
+  for (const x of [790, 1000])
+    for (const y of [120, 260])
+      profile(
+        6,
+        y,
+        140,
+        [
+          { x, z: 350 },
+          { x: x + 20, z: 350 },
+          { x: x + 20, z: 395 },
+          { x, z: 395 }
+        ],
+        "Полка колосника"
+      );
+  // R7–9: the source fire door starts above the R6 grate/floor, not at its level.
+  // The 280 mm combustion height runs from grate top 415 to hob underside 695.
+  for (let row = 7; row <= 9; row++)
+    masonry(row, [rect(770, 0, 430, 650), rect(0, 0, 770, 650)], [fire, rect(780, 0, 250, 120), duct]);
   // Peréval: brick threshold between firebox and outlet, stopping short of the hob soffit.
 
   // R10 hob recess; bridge the fire door on source steel, not on its frame.
@@ -388,9 +391,10 @@ export function makeClassicRussianStove(): ReadyProject {
   emit(31, rect(-120, 445, 120, 230), "Перемычка возврата · опирание 25 мм");
   const hardware = (row: number, r: Rect, name: string, kind: PlacedBrick["kind"], heightMm: number) =>
     emit(row, r, name, { id: `classic-${name}`, kind, custom: { name, w: r.w / 125, h: r.h / 125, heightMm } });
-  hardware(4, rect(825, 0, 190, 120), "ash-door", "cleanout", 135);
-  hardware(6, rect(780, 0, 250, 120), "fire-door", "cleanout", 275);
-  const grate = hardware(5, rect(810, 125, 220, 270), "grate-270x220", "grate", 20);
+  // Casting dimensions are fitted to the sourced course openings, not source catalogue sizes.
+  hardware(3, ashDoor, "ash-door", "cleanout", 135);
+  hardware(7, rect(780, 0, 250, 120), "fire-door", "cleanout", 205);
+  const grate = hardware(6, rect(795, 125, 220, 270), "grate-270x220", "grate", 20);
   grate.custom!.thicknessMm = 20;
   const hob = hardware(10, rect(300, 120, 710, 400), "hob-710x400", "plate", 5);
   hob.custom!.thicknessMm = 5;

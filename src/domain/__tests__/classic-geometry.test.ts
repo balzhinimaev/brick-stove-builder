@@ -7,8 +7,72 @@ import {
   convexFaceContacts,
   convexIntersects,
   polyhedronFaces,
-  profileXZError
+  profileXZError,
+  pointInSolid
 } from "../geometry";
+it("follows Shkolnik's ash header R5, grate R6 and fire-door R7 without using hardware as masonry", () => {
+  const stock = Object.values(CLASSIC_RUSSIAN_STOVE.rows).flat();
+  const byId = (id: string) => stock.find((b) => b.id === `classic-${id}`)!;
+  const ash = byId("ash-door"),
+    fire = byId("fire-door"),
+    grate = byId("grate-270x220"),
+    hob = byId("hob-710x400"),
+    header = stock.find((b) => b.custom?.name.startsWith("Перемычка зольника"))!;
+  const height = (b: (typeof stock)[number]) => {
+    const parts = brickPhysicalSolids(b),
+      base = (b.row - 1) * 70;
+    return [base + Math.min(...parts.map((s) => s.z1)), base + Math.max(...parts.map((s) => s.z2))];
+  };
+  expect([ash.row, header.row, grate.row, fire.row, hob.row]).toEqual([3, 5, 6, 7, 10]);
+  expect(height(ash)).toEqual([140, 275]);
+  expect(height(header)).toEqual([280, 345]);
+  expect(height(fire)).toEqual([420, 625]);
+  expect(height(grate)).toEqual([395, 415]);
+  expect(height(hob)[0] - height(grate)[1]).toBe(280);
+  expect(header.custom!.w * 125).toBe(250);
+  expect(header.custom!.h * 125).toBe(120);
+  expect((ash.x - header.x) * 125).toBeCloseTo(30);
+  expect((header.x + header.custom!.w - ash.x - ash.custom!.w) * 125).toBeCloseTo(30);
+  const ledges = stock.filter((b) => b.custom?.name === "Полка колосника");
+  expect(ledges).toHaveLength(4);
+  for (const ledge of ledges) {
+    expect(ledge.custom!.h * 125).toBeLessThanOrEqual(250);
+    expect(ledge.custom!.w * 125).toBeLessThanOrEqual(120);
+    expect(height(ledge)[1] - height(ledge)[0]).toBeLessThanOrEqual(65);
+  }
+  const solidMasonry = (x: number, y: number, z: number) =>
+    stock.some(
+      (b) =>
+        b.kind === "custom" &&
+        b.custom?.material !== "steel" &&
+        brickPhysicalSolids(b).some((s) => pointInSolid(s, { x: x + 625, y: y + 125, z }, (b.row - 1) * 70))
+    );
+  // The front has TWO masonry courses, not a 5 mm crack between closed door boxes.
+  for (const x of [815, 850, 905, 955, 995])
+    for (const z of [300, 330, 370, 400]) expect(solidMasonry(x, 60, z), `${x},${z}`).toBe(true);
+  // Real 5 mm thermal clearance at all four grate edges; the pocket is not solid-filled.
+  for (const [empty, wall] of [
+    [
+      [792, 200],
+      [787, 200]
+    ],
+    [
+      [1018, 200],
+      [1023, 200]
+    ],
+    [
+      [900, 122],
+      [900, 117]
+    ],
+    [
+      [900, 398],
+      [900, 403]
+    ]
+  ]) {
+    expect(solidMasonry(empty[0], empty[1], 405)).toBe(false);
+    expect(solidMasonry(wall[0], wall[1], 405)).toBe(true);
+  }
+});
 it("has valid canonical profiles, no actual solid intersections and founded bearing faces", () => {
   const stock = Object.values(CLASSIC_RUSSIAN_STOVE.rows).flat();
   for (const b of stock) if (b.custom?.profileXZ) expect(profileXZError(b.custom), b.id).toBeNull();

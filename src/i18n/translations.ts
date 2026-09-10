@@ -147,7 +147,8 @@ const ru = {
   apiUnavailable: "MongoDB API недоступен: проверь MONGODB_URI и запущенный server.",
   showcaseTab: "Витрина",
   showcaseTitle: "Витрина печей",
-  showcaseSubtitle: "Готовые проекты мастеров. Понравилась печь — оставьте заявку, и мастер свяжется с вами.",
+  showcaseSubtitle:
+    "Встроенные демо для изучения и редактирования; ниже — опубликованные работы пользователей. Заявки доступны только у работ мастеров.",
   showcaseEmpty: "На витрине пока пусто. Мастера уже собирают первые проекты — загляните позже.",
   showcaseLoading: "Загружаем витрину…",
   showcaseBy: "Мастер",
@@ -387,7 +388,8 @@ const en: Record<TranslationKey, string> = {
   apiUnavailable: "MongoDB API unavailable: check MONGODB_URI and that the server is running.",
   showcaseTab: "Showcase",
   showcaseTitle: "Stove showcase",
-  showcaseSubtitle: "Finished projects by real masons. Like a stove? Leave a request and the mason will contact you.",
+  showcaseSubtitle:
+    "Built-in demos to explore and edit, followed by published community projects. Requests are available only for mason projects.",
   showcaseEmpty: "The showcase is empty for now. Masons are building the first projects — check back soon.",
   showcaseLoading: "Loading showcase…",
   showcaseBy: "Mason",
@@ -626,7 +628,8 @@ const lt: Record<TranslationKey, string> = {
   apiUnavailable: "MongoDB API nepasiekiamas: patikrinkite MONGODB_URI ir ar serveris paleistas.",
   showcaseTab: "Vitrina",
   showcaseTitle: "Krosnių vitrina",
-  showcaseSubtitle: "Meistrų projektai. Patiko krosnis — palikite užklausą, meistras susisieks.",
+  showcaseSubtitle:
+    "Integruoti demonstraciniai modeliai ir naudotojų projektai. Užklausos galimos tik meistrų darbams.",
   showcaseEmpty: "Vitrina kol kas tuščia. Meistrai jau kuria pirmuosius projektus.",
   showcaseLoading: "Įkeliama vitrina…",
   showcaseBy: "Meistras",

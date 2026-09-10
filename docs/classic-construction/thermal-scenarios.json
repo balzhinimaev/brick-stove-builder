@@ -1,0 +1,173 @@
+{
+  "status": "Scenario heat-load calculation, not site verification or stove output rating",
+  "model": "Steady state: Q = (sum(U*A) + H_bridges + 0.33*n*V)*deltaT/1000 kW",
+  "input": "house-input.json",
+  "confirmedTemperaturesC": {
+    "inside": 20,
+    "outside": -30
+  },
+  "deltaK": 50,
+  "assumedVolumeM3": 150,
+  "assumedGrossWallAreaM2": 80,
+  "exposedAreasM2": {
+    "walls": 70,
+    "ceiling": 60,
+    "floor": 60,
+    "windows": 8,
+    "door": 2
+  },
+  "scenarios": [
+    {
+      "id": "better",
+      "envelopeParts": [
+        {
+          "element": "walls",
+          "areaM2": 70,
+          "uWm2K": 0.3,
+          "conductanceWK": 21
+        },
+        {
+          "element": "ceiling",
+          "areaM2": 60,
+          "uWm2K": 0.18,
+          "conductanceWK": 10.8
+        },
+        {
+          "element": "floor",
+          "areaM2": 60,
+          "uWm2K": 0.3,
+          "conductanceWK": 18
+        },
+        {
+          "element": "windows",
+          "areaM2": 8,
+          "uWm2K": 1.1,
+          "conductanceWK": 8.8
+        },
+        {
+          "element": "door",
+          "areaM2": 2,
+          "uWm2K": 1.4,
+          "conductanceWK": 2.8
+        }
+      ],
+      "thermalBridgesWK": 5,
+      "transmissionWK": 66.4,
+      "airChangesPerHour": 0.5,
+      "ventilationWK": 24.75,
+      "transmissionKw": 3.32,
+      "ventilationKw": 1.2375,
+      "totalKw": 4.5575,
+      "energyKwhPer24hAtConstantDesignConditions": 109.38
+    },
+    {
+      "id": "reference",
+      "envelopeParts": [
+        {
+          "element": "walls",
+          "areaM2": 70,
+          "uWm2K": 0.6,
+          "conductanceWK": 42
+        },
+        {
+          "element": "ceiling",
+          "areaM2": 60,
+          "uWm2K": 0.3,
+          "conductanceWK": 18
+        },
+        {
+          "element": "floor",
+          "areaM2": 60,
+          "uWm2K": 0.45,
+          "conductanceWK": 27
+        },
+        {
+          "element": "windows",
+          "areaM2": 8,
+          "uWm2K": 1.6,
+          "conductanceWK": 12.8
+        },
+        {
+          "element": "door",
+          "areaM2": 2,
+          "uWm2K": 2,
+          "conductanceWK": 4
+        }
+      ],
+      "thermalBridgesWK": 10,
+      "transmissionWK": 113.8,
+      "airChangesPerHour": 0.5,
+      "ventilationWK": 24.75,
+      "transmissionKw": 5.69,
+      "ventilationKw": 1.2375,
+      "totalKw": 6.9275,
+      "energyKwhPer24hAtConstantDesignConditions": 166.26
+    },
+    {
+      "id": "weaker",
+      "envelopeParts": [
+        {
+          "element": "walls",
+          "areaM2": 70,
+          "uWm2K": 1.2,
+          "conductanceWK": 84
+        },
+        {
+          "element": "ceiling",
+          "areaM2": 60,
+          "uWm2K": 0.65,
+          "conductanceWK": 39
+        },
+        {
+          "element": "floor",
+          "areaM2": 60,
+          "uWm2K": 0.8,
+          "conductanceWK": 48
+        },
+        {
+          "element": "windows",
+          "areaM2": 8,
+          "uWm2K": 2.6,
+          "conductanceWK": 20.8
+        },
+        {
+          "element": "door",
+          "areaM2": 2,
+          "uWm2K": 3,
+          "conductanceWK": 6
+        }
+      ],
+      "thermalBridgesWK": 15,
+      "transmissionWK": 212.8,
+      "airChangesPerHour": 1,
+      "ventilationWK": 49.5,
+      "transmissionKw": 10.64,
+      "ventilationKw": 2.475,
+      "totalKw": 13.115,
+      "energyKwhPer24hAtConstantDesignConditions": 314.76
+    }
+  ],
+  "selectedScenario": "reference",
+  "selectedScenarioMeanDemandKw": 6.9275,
+  "selectedScenarioGuidance": "About 7 kW mean heat delivery at the stated constant conditions, NOT 7 kW peak while burning. No new stove capacity has been established.",
+  "sensitivity": {
+    "extraAirChangeRatePerHour": 0.5,
+    "extraLoadKw": 1.2375,
+    "additionalTransmissionWK": 10,
+    "extraTransmissionLoadKw": 0.5
+  },
+  "chosenCeilingScenario": {
+    "heightMm": 2500,
+    "requiredTopGapMm": 350,
+    "maximumBodyTopAboveFloorMm": 2150,
+    "condition": "SP 7.13130.2013 section 5.18: periodic masonry stove with three-course cap below an unprotected combustible ceiling; not a chimney penetration clearance",
+    "constructionFitApproved": false
+  },
+  "limitations": [
+    "Scenario labels are not certified building classes or inferred actual constructions.",
+    "No finite range of hypothetical scenarios bounds an unmeasured house's heat loss.",
+    "Whole-house mean balance does not establish room temperatures or peaks between periodic firings.",
+    "No stove efficiency, wood consumption, safe fuel charge or firing schedule calculated.",
+    "No structural foundation, chimney or stove design is released by this calculation."
+  ]
+}

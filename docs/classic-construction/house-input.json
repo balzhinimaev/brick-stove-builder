@@ -1,6 +1,6 @@
 {
-  "stage": "incomplete-site-input",
-  "source": "User message, 2026-09-10 21:02 UTC",
+  "stage": "conditional-design-basis-not-for-construction",
+  "source": "User messages, 2026-09-10: confirmed conditions at 21:02 UTC; selection of assumptions delegated at 21:03 UTC",
   "confirmed": {
     "houseAreaM2": 60,
     "indoorTemperatureC": 20,
@@ -14,6 +14,70 @@
   "previouslyInterpreted": {
     "ceilingHeightMm": 2500,
     "note": "Earlier floor-to-ceiling value interpreted as 2.50 m; not a site measurement."
+  },
+  "selectedAssumptions": {
+    "status": "Agent-selected design scenarios, NOT observations of the existing house",
+    "jurisdictionForPreliminaryChecks": "Russian Federation; to verify before site design",
+    "building": {
+      "heatedStoreys": 1,
+      "planWidthM": 6,
+      "planLengthM": 10,
+      "ceilingHeightMm": 2500,
+      "windowAreaM2": 8,
+      "externalDoorAreaM2": 2,
+      "exposedCeilingAreaM2": 60,
+      "exposedFloorAreaM2": 60,
+      "ceiling": "Unprotected combustible timber construction, cold ventilated attic above",
+      "floor": "Floor above a cold ventilated crawlspace, not a ground-bearing slab",
+      "geometryNote": "6x10 m is an equivalent simplified thermal perimeter, not a measured room or wall plan."
+    },
+    "use": {
+      "occupancy": "Continuous winter occupation",
+      "heatingRole": "Primary heating sought, not demonstrated by the current stove model",
+      "roomHeatDistribution": "Unverified; the whole-house sum is not proof that closed rooms reach +20 C",
+      "stoveType": "Russian cooking chamber with separate hob retained as a design requirement",
+      "wood": "Seasoned firewood; no burn rate or permissible fuel charge assigned"
+    },
+    "installation": {
+      "firstCourseAboveFinishedFloorMm": 0,
+      "selectedCeilingClearanceMm": 350,
+      "ceilingClearanceCondition": "SP 7.13130.2013 section 5.18: periodic masonry stove with three-course cap below an unprotected combustible ceiling; not a chimney penetration clearance",
+      "foundation": "New independent foundation; soil bearing, depth, dimensions and reinforcement are engineering outputs, not assumed site facts",
+      "chimney": "New vertical chimney with accessible cleaning; section, terminal height, support and penetrations are engineering outputs",
+      "structuralDimensionsAssigned": false
+    },
+    "thermalMethod": {
+      "airHeatCapacityWhM3K": 0.33,
+      "boundaryTemperature": "Outdoor temperature applied to walls, ceiling and exposed floor in all three scenarios; no ground-temperature model",
+      "gains": "No credit for sun, occupants or appliances",
+      "airExchange": "Equivalent outdoor air rate without heat recovery; includes the scenario's ventilation/infiltration, not a prescribed ventilation design. Combustion air and extractor operation are not sized.",
+      "uValues": "Chosen whole-element U-values W/(m2 K), not inferred actual wall materials or code compliance",
+      "thermalBridges": "Explicit scenario allowance W/K, not a measured value, normative percentage or hidden output margin"
+    },
+    "selectedThermalScenario": "reference",
+    "thermalScenarios": [
+      {
+        "id": "better",
+        "label": "Better insulated assumed envelope",
+        "uWm2K": { "walls": 0.3, "ceiling": 0.18, "floor": 0.3, "windows": 1.1, "door": 1.4 },
+        "thermalBridgesWK": 5,
+        "airChangesPerHour": 0.5
+      },
+      {
+        "id": "reference",
+        "label": "Selected intermediate assumed envelope",
+        "uWm2K": { "walls": 0.6, "ceiling": 0.3, "floor": 0.45, "windows": 1.6, "door": 2 },
+        "thermalBridgesWK": 10,
+        "airChangesPerHour": 0.5
+      },
+      {
+        "id": "weaker",
+        "label": "Weaker assumed envelope and higher outdoor air exchange",
+        "uWm2K": { "walls": 1.2, "ceiling": 0.65, "floor": 0.8, "windows": 2.6, "door": 3 },
+        "thermalBridgesWK": 15,
+        "airChangesPerHour": 1
+      }
+    ]
   },
   "missing": {
     "location": null,
@@ -29,5 +93,5 @@
     "availableStoveFootprint": null,
     "firstCourseAboveFinishedFloorMm": null
   },
-  "note": "House area and temperature difference alone do not determine design heat loss. No assumed W/m2 coefficient or construction approval."
+  "note": "The user authorized selection of assumptions. The missing entries remain unknown SITE FACTS, not unanswered preferences blocking preliminary work. See thermal-scenarios.json for computed loads. Actual house load, foundation and chimney construction remain unverified."
 }

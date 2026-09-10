@@ -207,3 +207,10 @@ Remaining source-fidelity limitation: the separate 350×280 mouth arch is still 
 Final bounded follow-up verification: **22/22 tests passed across six model suites**, including physical intersections, steel-inclusive foundation contact graph, all12 whole-volume route/leak checks, gate apertures/travel, and source-width/header regressions. `npx tsc -b` passed during this follow-up; no engine/UI edits. No fresh browser capture or full release CI in this bounded model pass; parent owns those. No deployment/merge.
 
 Stable final source review rechecked after canonical steel integration: bearing regression explicitly requires all seven source-steel components in the physical support graph, independent of rendering isMasonry. All 22 model tests pass again. Existing source corrections remain in 7078bf4; no engine/UI changes or parent preview interruption. Separate mouth-voussoir reconstruction remains an unresolved source-fidelity limitation, not waived by these tests.
+
+
+## Consolidation against parent 2469-piece snapshot
+
+Current source at `f64e767` emits **2539 elements**, not the parent-reported 2469-piece snapshot. The source-coordinate x437.5–440/y380–400 fragment is already contained within one **85×100 mm** shoulder unit at x355/y380; ID teplushka-1136 now refers to unrelated masonry because sequential IDs change after transcription. Match review findings by coordinates as well as revision, not sequential IDs alone. No additional geometry mutation was needed for these reported corrections.
+
+Added direct source regressions for the open course4 front-right masonry aperture, 200/300/380 mm cheeks in courses18/20/21, constant890 mm upper footprint with course-specific inner cheeks, and the full summer shoulder unit. Six model suites now pass **23/23** tests, including actual physical gates at0/.5/1, volume isolation/leaks and steel-inclusive foundation chains. Source corrections are consolidated in7078bf4 and support inclusion inf64e767. The separate mouth-voussoir limitation above remains unresolved; these tests are not release acceptance or structural certification. Engine/UI and parent preview untouched.

@@ -10,15 +10,19 @@ import { initialEditorState } from "../../domain/editor/state";
 import { editorReducer } from "../../domain/editor/reducer";
 const t: Translate = (key) => translations.ru[key];
 const load = () => {};
-describe("two separate guest examples", () => {
-  it("renders both showcase cards with load buttons and without a commercial lead form", () => {
+describe("separate guest examples", () => {
+  it("renders every bundled card with load buttons and without a commercial lead form", () => {
     const html = renderToStaticMarkup(createElement(ShowcaseScreen, { locale: "ru", t, onLoad: load }));
     for (const p of BUILTIN_SHOWCASE_PROJECTS) expect(html).toContain(`id="${p.id}"`);
-    expect(html.split(t("loadProject")).length - 1).toBe(2);
+    expect(html.split(t("loadProject")).length - 1).toBe(BUILTIN_SHOWCASE_PROJECTS.length);
     expect(html).not.toContain(t("showcaseWant"));
   });
-  it("keeps both unique IDs in the guest catalog and loads their distinct rows through the ordinary editor", () => {
-    expect(BUILTIN_SHOWCASE_PROJECTS.map((p) => p.id)).toEqual(["russian-stove-hob", "classic-russian-stove-hob"]);
+  it("keeps unique IDs in the guest catalog and loads distinct rows through the ordinary editor", () => {
+    expect(BUILTIN_SHOWCASE_PROJECTS.map((p) => p.id)).toEqual([
+      "russian-stove-hob",
+      "classic-russian-stove-hob",
+      "shkolnik-pov-3500"
+    ]);
     const html = renderToStaticMarkup(
       createElement(ProjectsScreen, {
         locale: "ru",

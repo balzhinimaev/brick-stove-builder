@@ -1,11 +1,15 @@
 {
   "stage": "conditional-design-basis-not-for-construction",
-  "source": "User messages, 2026-09-10: confirmed conditions at 21:02 UTC; selection of assumptions delegated at 21:03 UTC",
+  "source": "User messages, 2026-09-10: conditions at 21:02 UTC; assumptions delegated at 21:03; timber ceiling, bags/sawdust/coal above it and new foundation/chimney scope confirmed at 21:05",
   "confirmed": {
     "houseAreaM2": 60,
     "indoorTemperatureC": 20,
     "outdoorTemperatureC": -30,
-    "fuel": "firewood"
+    "fuel": "firewood",
+    "ceilingMaterial": "timber",
+    "aboveCeilingDescriptionOriginal": "над ним просто мешки обсыпанные опилкой с углем",
+    "foundationScope": "design from scratch",
+    "chimneyScope": "design from scratch"
   },
   "derived": {
     "temperatureDifferenceK": 50,
@@ -27,7 +31,7 @@
       "externalDoorAreaM2": 2,
       "exposedCeilingAreaM2": 60,
       "exposedFloorAreaM2": 60,
-      "ceiling": "Unprotected combustible timber construction, cold ventilated attic above",
+      "ceiling": "Timber confirmed; no protective construction evidenced, treated as unprotected. Bags with sawdust/coal around or above them are reported; exact composition and layer thickness unknown. Cold ventilated space above remains a thermal assumption, not a confirmed attic survey.",
       "floor": "Floor above a cold ventilated crawlspace, not a ground-bearing slab",
       "geometryNote": "6x10 m is an equivalent simplified thermal perimeter, not a measured room or wall plan."
     },
@@ -42,8 +46,9 @@
       "firstCourseAboveFinishedFloorMm": 0,
       "selectedCeilingClearanceMm": 350,
       "ceilingClearanceCondition": "SP 7.13130.2013 section 5.18: periodic masonry stove with three-course cap below an unprotected combustible ceiling; not a chimney penetration clearance",
-      "foundation": "New independent foundation; soil bearing, depth, dimensions and reinforcement are engineering outputs, not assumed site facts",
-      "chimney": "New vertical chimney with accessible cleaning; section, terminal height, support and penetrations are engineering outputs",
+      "foundation": "Selected concept: one new reinforced-concrete foundation supporting stove plus rooted masonry chimney, structurally separated from the house foundation. Soil bearing, depth, dimensions and reinforcement are engineering outputs.",
+      "chimney": "Selected concept: new vertical rooted clay-brick chimney with accessible cleaning, carried by the stove/chimney foundation. Bore, terminal height, stability and penetration details remain engineering outputs.",
+      "combustibleFillAtPenetration": "No bags, sawdust or coal retained within the designed noncombustible penetration zone; remaining loose fill must be restrained from spilling into it. A coal/slag substitution is not inferred from the user's wording.",
       "structuralDimensionsAssigned": false
     },
     "thermalMethod": {
@@ -51,7 +56,7 @@
       "boundaryTemperature": "Outdoor temperature applied to walls, ceiling and exposed floor in all three scenarios; no ground-temperature model",
       "gains": "No credit for sun, occupants or appliances",
       "airExchange": "Equivalent outdoor air rate without heat recovery; includes the scenario's ventilation/infiltration, not a prescribed ventilation design. Combustion air and extractor operation are not sized.",
-      "uValues": "Chosen whole-element U-values W/(m2 K), not inferred actual wall materials or code compliance",
+      "uValues": "Chosen whole-element U-values W/(m2 K), not inferred actual wall materials or code compliance. The reported sawdust/coal does NOT establish the assumed ceiling U=0.30 or verify the 6.93 kW scenario.",
       "thermalBridges": "Explicit scenario allowance W/K, not a measured value, normative percentage or hidden output margin"
     },
     "selectedThermalScenario": "reference",
@@ -84,12 +89,12 @@
     "roomPlanAndDimensions": null,
     "wallFloorRoofLayersAndInsulation": null,
     "windowAndDoorAreasAndTypes": null,
-    "ceilingStructureAndSpaceAbove": null,
+    "ceilingLayerThicknessesBeamPositionsAndAboveCeilingGeometry": null,
     "ventilationAndAirSupply": null,
     "primaryOrSupplementaryHeating": null,
     "occupancyAndFiringSchedule": null,
-    "foundation": null,
-    "chimney": null,
+    "groundSoilWaterFrostAndHouseFoundationGeometry": null,
+    "roofPitchRidgeHeightRafterPositionsAndRoofMaterial": null,
     "availableStoveFootprint": null,
     "firstCourseAboveFinishedFloorMm": null
   },

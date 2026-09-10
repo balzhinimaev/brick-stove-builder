@@ -133,8 +133,8 @@ export function makeClassicRussianStove(): ReadyProject {
       [outer[n], { x: wallRight, z: outer[n].z }, { x: wallRight, z: top }, { x: outer[n].x, z: top }],
       ...outer.slice(0, -1).map((a, i) => [a, outer[i + 1], { x: outer[i + 1].x, z: top }, { x: a.x, z: top }])
     ];
-    // Clip by parallel planes 2.5 mm inside each radial joint. Unlike angle
-    // trimming this gives a true constant 5 mm mortar bed and parallel bearing faces.
+    // Fan joints: angular trimming through the circle centre gives a thinner
+    // intrados and at most 5 mm at the extrados. End skewback beds remain 2.5 mm.
     const halfPlane = (poly: Point[], nx: number, nz: number, limit: number) => {
       const result: Point[] = [];
       for (let j = 0; j < poly.length; j++) {
@@ -168,10 +168,11 @@ export function makeClassicRussianStove(): ReadyProject {
         [i, -1],
         [i + 1, 1]
       ]) {
-        const a = -angle + (edge * 2 * angle) / n;
+        const end = edge === 0 || edge === n;
+        const a = -angle + (edge * 2 * angle) / n - (end ? 0 : sign * Math.asin(2.5 / (radius + thick)));
         const nx = sign * Math.cos(a),
           nz = -sign * Math.sin(a);
-        poly = halfPlane(poly, nx, nz, nx * cx + nz * cz - 2.5);
+        poly = halfPlane(poly, nx, nz, nx * cx + nz * cz - (end ? 2.5 : 0));
       }
       const middle = -angle + ((i + 0.5) * 2 * angle) / n;
       poly = halfPlane(

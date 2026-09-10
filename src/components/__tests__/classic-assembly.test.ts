@@ -42,6 +42,16 @@ it("shows actual supports, then timber, symmetric bonded parts and locks without
       }
     }
     expect(assembly.wedges.every((b) => seen.has(b.id))).toBe(true);
+    const dry = assembly.steps.length - 3;
+    expect(archAssemblyFrame(assembly, dry).centering).toBe(true);
+    expect(archAssemblyFrame(assembly, dry).active).toEqual([]);
+    expect(archAssemblyFrame(assembly, dry).parts.filter((b) => archAddress(b))).toHaveLength(assembly.wedges.length);
+    expect(archAssemblyFrame(assembly, dry + 1).centering).toBe(false);
+    expect(archAssemblyFrame(assembly, dry + 1).parts).toEqual(archAssemblyFrame(assembly, dry).parts);
+    expect(archAssemblyFrame(assembly, dry + 2).centering).toBe(false);
+    expect(archAssemblyFrame(assembly, dry + 2).active.every((b) => b.custom?.name.endsWith("пята / пазуха"))).toBe(
+      true
+    );
     expect(new Set(assembly.numbers.values()).size).toBe(seen.size);
     // Scrubbing backward/forward is only a projection; no history/draft action.
     archAssemblyFrame(assembly, 2);

@@ -58,17 +58,25 @@ export function classicArchAssembly(document: PlacedBrick[], name: ArchName) {
     const bays = [...new Set(pair.map((b) => archAddress(b)!.bay))].sort((a, b) => a - b);
     for (const bay of bays)
       steps.push({
-        label: `${radial === (n + 1) / 2 ? "Замок" : `Симметричная пара ${radial}`} · продольный участок ${bay}`,
+        label: `${radial === (n + 1) / 2 ? "Замок · вжимается в раствор" : `Симметричная пара ${radial}`} · продольный участок ${bay}`,
         parts: pair
           .filter((b) => archAddress(b)!.bay === bay)
           .sort((a, b) => archAddress(a)!.radial - archAddress(b)!.radial),
         centering: true
       });
   }
+  steps.push(
+    {
+      label: "Свод замкнут · выдержка до полного высыхания раствора (условная стадия, не таймер)",
+      parts: [],
+      centering: true
+    },
+    { label: "Раствор полностью высох · снятие кружала и стоек", parts: [], centering: false }
+  );
   steps.push({
-    label: "Заполнение пазух после замыкания свода; кружало оставлено",
+    label: "Заполнение пазух после завершения свода",
     parts: infill.filter((b) => !heels.includes(b)),
-    centering: true
+    centering: false
   });
   const numbers = new Map(steps.flatMap((s) => s.parts).map((b, i) => [b.id, i + 1]));
   return { name, wedges, steps, numbers, bounds: { x1, x2, y1, y2, spring } };

@@ -6,6 +6,7 @@ import {
   translatedPolyhedron,
   convexFaceContacts,
   convexIntersects,
+  polyhedronFaces,
   profileXZError
 } from "../geometry";
 it("has valid canonical profiles, no actual solid intersections and founded bearing faces", () => {
@@ -40,7 +41,7 @@ it("has valid canonical profiles, no actual solid intersections and founded bear
       if (
         a.kind === "custom" &&
         b.kind === "custom" &&
-        convexFaceContacts(a.shape, b.shape, 5.1).some((c) => c.areaMm2 >= 100 && Math.abs(c.normalA.z) > 0.01)
+        convexFaceContacts(a.shape, b.shape, 5.1, 0.02).some((c) => c.areaMm2 >= 100 && Math.abs(c.normalA.z) > 0.01)
       ) {
         graph[i].add(j);
         graph[j].add(i);
@@ -61,7 +62,7 @@ it("has valid canonical profiles, no actual solid intersections and founded bear
     `${unsupported.length} unsupported`
   ).toEqual([]);
 }, 30000);
-it("keeps real 5 mm radial mortar beds, broad heels and staggered axial joints", () => {
+it("keeps real fan mortar beds no thicker than 5 mm, broad heels and staggered axial joints", () => {
   const stock = Object.values(CLASSIC_RUSSIAN_STOVE.rows).flat();
   const shape = (b: (typeof stock)[number]) => solidPolyhedron(brickPhysicalSolids(b)[0], (b.row - 1) * 70);
   const index = (b: (typeof stock)[number]) => Number(b.custom?.name.match(/клин (\d+)/)?.[1]);
@@ -103,9 +104,26 @@ it("keeps real 5 mm radial mortar beds, broad heels and staggered axial joints",
         if (neighbor < 1 || neighbor > n) continue;
         const contacts = wedges
           .filter((b) => index(b) === neighbor)
-          .flatMap((b) => convexFaceContacts(shape(wedge), shape(b), 5.01));
+          .flatMap((b) => convexFaceContacts(shape(wedge), shape(b), 5.01, 0.02));
         expect(contacts.reduce((sum, c) => sum + c.areaMm2, 0)).toBeGreaterThan(3000);
-        for (const c of contacts) expect(c.gapMm).toBeCloseTo(5, 5);
+        for (const c of contacts) {
+          expect(c.gapMm).toBeGreaterThan(3);
+          expect(c.gapMm).toBeLessThanOrEqual(5);
+        }
+        const ownFaces = polyhedronFaces(shape(wedge));
+        const other = wedges.find((b) => index(b) === neighbor)!;
+        const fan = ownFaces.flatMap((a) =>
+          polyhedronFaces(shape(other)).flatMap((b) => {
+            const dot = a.normal.x * b.normal.x + a.normal.y * b.normal.y + a.normal.z * b.normal.z;
+            if (dot > -0.9998 || dot < -1 + 1e-8) return [];
+            const gaps = b.vertices.map(
+              (p) => a.normal.x * (p.x - a.point.x) + a.normal.y * (p.y - a.point.y) + a.normal.z * (p.z - a.point.z)
+            );
+            return Math.min(...gaps) > 3 && Math.max(...gaps) <= 5.01 ? [gaps] : [];
+          })
+        );
+        expect(fan).toHaveLength(1);
+        expect(Math.max(...fan[0]) - Math.min(...fan[0])).toBeGreaterThan(0.3);
       }
       if (i === 1 || i === n) {
         const contacts = stock

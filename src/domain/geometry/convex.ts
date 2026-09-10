@@ -136,12 +136,23 @@ export type FaceContact = { areaMm2: number; gapMm: number; normalA: Point3Mm; p
  * Measures actual projected face overlap, not AABB contact or a point touch.
  * A small nonnegative face gap may represent mortar. This is geometry, not a
  * thrust-line, material strength or structural stability calculation.
+ * Optional faceAngleTolerance (radians) admits fan beds only when every opposing
+ * face vertex stays within the mortar budget. Default keeps parallel-only behavior.
  */
-export function convexFaceContacts(a: ConvexPolyhedron, b: ConvexPolyhedron, mortarToleranceMm = 5): FaceContact[] {
+export function convexFaceContacts(
+  a: ConvexPolyhedron,
+  b: ConvexPolyhedron,
+  mortarToleranceMm = 5,
+  faceAngleTolerance = 0
+): FaceContact[] {
   const contacts: FaceContact[] = [];
   for (const af of polyhedronFaces(a))
     for (const bf of polyhedronFaces(b)) {
-      if (dot(af.normal, bf.normal) > -1 + 1e-8) continue;
+      if (dot(af.normal, bf.normal) > -Math.cos(faceAngleTolerance) + 1e-8) continue;
+      const distances = bf.vertices.map((p) => dot(af.normal, sub(p, af.point)));
+      // Inclined mortar beds must fit entirely inside the same gap budget.
+      if (faceAngleTolerance > 0 && (Math.min(...distances) < -EPS || Math.max(...distances) > mortarToleranceMm + EPS))
+        continue;
       const gapMm = dot(af.normal, sub(bf.point, af.point));
       if (gapMm < -EPS || gapMm > mortarToleranceMm + EPS) continue;
       const edge = sub(af.vertices[1], af.point);

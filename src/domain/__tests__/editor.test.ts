@@ -7,7 +7,14 @@ function freshOnRow(row: number, locked: number[] = []): EditorState {
   return { ...initialEditorState(), currentRow: row, lockedRows: locked, rows: {} };
 }
 
-const standard = (x: number, y: number): PlacedBrick => ({ id: `b-${x}-${y}`, row: 1, x, y, kind: "standard", orientation: "h" });
+const standard = (x: number, y: number): PlacedBrick => ({
+  id: `b-${x}-${y}`,
+  row: 1,
+  x,
+  y,
+  kind: "standard",
+  orientation: "h"
+});
 
 describe("place", () => {
   it("adds a valid brick to the current row", () => {
@@ -56,7 +63,10 @@ describe("rows", () => {
     const next = editorReducer({ ...initialEditorState(), currentRow: 3, lockedRows: [] }, { type: "lockRow" });
     expect(next.lockedRows).toContain(3);
     expect(next.currentRow).toBe(4);
-    const atEnd = editorReducer({ ...initialEditorState(), currentRow: initialEditorState().rowCount }, { type: "lockRow" });
+    const atEnd = editorReducer(
+      { ...initialEditorState(), currentRow: initialEditorState().rowCount },
+      { type: "lockRow" }
+    );
     expect(atEnd.currentRow).toBe(initialEditorState().rowCount);
   });
 
@@ -144,7 +154,10 @@ describe("updateParameter", () => {
 
   it("prunes bricks that fall outside the shrunken grid", () => {
     let state = freshOnRow(2);
-    state = editorReducer(state, { type: "place", bricks: [{ ...standard(state.grid.cols - 2, state.grid.rows - 1), row: 2 }] });
+    state = editorReducer(state, {
+      type: "place",
+      bricks: [{ ...standard(state.grid.cols - 2, state.grid.rows - 1), row: 2 }]
+    });
     expect(state.rows[2]).toHaveLength(1);
     const shrunk = editorReducer(state, { type: "updateParameter", key: "foundationWidth", value: 70 });
     expect(shrunk.rows[2]).toHaveLength(0);
@@ -167,22 +180,13 @@ describe("loadProject / reset", () => {
   });
 });
 
-describe("camera", () => {
-  it("clamps zoom and wraps angle", () => {
-    let s = initialEditorState();
-    s = editorReducer(s, { type: "cameraZoom", delta: 10 });
-    expect(s.camera.zoom).toBe(1.55);
-    s = editorReducer(s, { type: "cameraRotate", delta: -15 });
-    expect(s.camera.angle).toBe(345);
-    s = editorReducer(s, { type: "cameraReset" });
-    expect(s.camera).toEqual(initialEditorState().camera);
-  });
-});
-
 describe("deleteRow", () => {
   it("removes the current row, renumbers higher rows and shifts locks", () => {
     let state: EditorState = { ...freshOnRow(2), rowCount: 4, lockedRows: [1, 3] };
-    state = { ...state, rows: { 1: [standard(0, 0)], 2: [{ ...standard(2, 0), row: 2 }], 3: [{ ...standard(4, 0), row: 3 }] } };
+    state = {
+      ...state,
+      rows: { 1: [standard(0, 0)], 2: [{ ...standard(2, 0), row: 2 }], 3: [{ ...standard(4, 0), row: 3 }] }
+    };
     const next = editorReducer(state, { type: "deleteRow" });
     expect(next.rowCount).toBe(3);
     expect(next.currentRow).toBe(2);

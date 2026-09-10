@@ -1,5 +1,4 @@
 import type {
-  CameraState,
   CustomBrickSpec,
   GridSpec,
   NotchCorner,
@@ -8,8 +7,7 @@ import type {
   PlacedBrick,
   ReadyProject,
   SnapStep,
-  ToolKind,
-  ViewMode
+  ToolKind
 } from "../types";
 
 /** The editor document plus current selections. */
@@ -30,15 +28,22 @@ export type EditorState = {
   doorSpec: CustomBrickSpec;
   damperSpec: CustomBrickSpec;
   grateSpec: CustomBrickSpec;
-  viewMode: ViewMode;
-  camera: CameraState;
 };
 
 export type DraftSnapshot = Pick<EditorState, "parameters" | "rowCount" | "currentRow" | "lockedRows" | "rows">;
 
 export type PlacementSelection = Pick<
   EditorState,
-  "currentRow" | "activeTool" | "orientation" | "notchCorner" | "rebateDepthMm" | "customBrick" | "plateSpec" | "doorSpec" | "damperSpec" | "grateSpec"
+  | "currentRow"
+  | "activeTool"
+  | "orientation"
+  | "notchCorner"
+  | "rebateDepthMm"
+  | "customBrick"
+  | "plateSpec"
+  | "doorSpec"
+  | "damperSpec"
+  | "grateSpec"
 >;
 
 export type EditorAction =
@@ -54,7 +59,6 @@ export type EditorAction =
   | { type: "setDamperSize"; lengthMm: number; widthMm: number }
   | { type: "setGrateSize"; lengthMm: number; widthMm: number; thicknessMm: number }
   | { type: "toggleDamper"; id: string }
-  | { type: "setViewMode"; mode: ViewMode }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
   | { type: "reset" }
   | { type: "loadProject"; project: ReadyProject }
@@ -66,8 +70,4 @@ export type EditorAction =
   | { type: "copyRow"; bricks: PlacedBrick[] }
   | { type: "clearRow" }
   | { type: "lockRow" }
-  | { type: "unlockRow" }
-  | { type: "cameraZoom"; delta: number }
-  | { type: "cameraRotate"; delta: number }
-  | { type: "cameraPan"; dx: number; dy: number }
-  | { type: "cameraReset" };
+  | { type: "unlockRow" };

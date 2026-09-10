@@ -1,4 +1,4 @@
-import { DEFAULT_CAMERA, DEFAULT_PARAMETERS, INITIAL_ROWS } from "../constants";
+import { DEFAULT_PARAMETERS, INITIAL_ROWS } from "../constants";
 import { gridFromParameters } from "../geometry";
 import { makeDemoRows } from "../projects";
 import { DEFAULT_DAMPER, DEFAULT_DOOR, DEFAULT_GRATE, DEFAULT_PLATE, DEFAULT_REBATE_DEPTH_MM } from "./specs";
@@ -21,8 +21,6 @@ export function initialEditorState(): EditorState {
     plateSpec: DEFAULT_PLATE,
     doorSpec: DEFAULT_DOOR,
     damperSpec: DEFAULT_DAMPER,
-    grateSpec: DEFAULT_GRATE,
-    viewMode: "3d",
-    camera: DEFAULT_CAMERA
+    grateSpec: DEFAULT_GRATE
   };
 }

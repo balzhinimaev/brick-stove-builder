@@ -1,12 +1,24 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { buildPlacementDrafts, historyReducer, initialHistoryState, type DraftSnapshot, type PlacementSelection } from "../domain/editor";
-import { brickBounds, fillRowBricks, planPlacement } from "../domain/geometry";
+import { canConfirmPlacement, previewPlacement, type PlacementPoint } from "../domain/editor/preview";
+import { useCallback, useMemo, useReducer } from "react";
+import {
+  buildPlacementDrafts,
+  historyReducer,
+  initialHistoryState,
+  type DraftSnapshot,
+  type PlacementSelection
+} from "../domain/editor";
+import { fillRowBricks } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
 import { nextSeq } from "../lib/id";
-import type { CustomBrickSpec, NotchCorner, Orientation, Parameters, PlacedBrick, ReadyProject, SnapStep, ToolKind, ViewMode } from "../domain/types";
-
-/** Сколько держится красная подсветка элементов, помешавших размещению. */
-const REJECT_FLASH_MS = 900;
+import type {
+  CustomBrickSpec,
+  NotchCorner,
+  Orientation,
+  Parameters,
+  ReadyProject,
+  SnapStep,
+  ToolKind
+} from "../domain/types";
 
 /**
  * React binding around the pure {@link historyReducer}. The only impurity it
@@ -32,85 +44,51 @@ export function useEditor() {
       damperSpec: state.damperSpec,
       grateSpec: state.grateSpec
     }),
-    [state.currentRow, state.activeTool, state.orientation, state.notchCorner, state.rebateDepthMm, state.customBrick, state.plateSpec, state.doorSpec, state.damperSpec, state.grateSpec]
+    [
+      state.currentRow,
+      state.activeTool,
+      state.orientation,
+      state.notchCorner,
+      state.rebateDepthMm,
+      state.customBrick,
+      state.plateSpec,
+      state.doorSpec,
+      state.damperSpec,
+      state.grateSpec
+    ]
   );
-
-  /**
-   * Обратная связь об отказе размещения: id элементов, которые помешали, —
-   * сцена коротко подсвечивает их красным вместо молчаливого «ничего не произошло».
-   */
-  const [rejectedIds, setRejectedIds] = useState<ReadonlySet<string>>(() => new Set());
-  const rejectTimer = useRef<number | null>(null);
-  useEffect(() => () => { if (rejectTimer.current !== null) window.clearTimeout(rejectTimer.current); }, []);
-  const flashRejection = useCallback((bricks: PlacedBrick[]) => {
-    if (!bricks.length) return;
-    setRejectedIds(new Set(bricks.map((brick) => brick.id)));
-    if (rejectTimer.current !== null) window.clearTimeout(rejectTimer.current);
-    rejectTimer.current = window.setTimeout(() => {
-      rejectTimer.current = null;
-      setRejectedIds(new Set());
-    }, REJECT_FLASH_MS);
-  }, []);
 
   const placeAt = useCallback(
     (x: number, y: number, exactX?: number, exactY?: number) => {
+      const preview = previewPlacement(state, { x, y, rawX: exactX ?? x, rawY: exactY ?? y });
+      if (!canConfirmPlacement(preview)) return;
       if (state.activeTool === "eraser") {
         // Ластик бьёт по фактической точке клика, а не по снапнутому узлу:
         // иначе обрезки в «дальней» части ячейки недостижимы при шаге 1.
         dispatch({ type: "erase", x: exactX ?? x, y: exactY ?? y });
         return;
       }
-      if (state.lockedRows.includes(state.currentRow)) return;
-      // Инструмент «Задвижка» по уже стоящей задвижке — переключить открыта/закрыта,
-      // а не пытаться поставить вторую поверх.
-      if (state.activeTool === "damper") {
-        const px = exactX ?? x;
-        const py = exactY ?? y;
-        const hit = (state.rows[state.currentRow] ?? []).find((brick) => {
-          if (brick.kind !== "damper") return false;
-          const b = brickBounds(brick);
-          return px >= b.x1 && px < b.x2 && py >= b.y1 && py < b.y2;
-        });
-        if (hit) {
-          dispatch({ type: "toggleDamper", id: hit.id });
-          return;
-        }
+      if (preview.status === "toggle") {
+        dispatch({ type: "toggleDamper", id: preview.affected[0].id });
+        return;
       }
       const drafts = buildPlacementDrafts(selection, x, y, nextSeq);
       if (!drafts) return;
-      const plan = planPlacement(state.rows, state.currentRow, drafts, state.grid);
-      if (plan.rows) dispatch({ type: "place", bricks: drafts });
-      else flashRejection(plan.conflicts);
+      dispatch({ type: "place", bricks: drafts });
     },
-    [state.activeTool, state.lockedRows, state.currentRow, state.rows, state.grid, selection, flashRejection]
+    [state, selection]
   );
 
-  /** Ляжет ли текущий инструмент в (x, y) — для честного превью наведения. */
-  const canPlaceAt = useCallback(
-    (x: number, y: number): boolean => {
-      if (state.activeTool === "eraser") return true;
-      if (state.lockedRows.includes(state.currentRow)) return false;
-      // клик инструментом «Задвижка» по своей задвижке — валидное действие (toggle),
-      // превью не должно краснеть
-      if (state.activeTool === "damper") {
-        const hit = (state.rows[state.currentRow] ?? []).some((brick) => {
-          if (brick.kind !== "damper") return false;
-          const b = brickBounds(brick);
-          return x >= b.x1 && x < b.x2 && y >= b.y1 && y < b.y2;
-        });
-        if (hit) return true;
-      }
-      const drafts = buildPlacementDrafts(selection, x, y, () => 0);
-      if (!drafts) return false;
-      return planPlacement(state.rows, state.currentRow, drafts, state.grid).rows !== null;
-    },
-    [state.activeTool, state.lockedRows, state.currentRow, state.rows, state.grid, selection]
-  );
+  const previewAt = useCallback((point: PlacementPoint) => previewPlacement(state, point), [state]);
 
   const copyPreviousRow = useCallback(() => {
     if (state.currentRow <= 1 || state.lockedRows.includes(state.currentRow)) return;
     const previous = state.rows[state.currentRow - 1] ?? [];
-    const bricks = previous.map((brick, index) => ({ ...brick, id: `r${state.currentRow}-copy-${index}-${nextSeq()}`, row: state.currentRow }));
+    const bricks = previous.map((brick, index) => ({
+      ...brick,
+      id: `r${state.currentRow}-copy-${index}-${nextSeq()}`,
+      row: state.currentRow
+    }));
     dispatch({ type: "copyRow", bricks });
   }, [state.currentRow, state.lockedRows, state.rows]);
 
@@ -141,8 +119,6 @@ export function useEditor() {
     doorSpec: state.doorSpec,
     damperSpec: state.damperSpec,
     grateSpec: state.grateSpec,
-    viewMode: state.viewMode,
-    camera: state.camera,
     allBricks,
     materials,
 
@@ -153,17 +129,32 @@ export function useEditor() {
     setRebateDepth: useCallback((depthMm: number) => dispatch({ type: "setRebateDepth", depthMm }), []),
     setSnapStep: useCallback((step: SnapStep) => dispatch({ type: "setSnapStep", step }), []),
     pickCustomBrick: useCallback((spec: CustomBrickSpec) => dispatch({ type: "pickCustomBrick", spec }), []),
-    setPlateSize: useCallback((lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) => dispatch({ type: "setPlateSize", lengthMm, widthMm, thicknessMm, flush }), []),
-    setDoorSize: useCallback((widthMm: number, heightMm: number) => dispatch({ type: "setDoorSize", widthMm, heightMm }), []),
-    setDamperSize: useCallback((lengthMm: number, widthMm: number) => dispatch({ type: "setDamperSize", lengthMm, widthMm }), []),
-    setGrateSize: useCallback((lengthMm: number, widthMm: number, thicknessMm: number) => dispatch({ type: "setGrateSize", lengthMm, widthMm, thicknessMm }), []),
+    setPlateSize: useCallback(
+      (lengthMm: number, widthMm: number, thicknessMm: number, flush: boolean) =>
+        dispatch({ type: "setPlateSize", lengthMm, widthMm, thicknessMm, flush }),
+      []
+    ),
+    setDoorSize: useCallback(
+      (widthMm: number, heightMm: number) => dispatch({ type: "setDoorSize", widthMm, heightMm }),
+      []
+    ),
+    setDamperSize: useCallback(
+      (lengthMm: number, widthMm: number) => dispatch({ type: "setDamperSize", lengthMm, widthMm }),
+      []
+    ),
+    setGrateSize: useCallback(
+      (lengthMm: number, widthMm: number, thicknessMm: number) =>
+        dispatch({ type: "setGrateSize", lengthMm, widthMm, thicknessMm }),
+      []
+    ),
     toggleDamper: useCallback((id: string) => dispatch({ type: "toggleDamper", id }), []),
-    setViewMode: useCallback((mode: ViewMode) => dispatch({ type: "setViewMode", mode }), []),
-    updateParameter: useCallback((key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }), []),
+    updateParameter: useCallback(
+      (key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }),
+      []
+    ),
 
     placeAt,
-    canPlaceAt,
-    rejectedIds,
+    previewAt,
     addRow: useCallback(() => dispatch({ type: "addRow" }), []),
     deleteCurrentRow: useCallback(() => dispatch({ type: "deleteRow" }), []),
     copyPreviousRow,
@@ -179,12 +170,7 @@ export function useEditor() {
 
     reset: useCallback(() => dispatch({ type: "reset" }), []),
     loadProject: useCallback((project: ReadyProject) => dispatch({ type: "loadProject", project }), []),
-    loadDraft: useCallback((draft: DraftSnapshot) => dispatch({ type: "loadDraft", draft }), []),
-
-    cameraZoom: useCallback((delta: number) => dispatch({ type: "cameraZoom", delta }), []),
-    cameraRotate: useCallback((delta: number) => dispatch({ type: "cameraRotate", delta }), []),
-    cameraPan: useCallback((dx: number, dy: number) => dispatch({ type: "cameraPan", dx, dy }), []),
-    cameraReset: useCallback(() => dispatch({ type: "cameraReset" }), [])
+    loadDraft: useCallback((draft: DraftSnapshot) => dispatch({ type: "loadDraft", draft }), [])
   };
 }
 

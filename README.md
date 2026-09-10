@@ -1,6 +1,6 @@
 # Brick Stove Builder
 
-Mobile-first React prototype for manually building brick stove row layouts («порядовки») with a synchronized 2D grid, 3D Three.js preview, editable workshop parameters, row locking, and material estimates.
+Mobile-first React prototype for manually building brick stove row layouts («порядовки») in a single 3D workspace, with deliberate placement confirmation, touch camera controls, editable workshop parameters, row locking, and material estimates.
 
 ## Stack
 
@@ -160,9 +160,49 @@ signed release builds / store uploads).
 - Tools: standard brick, half brick, firebrick, vent, cleanout door, eraser
 - Horizontal/vertical brick orientation
 - Row copy, clear, and lock actions
-- 2D layout editor and 3D masonry preview
+- One 3D editor for every device; no editable 2D view
+- Separate Build and Inspect modes, camera presets, fit, zoom and orbit controls
+- Placement ghost with explicit confirmation, coordinate nudges and collision feedback
+- Physically consistent vertical scale, instanced masonry, mineral surface detail and mortar beds
 - Camera zoom/rotation controls
 - Live side silhouette and material summary
+
+## 3D workflow
+
+1. Choose a course and an element in the Tools panel.
+2. In **Build**, tap the course plane to select a position. Review the green ghost,
+   rotate it or nudge it on the fixed X/Z axes, then press **Place**. Red means blocked
+   or outside the foundation. Existing elements must be explicitly erased before
+   replacement. Amber outlines show automatic seat cuts and grate supports.
+3. Switch to **Inspect** to orbit the complete stove with one finger or left mouse
+   drag. Two fingers zoom and pan in both modes; the mouse wheel zooms, right drag
+   orbits, and middle drag pans. Pinching, dragging and cancelled touches never place
+   an element. Use **Fit** to recover the model, or choose front/top/3D camera views.
+4. Use the Rows panel to copy, fill, clear, delete or lock courses. Undo/redo is available
+   on desktop and mobile. Existing project storage, account sync, custom cutters,
+   material estimates and printable course diagrams remain available.
+
+Keyboard: **R** rotates the selected tool, **B** selects brick, **E** selects eraser,
+**arrows** nudge a selected placement, **Enter** confirms, **Escape** cancels,
+**Ctrl/Cmd+Z** undoes and **Ctrl/Cmd+Shift+Z** redoes. Forms keep their native shortcuts.
+The Set position button and X/Z controls provide a placement route without canvas tapping.
+
+### Geometry and rendering
+
+- The saved 125 mm modular footprint grid is unchanged. This preserves existing
+  projects; standard brick plan dimensions remain approximate because the old grid
+  includes the joint allowance. Vertical scale is now uniform: 65 mm body + 5 mm joint
+  per 70 mm course, rather than a visually compressed stack.
+- `domain/editor/preview.ts` reuses the placement transaction for collision checks,
+  automatic seat height, support cuts and eraser/toggle targets.
+- `components/three/sceneMath.ts` converts the collision solids into rendered volumes.
+  Doors, trim pieces, ledges and flush plates share the same height model.
+- `SceneCamera.tsx` owns OrbitControls locally. The editor reducer stores document and
+  tool state only; camera commands never rotate the document or enter undo history.
+- Masonry and mortar beds use instanced draws, capped pixel density and demand rendering.
+  Hardware remains separate geometry. The main editor needs no remote fonts or textures.
+- Flues are empty space, with course guides during editing. This remains a layout
+  editor, not a thermal, draft, structural or support-analysis simulator.
 
 ## Notes
 

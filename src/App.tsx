@@ -13,15 +13,21 @@ export default function App() {
 
   return (
     <div
-      className="min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-28 pt-3 text-[#3D2B1F] sm:px-4 xl:pb-12"
+      className={
+        screen === "builder"
+          ? "studio-shell"
+          : "min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-12 pt-3 text-[#3D2B1F] sm:px-4"
+      }
       style={{
-        fontFamily: "Nunito, ui-rounded, system-ui, sans-serif",
+        fontFamily: screen === "builder" ? "system-ui, sans-serif" : "Nunito, ui-rounded, system-ui, sans-serif",
         // Статус-бар/вырез телефона (viewport-fit=cover): шапка не заезжает под него.
-        paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)"
+        paddingTop:
+          screen === "builder" ? "env(safe-area-inset-top, 0px)" : "calc(env(safe-area-inset-top, 0px) + 0.75rem)"
       }}
     >
-      <div className="mx-auto w-full max-w-[1280px] xl:max-w-[1520px] 2xl:max-w-[min(100%,1800px)]">
+      <div className={screen === "builder" ? "studio-frame" : "mx-auto w-full max-w-[1520px]"}>
         <Header
+          compact={screen === "builder"}
           locale={locale}
           setLocale={studio.setLocale}
           t={t}
@@ -97,15 +103,11 @@ export default function App() {
             setDoorSize={studio.setDoorSize}
             damperSpec={studio.damperSpec}
             setDamperSize={studio.setDamperSize}
-            toggleDamper={studio.toggleDamper}
             grateSpec={studio.grateSpec}
             setGrateSize={studio.setGrateSize}
             userLogin={userLogin}
-            viewMode={studio.viewMode}
-            setViewMode={studio.setViewMode}
             placeAt={studio.placeAt}
-            canPlaceAt={studio.canPlaceAt}
-            rejectedIds={studio.rejectedIds}
+            previewAt={studio.previewAt}
             addRow={studio.addRow}
             deleteCurrentRow={studio.deleteCurrentRow}
             copyPreviousRow={studio.copyPreviousRow}
@@ -119,11 +121,6 @@ export default function App() {
             redo={studio.redo}
             parameters={studio.parameters}
             materials={studio.materials}
-            camera={studio.camera}
-            cameraZoom={studio.cameraZoom}
-            cameraRotate={studio.cameraRotate}
-            cameraPan={studio.cameraPan}
-            cameraReset={studio.cameraReset}
             saveCurrentProject={studio.saveCurrentProject}
           />
         )}

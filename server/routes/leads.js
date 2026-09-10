@@ -9,7 +9,9 @@ const PHONE_DIGITS_MAX = 15;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function cleanStr(value, maxLength = 200) {
-  return String(value ?? "").trim().slice(0, maxLength);
+  return String(value ?? "")
+    .trim()
+    .slice(0, maxLength);
 }
 
 export const leadsRouter = Router();

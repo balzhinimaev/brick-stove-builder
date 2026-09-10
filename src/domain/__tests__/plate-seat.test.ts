@@ -355,7 +355,7 @@ describe("глубокая проверка: найденные недочёты
 
   it("copyRow не затирает ряд с колосником молча", async () => {
     const { editorReducer, initialEditorState } = await import("../editor");
-    let state = {
+    const state = {
       ...initialEditorState(),
       currentRow: 2,
       rows: { 2: [{ id: "g", row: 2, x: 1, y: 1, kind: "grate", orientation: "h" } as PlacedBrick] }

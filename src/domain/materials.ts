@@ -64,11 +64,25 @@ export function estimateMaterials(allBricks: PlacedBrick[], parameters: Paramete
 
   const cutBricks = cutLike + trims * TRIM_AS_CUT_FACTOR;
   // Кирпич с четвертью — целый кирпич минус четверть: и по расходу раствора близок к целому.
-  const mortarM3 = (regularBricks + rebatedBricks * 0.75 + firebricks + cutBricks * CUT_MORTAR_FACTOR) * MORTAR_M3_PER_BRICK;
+  const mortarM3 =
+    (regularBricks + rebatedBricks * 0.75 + firebricks + cutBricks * CUT_MORTAR_FACTOR) * MORTAR_M3_PER_BRICK;
   const concreteVolumeM3 =
     (parameters.foundationWidth / CM_PER_M) *
     (parameters.foundationLength / CM_PER_M) *
     (parameters.foundationThickness / CM_PER_M);
 
-  return { regularBricks, cutBricks, rebatedBricks, firebricks, grates, plates, doors, dampers, vents, mortarM3, concreteVolumeM3, total: allBricks.length };
+  return {
+    regularBricks,
+    cutBricks,
+    rebatedBricks,
+    firebricks,
+    grates,
+    plates,
+    doors,
+    dampers,
+    vents,
+    mortarM3,
+    concreteVolumeM3,
+    total: allBricks.length
+  };
 }

@@ -1,7 +1,14 @@
 import { COLORS } from "../theme/colors";
 import type { BrickKind, Orientation, PlacedBrick, ReadyProject } from "./types";
 
-function makeBrick(id: string, row: number, x: number, y: number, kind: BrickKind = "standard", orientation: Orientation = "h"): PlacedBrick {
+function makeBrick(
+  id: string,
+  row: number,
+  x: number,
+  y: number,
+  kind: BrickKind = "standard",
+  orientation: Orientation = "h"
+): PlacedBrick {
   return { id, row, x, y, kind, orientation };
 }
 
@@ -58,13 +65,47 @@ function frameCourse(prefix: string, row: number, rightCell: number, sideRight: 
 
 function makeCompactHeaterRows(): Record<number, PlacedBrick[]> {
   const inside: Record<number, PlacedBrick[]> = {
-    1: [makeBrick("h1-fire-l", 1, 3, 3, "firebrick"), makeBrick("h1-fire-r", 1, 5, 3, "firebrick"), makeBrick("h1-vent-a", 1, 4, 6, "vent"), makeBrick("h1-vent-b", 1, 5, 8, "vent")],
-    2: [makeBrick("h2-fire-l", 2, 3, 3, "firebrick"), makeBrick("h2-fire-r", 2, 5, 3, "firebrick"), makeBrick("h2-clean", 2, 4, 5, "cleanout"), makeBrick("h2-vent", 2, 6, 7, "vent"), makeBrick("h2-bridge", 2, 3, 9)],
-    3: [makeBrick("h3-fire-l", 3, 3, 4, "firebrick"), makeBrick("h3-fire-r", 3, 5, 4, "firebrick"), makeBrick("h3-vent-a", 3, 3, 7, "vent"), makeBrick("h3-vent-b", 3, 6, 7, "vent")],
-    4: [makeBrick("h4-fire", 4, 4, 3, "firebrick"), makeBrick("h4-baffle-a", 4, 3, 6), makeBrick("h4-vent", 4, 6, 8, "vent")],
-    5: [makeBrick("h5-fire-l", 5, 3, 3, "firebrick"), makeBrick("h5-fire-r", 5, 5, 3, "firebrick"), makeBrick("h5-vent-a", 5, 4, 6, "vent"), makeBrick("h5-baffle", 5, 5, 8)],
-    6: [makeBrick("h6-baffle-a", 6, 3, 4), makeBrick("h6-baffle-b", 6, 5, 4), makeBrick("h6-vent-a", 6, 3, 7, "vent"), makeBrick("h6-vent-b", 6, 6, 7, "vent")],
-    7: [makeBrick("h7-baffle", 7, 4, 4), makeBrick("h7-vent-a", 7, 4, 6, "vent"), makeBrick("h7-vent-b", 7, 5, 8, "vent")],
+    1: [
+      makeBrick("h1-fire-l", 1, 3, 3, "firebrick"),
+      makeBrick("h1-fire-r", 1, 5, 3, "firebrick"),
+      makeBrick("h1-vent-a", 1, 4, 6, "vent"),
+      makeBrick("h1-vent-b", 1, 5, 8, "vent")
+    ],
+    2: [
+      makeBrick("h2-fire-l", 2, 3, 3, "firebrick"),
+      makeBrick("h2-fire-r", 2, 5, 3, "firebrick"),
+      makeBrick("h2-clean", 2, 4, 5, "cleanout"),
+      makeBrick("h2-vent", 2, 6, 7, "vent"),
+      makeBrick("h2-bridge", 2, 3, 9)
+    ],
+    3: [
+      makeBrick("h3-fire-l", 3, 3, 4, "firebrick"),
+      makeBrick("h3-fire-r", 3, 5, 4, "firebrick"),
+      makeBrick("h3-vent-a", 3, 3, 7, "vent"),
+      makeBrick("h3-vent-b", 3, 6, 7, "vent")
+    ],
+    4: [
+      makeBrick("h4-fire", 4, 4, 3, "firebrick"),
+      makeBrick("h4-baffle-a", 4, 3, 6),
+      makeBrick("h4-vent", 4, 6, 8, "vent")
+    ],
+    5: [
+      makeBrick("h5-fire-l", 5, 3, 3, "firebrick"),
+      makeBrick("h5-fire-r", 5, 5, 3, "firebrick"),
+      makeBrick("h5-vent-a", 5, 4, 6, "vent"),
+      makeBrick("h5-baffle", 5, 5, 8)
+    ],
+    6: [
+      makeBrick("h6-baffle-a", 6, 3, 4),
+      makeBrick("h6-baffle-b", 6, 5, 4),
+      makeBrick("h6-vent-a", 6, 3, 7, "vent"),
+      makeBrick("h6-vent-b", 6, 6, 7, "vent")
+    ],
+    7: [
+      makeBrick("h7-baffle", 7, 4, 4),
+      makeBrick("h7-vent-a", 7, 4, 6, "vent"),
+      makeBrick("h7-vent-b", 7, 5, 8, "vent")
+    ],
     8: [makeBrick("h8-cap-a", 8, 3, 4), makeBrick("h8-cap-b", 8, 5, 4), makeBrick("h8-vent", 8, 4, 7, "vent")]
   };
 
@@ -78,14 +119,58 @@ function makeCompactHeaterRows(): Record<number, PlacedBrick[]> {
 
 function makeCookStoveRows(): Record<number, PlacedBrick[]> {
   const inside: Record<number, PlacedBrick[]> = {
-    1: [makeBrick("c1-fire-a", 1, 3, 3, "firebrick"), makeBrick("c1-fire-b", 1, 5, 3, "firebrick"), makeBrick("c1-fire-c", 1, 7, 3, "firebrick"), makeBrick("c1-vent", 1, 6, 8, "vent")],
-    2: [makeBrick("c2-fire-a", 2, 3, 3, "firebrick"), makeBrick("c2-fire-b", 2, 5, 3, "firebrick"), makeBrick("c2-clean", 2, 7, 5, "cleanout"), makeBrick("c2-vent-a", 2, 4, 8, "vent"), makeBrick("c2-vent-b", 2, 7, 8, "vent")],
-    3: [makeBrick("c3-fire-a", 3, 3, 4, "firebrick"), makeBrick("c3-fire-b", 3, 5, 4, "firebrick"), makeBrick("c3-fire-c", 3, 7, 4, "firebrick"), makeBrick("c3-clean", 3, 2, 7, "cleanout"), makeBrick("c3-vent", 3, 6, 9, "vent")],
-    4: [makeBrick("c4-fire-a", 4, 4, 3, "firebrick"), makeBrick("c4-fire-b", 4, 6, 3, "firebrick"), makeBrick("c4-baffle-a", 4, 3, 7), makeBrick("c4-vent", 4, 7, 8, "vent")],
-    5: [makeBrick("c5-fire-a", 5, 3, 3, "firebrick"), makeBrick("c5-fire-b", 5, 5, 3, "firebrick"), makeBrick("c5-fire-c", 5, 7, 3, "firebrick"), makeBrick("c5-vent-a", 5, 4, 8, "vent"), makeBrick("c5-vent-b", 5, 7, 9, "vent")],
-    6: [makeBrick("c6-baffle-a", 6, 3, 4), makeBrick("c6-baffle-b", 6, 5, 4), makeBrick("c6-baffle-c", 6, 7, 4), makeBrick("c6-vent-a", 6, 5, 7, "vent"), makeBrick("c6-vent-b", 6, 7, 7, "vent")],
-    7: [makeBrick("c7-baffle-a", 7, 4, 4), makeBrick("c7-baffle-b", 7, 6, 4), makeBrick("c7-vent-a", 7, 4, 7, "vent"), makeBrick("c7-vent-b", 7, 7, 7, "vent")],
-    8: [makeBrick("c8-cap-a", 8, 3, 4), makeBrick("c8-cap-b", 8, 5, 4), makeBrick("c8-cap-c", 8, 7, 4), makeBrick("c8-vent", 8, 6, 8, "vent")]
+    1: [
+      makeBrick("c1-fire-a", 1, 3, 3, "firebrick"),
+      makeBrick("c1-fire-b", 1, 5, 3, "firebrick"),
+      makeBrick("c1-fire-c", 1, 7, 3, "firebrick"),
+      makeBrick("c1-vent", 1, 6, 8, "vent")
+    ],
+    2: [
+      makeBrick("c2-fire-a", 2, 3, 3, "firebrick"),
+      makeBrick("c2-fire-b", 2, 5, 3, "firebrick"),
+      makeBrick("c2-clean", 2, 7, 5, "cleanout"),
+      makeBrick("c2-vent-a", 2, 4, 8, "vent"),
+      makeBrick("c2-vent-b", 2, 7, 8, "vent")
+    ],
+    3: [
+      makeBrick("c3-fire-a", 3, 3, 4, "firebrick"),
+      makeBrick("c3-fire-b", 3, 5, 4, "firebrick"),
+      makeBrick("c3-fire-c", 3, 7, 4, "firebrick"),
+      makeBrick("c3-clean", 3, 2, 7, "cleanout"),
+      makeBrick("c3-vent", 3, 6, 9, "vent")
+    ],
+    4: [
+      makeBrick("c4-fire-a", 4, 4, 3, "firebrick"),
+      makeBrick("c4-fire-b", 4, 6, 3, "firebrick"),
+      makeBrick("c4-baffle-a", 4, 3, 7),
+      makeBrick("c4-vent", 4, 7, 8, "vent")
+    ],
+    5: [
+      makeBrick("c5-fire-a", 5, 3, 3, "firebrick"),
+      makeBrick("c5-fire-b", 5, 5, 3, "firebrick"),
+      makeBrick("c5-fire-c", 5, 7, 3, "firebrick"),
+      makeBrick("c5-vent-a", 5, 4, 8, "vent"),
+      makeBrick("c5-vent-b", 5, 7, 9, "vent")
+    ],
+    6: [
+      makeBrick("c6-baffle-a", 6, 3, 4),
+      makeBrick("c6-baffle-b", 6, 5, 4),
+      makeBrick("c6-baffle-c", 6, 7, 4),
+      makeBrick("c6-vent-a", 6, 5, 7, "vent"),
+      makeBrick("c6-vent-b", 6, 7, 7, "vent")
+    ],
+    7: [
+      makeBrick("c7-baffle-a", 7, 4, 4),
+      makeBrick("c7-baffle-b", 7, 6, 4),
+      makeBrick("c7-vent-a", 7, 4, 7, "vent"),
+      makeBrick("c7-vent-b", 7, 7, 7, "vent")
+    ],
+    8: [
+      makeBrick("c8-cap-a", 8, 3, 4),
+      makeBrick("c8-cap-b", 8, 5, 4),
+      makeBrick("c8-cap-c", 8, 7, 4),
+      makeBrick("c8-vent", 8, 6, 8, "vent")
+    ]
   };
 
   return Object.fromEntries(
@@ -106,8 +191,16 @@ function makeCookStoveRows(): Record<number, PlacedBrick[]> {
 function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
   const rows: Record<number, PlacedBrick[]> = {};
   let seq = 0;
-  const add = (row: number, x: number, y: number, kind: BrickKind = "standard", orientation: Orientation = "h", extra: Partial<PlacedBrick> = {}) => {
-    (rows[row] ??= []).push({ id: `fps${row}-${seq++}`, row, x, y, kind, orientation, ...extra });
+  const add = (
+    row: number,
+    x: number,
+    y: number,
+    kind: BrickKind = "standard",
+    orientation: Orientation = "h",
+    extra: Partial<PlacedBrick> = {}
+  ) => {
+    rows[row] ??= [];
+    rows[row].push({ id: `fps${row}-${seq++}`, row, x, y, kind, orientation, ...extra });
   };
 
   // печь 6×4 ячейки (75×50 см): контур x1..7, y2..6; камера x2..6, y3..5
@@ -132,7 +225,9 @@ function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
   const grateSeat = { name: "", w: 2, h: 1, notch: null, notchDepthMm: 22 };
   add(3, 2, 3, "rebate", "v", { notchCorner: "e", custom: grateSeat });
   add(3, 5, 3, "rebate", "v", { notchCorner: "w", custom: grateSeat });
-  add(3, 2.5, 3, "grate", "h", { custom: { name: "Колосник 375×250×22", w: 3, h: 2, notch: null, thicknessMm: 22, seatZMm: 43 } });
+  add(3, 2.5, 3, "grate", "h", {
+    custom: { name: "Колосник 375×250×22", w: 3, h: 2, notch: null, thicknessMm: 22, seatZMm: 43 }
+  });
 
   // ряд 4: перемычка над поддувальной + топочная дверца 250×210 (ряды 4–6)
   frame(4);
@@ -149,7 +244,9 @@ function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
   add(7, 1, 3, "rebate", "v", { notchCorner: "e", custom: seat });
   add(7, 6, 3, "rebate", "v", { notchCorner: "w", custom: seat });
   for (const x of [1, 3, 5]) add(7, x, 5, "rebate", "h", { notchCorner: "n", custom: seat });
-  add(7, 1.5, 2.5, "plate", "h", { custom: { name: "Плита 625×375×15", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true } });
+  add(7, 1.5, 2.5, "plate", "h", {
+    custom: { name: "Плита 625×375×15", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true }
+  });
 
   return rows;
 }
@@ -157,7 +254,11 @@ function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
 export const READY_PROJECTS: ReadyProject[] = [
   {
     id: "cook-plate-flush",
-    title: { ru: "Варочная печь с плитой заподлицо", en: "Cook stove with flush plate", lt: "Viryklė su įleista plokšte" },
+    title: {
+      ru: "Варочная печь с плитой заподлицо",
+      en: "Cook stove with flush plate",
+      lt: "Viryklė su įleista plokšte"
+    },
     subtitle: {
       ru: "Полный узел до плиты: поддувальная и топочная дверцы, колосник, посадочный ряд с четвертями — плита 625×375×15 утоплена вровень с кладкой.",
       en: "Complete stack up to the plate: ash and fire doors, grate, seat course with rebates — the 625×375×15 plate sits flush with the masonry.",
@@ -172,7 +273,11 @@ export const READY_PROJECTS: ReadyProject[] = [
   {
     id: "compact-heater",
     title: { ru: "Компактная отопительная", en: "Compact heater", lt: "Kompaktiška šildymo" },
-    subtitle: { ru: "Небольшая канальная печь с шамотной топкой и центральным дымовым ходом.", en: "Small channel heater with a firebrick firebox and central flue path.", lt: "Maža kanalų krosnis su šamotine pakura ir centriniu dūmtakiu." },
+    subtitle: {
+      ru: "Небольшая канальная печь с шамотной топкой и центральным дымовым ходом.",
+      en: "Small channel heater with a firebrick firebox and central flue path.",
+      lt: "Maža kanalų krosnis su šamotine pakura ir centriniu dūmtakiu."
+    },
     parameters: { foundationWidth: 120, foundationLength: 160, foundationThickness: 25, roomHeight: 260 },
     rowCount: 8,
     lockedRows: [1, 2, 3, 4, 5, 6, 7, 8],
@@ -181,8 +286,16 @@ export const READY_PROJECTS: ReadyProject[] = [
   },
   {
     id: "cook-stove-channel",
-    title: { ru: "Варочно-отопительная с каналами", en: "Cooking heater with channels", lt: "Virimo-šildymo su kanalais" },
-    subtitle: { ru: "Более широкая схема: топочная зона, прочистка и разнесённые вертикальные каналы.", en: "Wider layout with firebox zone, cleanout and separated vertical channels.", lt: "Platesnis maketas su pakura, valymo durelėmis ir atskirais kanalais." },
+    title: {
+      ru: "Варочно-отопительная с каналами",
+      en: "Cooking heater with channels",
+      lt: "Virimo-šildymo su kanalais"
+    },
+    subtitle: {
+      ru: "Более широкая схема: топочная зона, прочистка и разнесённые вертикальные каналы.",
+      en: "Wider layout with firebox zone, cleanout and separated vertical channels.",
+      lt: "Platesnis maketas su pakura, valymo durelėmis ir atskirais kanalais."
+    },
     parameters: { foundationWidth: 140, foundationLength: 180, foundationThickness: 28, roomHeight: 275 },
     rowCount: 8,
     lockedRows: [1, 2, 3, 4, 5, 6, 7, 8],

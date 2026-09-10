@@ -31,7 +31,12 @@ describe("estimateMaterials", () => {
   });
 
   it("computes concrete volume from foundation dimensions in m³", () => {
-    const m = estimateMaterials([], { foundationWidth: 100, foundationLength: 200, foundationThickness: 25, roomHeight: 260 });
+    const m = estimateMaterials([], {
+      foundationWidth: 100,
+      foundationLength: 200,
+      foundationThickness: 25,
+      roomHeight: 260
+    });
     // 1.0 × 2.0 × 0.25 = 0.5
     expect(m.concreteVolumeM3).toBeCloseTo(0.5, 6);
   });

@@ -21,6 +21,12 @@ export function plateBurnerCount(wCells: number, hCells: number): number {
 export function plateBurnerCenters(wCells: number, hCells: number): Array<[number, number]> {
   if (plateBurnerCount(wCells, hCells) < 2) return [[0.5, 0.5]];
   return wCells >= hCells
-    ? [[0.25, 0.5], [0.75, 0.5]]
-    : [[0.5, 0.25], [0.5, 0.75]];
+    ? [
+        [0.25, 0.5],
+        [0.75, 0.5]
+      ]
+    : [
+        [0.5, 0.25],
+        [0.5, 0.75]
+      ];
 }

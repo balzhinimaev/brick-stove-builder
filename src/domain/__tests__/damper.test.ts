@@ -65,9 +65,12 @@ describe("размещение: накладная в шве", () => {
 
   it("обычный кирпич тапом задвижку не стирает", () => {
     const damper = draftAt(2, 2);
-    const rows = placeBricksInRows({ 2: [damper] }, 2, [
-      { id: "b", row: 2, x: 2, y: 2, kind: "plate", orientation: "h", custom: initialEditorState().plateSpec }
-    ], grid);
+    const rows = placeBricksInRows(
+      { 2: [damper] },
+      2,
+      [{ id: "b", row: 2, x: 2, y: 2, kind: "plate", orientation: "h", custom: initialEditorState().plateSpec }],
+      grid
+    );
     expect(rows).toBeNull(); // плита-накладная конфликтует с задвижкой и не заменяет её
   });
 });

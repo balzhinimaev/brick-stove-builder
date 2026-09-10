@@ -12,9 +12,30 @@ export type ParameterBound = {
 
 /** Data-driven replacement for the old `switch` — extend a field by adding a row. */
 export const PARAM_BOUNDS: Record<keyof Parameters, ParameterBound> = {
-  foundationWidth: { min: 70, max: 220, step: 5, title: "foundationWidthTitle", help: "foundationWidthHelp", icon: "↔" },
-  foundationLength: { min: 90, max: 260, step: 5, title: "foundationLengthTitle", help: "foundationLengthHelp", icon: "↕" },
-  foundationThickness: { min: 15, max: 45, step: 1, title: "foundationThicknessTitle", help: "foundationThicknessHelp", icon: "▰" },
+  foundationWidth: {
+    min: 70,
+    max: 220,
+    step: 5,
+    title: "foundationWidthTitle",
+    help: "foundationWidthHelp",
+    icon: "↔"
+  },
+  foundationLength: {
+    min: 90,
+    max: 260,
+    step: 5,
+    title: "foundationLengthTitle",
+    help: "foundationLengthHelp",
+    icon: "↕"
+  },
+  foundationThickness: {
+    min: 15,
+    max: 45,
+    step: 1,
+    title: "foundationThicknessTitle",
+    help: "foundationThicknessHelp",
+    icon: "▰"
+  },
   roomHeight: { min: 200, max: 360, step: 5, title: "roomHeightTitle", help: "roomHeightHelp", icon: "⌂" }
 };
 
@@ -35,6 +56,7 @@ export function validateParameters(parameters: Parameters, t: Translate): Valida
   const usableHeight = parameters.roomHeight - parameters.foundationThickness;
   const ratio = parameters.foundationWidth / parameters.foundationLength;
   if (usableHeight < MIN_USABLE_HEIGHT_CM) return { ok: false, message: t("validationHeight") };
-  if (ratio < MIN_FOOTPRINT_RATIO || ratio > MAX_FOOTPRINT_RATIO) return { ok: false, message: t("validationFootprint") };
+  if (ratio < MIN_FOOTPRINT_RATIO || ratio > MAX_FOOTPRINT_RATIO)
+    return { ok: false, message: t("validationFootprint") };
   return { ok: true, message: t("validationOk") };
 }

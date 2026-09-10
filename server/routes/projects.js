@@ -56,10 +56,14 @@ projectsRouter.post("/", async (req, res, next) => {
 
 projectsRouter.post("/:id/publish", async (req, res, next) => {
   try {
-    const description = String(req.body?.description ?? "").trim().slice(0, 1000);
+    const description = String(req.body?.description ?? "")
+      .trim()
+      .slice(0, 1000);
     const priceRaw = Number(req.body?.price);
     const price = Number.isFinite(priceRaw) && priceRaw >= 0 ? Math.round(priceRaw) : null;
-    const region = String(req.body?.region ?? "").trim().slice(0, 100);
+    const region = String(req.body?.region ?? "")
+      .trim()
+      .slice(0, 100);
 
     const project = await Project.findOneAndUpdate(
       ownedQuery(req.params.id, req.userLogin),

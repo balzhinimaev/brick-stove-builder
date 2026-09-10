@@ -25,7 +25,9 @@ describe("showcase routes", () => {
   it("lists and reads only published projects", async () => {
     await Project.create({ ...base, slug: "public", showcase: { published: true, publishedAt: new Date() } });
     await Project.create({ ...base, slug: "private", showcase: { published: false } });
-    expect((await json(await server.request("/api/showcase"))).body.projects.map((item) => item.id)).toEqual(["public"]);
+    expect((await json(await server.request("/api/showcase"))).body.projects.map((item) => item.id)).toEqual([
+      "public"
+    ]);
     expect((await server.request("/api/showcase/public")).status).toBe(200);
     expect((await server.request("/api/showcase/private")).status).toBe(404);
   });

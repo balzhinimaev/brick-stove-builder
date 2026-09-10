@@ -23,8 +23,10 @@ function readCredentials(body) {
 authRouter.post("/register", requireMongo, async (req, res, next) => {
   try {
     const { login, password } = readCredentials(req.body);
-    if (!login || login.length < MIN_LOGIN_LENGTH) return res.status(400).json({ error: "Login must be at least 3 chars" });
-    if (password.length < MIN_PASSWORD_LENGTH) return res.status(400).json({ error: "Password must be at least 6 chars" });
+    if (!login || login.length < MIN_LOGIN_LENGTH)
+      return res.status(400).json({ error: "Login must be at least 3 chars" });
+    if (password.length < MIN_PASSWORD_LENGTH)
+      return res.status(400).json({ error: "Password must be at least 6 chars" });
     if (password.length > MAX_PASSWORD_LENGTH) return res.status(400).json({ error: "Password is too long" });
 
     const existing = await User.findOne({ login }).lean();

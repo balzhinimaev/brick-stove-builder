@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import type { Translate } from "../i18n";
 import type { MaterialsEstimate } from "../domain/types";
 import { formatM3 } from "./format";

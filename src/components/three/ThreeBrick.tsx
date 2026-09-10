@@ -1,387 +1,266 @@
-import { memo } from "react";
-import { Text } from "@react-three/drei";
-import { COLORS } from "../../theme/colors";
-import { BRICK_LAYER_HEIGHT, BRICK_GAP } from "../../domain/constants";
-import { brickBounds, brickBoxes, brickWorldGeometry, cellToWorld, footprintSizeOf, notchBox, type BrickBox } from "../../domain/geometry";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  BoxGeometry,
+  Color,
+  DataTexture,
+  type InstancedMesh,
+  MeshStandardMaterial,
+  Object3D,
+  RepeatWrapping,
+  RGBAFormat
+} from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { brickBounds, footprintSizeOf } from "../../domain/geometry";
+import { MM_PER_CELL } from "../../domain/constants";
 import { plateBurnerCenters } from "../../domain/plate";
-import { getToolColor } from "../../domain/tools";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
+import { solidBoxes, type SceneBox } from "./sceneMath";
 
-/** Размер в см: сотые показываются, когда они есть («19», «6,25», «8,5»). */
-function fmtCm(cells: number): string {
-  return (cells * 12.5).toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
+const METAL = new Set(["plate", "grate", "damper", "cleanout"]);
+export const isMasonry = (brick: PlacedBrick) => !METAL.has(brick.kind) && brick.kind !== "vent";
+
+function brickColor(brick: PlacedBrick) {
+  const seed = [...brick.id].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
+  const fire = brick.kind === "firebrick" || brick.custom?.cutFrom === "firebrick";
+  return new Color(fire ? "#c8ad79" : "#a95b40").multiplyScalar(0.88 + (seed % 100) / 420);
 }
 
-export const ThreeBrick = memo(function ThreeBrick({ grid, brick, currentRow, unit, onToggleDamper }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; unit: string; onToggleDamper?: (id: string) => void }) {
-  if (brick.kind === "grate") return <ThreeGrate grid={grid} brick={brick} currentRow={currentRow} unit={unit} />;
-  if (brick.kind === "rebate" || brick.kind === "custom") return <ThreeRebate grid={grid} brick={brick} currentRow={currentRow} />;
-  if (brick.kind === "plate") return <ThreePlate grid={grid} brick={brick} currentRow={currentRow} />;
-  if (brick.kind === "damper") return <ThreeDamper grid={grid} brick={brick} currentRow={currentRow} onToggle={onToggleDamper} />;
-  if (brick.kind === "cleanout") return <ThreeDoor grid={grid} brick={brick} currentRow={currentRow} />;
+/** Small, deterministic mineral bump field. No network texture or font dependency. */
+function mineralTexture() {
+  const size = 64;
+  const data = new Uint8Array(size * size * 4);
+  let seed = 12345;
+  for (let i = 0; i < size * size; i++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const v = 150 + (seed % 100);
+    data.set([v, v, v, 255], i * 4);
+  }
+  const texture = new DataTexture(data, size, size, RGBAFormat);
+  texture.wrapS = texture.wrapT = RepeatWrapping;
+  texture.repeat.set(3, 3);
+  texture.needsUpdate = true;
+  return texture;
+}
 
-  const geometry = brickWorldGeometry(brick, grid);
-  const color = getToolColor(brick.kind);
-  const isCurrent = brick.row === currentRow;
-  const label = brick.kind === "vent" ? "V" : "";
+type Instance = SceneBox & { color: Color };
+
+/** Two instanced draws for masonry and beds, independent of brick count. */
+export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedBrick[]; grid: GridSpec }) {
+  const { bodies, beds } = useMemo(() => {
+    const bodies: Instance[] = [];
+    const beds: Instance[] = [];
+    for (const brick of bricks.filter(isMasonry)) {
+      for (const box of solidBoxes(brick, grid)) bodies.push({ ...box, color: brickColor(brick) });
+      // Beds follow the occupied shape, preserving shafts and through-cuts.
+      if (brick.row > 1) {
+        for (const box of solidBoxes(brick, grid, 0.008)) {
+          const bottom = box.position[1] - box.scale[1] / 2;
+          if (Math.abs(bottom - ((brick.row - 1) * 70) / MM_PER_CELL) > 0.001) continue;
+          beds.push({
+            position: [box.position[0], bottom - 2.5 / MM_PER_CELL, box.position[2]],
+            scale: [box.scale[0], 5 / MM_PER_CELL, box.scale[2]],
+            color: new Color("#a59b88")
+          });
+        }
+      }
+    }
+    return { bodies, beds };
+  }, [bricks, grid]);
   return (
-    <group>
-      <mesh position={geometry.position} castShadow receiveShadow><boxGeometry args={geometry.scale} /><meshStandardMaterial color={color} roughness={0.82} metalness={0.02} /></mesh>
-      <mesh position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.006, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] * 0.96, 0.01, geometry.scale[2] * 0.08]} /><meshBasicMaterial color={COLORS.mortar} transparent opacity={0.65} /></mesh>
-      {isCurrent && <mesh position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.014, geometry.position[2]]}><boxGeometry args={[geometry.scale[0] + 0.035, 0.018, geometry.scale[2] + 0.035]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.23} /></mesh>}
-      {label && <Text position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.025, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.28} color={COLORS.cream} anchorX="center" anchorY="middle">{label}</Text>}
-      {/* измеритель: габарит кирпича текущего ряда в см (сотые после запятой) */}
-      {isCurrent && (
-        <Text position={[geometry.position[0], geometry.position[1] + geometry.scale[1] / 2 + 0.03, geometry.position[2] + footprintSizeOf(brick).h / 2 + 0.16]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.19} color={COLORS.sageDark} outlineWidth={0.012} outlineColor="#FFF7E8" anchorX="center" anchorY="middle">
-          {`${fmtCm(footprintSizeOf(brick).w)}×${fmtCm(footprintSizeOf(brick).h)} см`}
-        </Text>
-      )}
-    </group>
+    <>
+      <InstanceBoxes instances={beds} />
+      <InstanceBoxes instances={bodies} textured />
+    </>
   );
 });
 
-/**
- * Кирпич с выбранной четвертью: Г-образное тело (два бокса на полную высоту
- * ряда) + посадочная полка в вырезе на ~45% высоты. На полку ложится колосник,
- * плита или кирпич следующего элемента — вырез в коллизиях свободен.
- */
-export function ThreeRebate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
-  // автоподрез из шамота остаётся шамотного цвета
-  const color = brick.custom?.cutFrom === "firebrick" ? COLORS.firebrick : getToolColor(brick.kind);
-  // глубина реза по высоте: из резака (notchDepthMm), для «четверти» — полвысоты
-  const depthMm = brick.custom?.notchDepthMm ?? (brick.custom?.ledge === false ? 65 : 32.5);
-  const ledgeFrac = Math.max(0, 1 - depthMm / 65);
-  const outer = brickBounds(brick);
-  const notch = notchBox(brick);
-  const bounds = brickWorldGeometry(brick, grid);
-  const isCurrent = brick.row === currentRow;
-  const transparent = opacity < 1;
-
-  // Растворный шов ужимает только ВНЕШНИЕ грани кирпича; внутренние границы
-  // Г-частей остаются заподлицо — кирпич выглядит монолитом с вырезом,
-  // а не двумя кирпичами рядом.
-  const g = BRICK_GAP / 2;
-  const shave = (box: BrickBox): BrickBox => ({
-    x1: box.x1 + (box.x1 === outer.x1 ? g : 0),
-    x2: box.x2 - (box.x2 === outer.x2 ? g : 0),
-    y1: box.y1 + (box.y1 === outer.y1 ? g : 0),
-    y2: box.y2 - (box.y2 === outer.y2 ? g : 0)
-  });
-  const boxMesh = (box: BrickBox, height: number, bottomY: number, meshColor: string, key: number | string) => {
-    const center = cellToWorld((box.x1 + box.x2) / 2, (box.y1 + box.y2) / 2, grid);
-    return (
-      <mesh key={key} position={[center.x, bottomY + height / 2, center.z]} castShadow receiveShadow>
-        <boxGeometry args={[Math.max(0.06, box.x2 - box.x1), height, Math.max(0.06, box.y2 - box.y1)]} />
-        <meshStandardMaterial color={meshColor} roughness={0.85} metalness={0.02} transparent={transparent} opacity={opacity} />
-      </mesh>
-    );
-  };
-  const rowBottom = (brick.row - 1) * BRICK_LAYER_HEIGHT + BRICK_LAYER_HEIGHT * 0.04;
-  const fullHeight = BRICK_LAYER_HEIGHT * 0.92;
-
+function InstanceBoxes({ instances, textured = false }: { instances: Instance[]; textured?: boolean }) {
+  const ref = useRef<InstancedMesh>(null);
+  const resources = useMemo(() => {
+    const texture = textured ? mineralTexture() : null;
+    const geometry = textured ? new RoundedBoxGeometry(1, 1, 1, 2, 0.012) : new BoxGeometry(1, 1, 1);
+    const material = new MeshStandardMaterial({
+      color: "white",
+      roughness: 0.92,
+      metalness: 0,
+      bumpMap: texture,
+      bumpScale: 0.012,
+      roughnessMap: texture
+    });
+    return { geometry, material, texture };
+  }, [textured]);
+  useEffect(
+    () => () => {
+      resources.geometry.dispose();
+      resources.material.dispose();
+      resources.texture?.dispose();
+    },
+    [resources]
+  );
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const transform = new Object3D();
+    instances.forEach((item, index) => {
+      transform.position.set(...item.position);
+      transform.scale.set(...item.scale);
+      transform.updateMatrix();
+      mesh.setMatrixAt(index, transform.matrix);
+      mesh.setColorAt(index, item.color);
+    });
+    mesh.count = instances.length;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [instances]);
   return (
-    <group>
-      {brickBoxes(brick).map((box, index) => boxMesh(shave(box), fullHeight, rowBottom, color, index))}
-      {/* ступень среза в вырезе: высота = 65 мм минус глубина реза */}
-      {notch && ledgeFrac > 0.03 ? boxMesh(shave(notch), fullHeight * ledgeFrac, rowBottom, COLORS.cutBrick, "ledge") : null}
-      {isCurrent && !transparent && (
-        <mesh position={[bounds.position[0], bounds.position[1] + bounds.scale[1] / 2 + 0.014, bounds.position[2]]}>
-          <boxGeometry args={[bounds.scale[0] + 0.035, 0.018, bounds.scale[2] + 0.035]} />
-          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.23} />
-        </mesh>
-      )}
-      {/* измерители: габарит в см и размер выреза (красным) */}
-      {isCurrent && (
-        <Text position={[bounds.position[0], rowBottom + fullHeight + 0.03, bounds.position[2] + (outer.y2 - outer.y1) / 2 + 0.16]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.19} color={COLORS.sageDark} outlineWidth={0.012} outlineColor="#FFF7E8" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.6}>
-          {`${fmtCm(outer.x2 - outer.x1)}×${fmtCm(outer.y2 - outer.y1)} см`}
-        </Text>
-      )}
-      {isCurrent && notch && (
-        <Text position={[cellToWorld((notch.x1 + notch.x2) / 2, (notch.y1 + notch.y2) / 2, grid).x, rowBottom + fullHeight + 0.03, cellToWorld((notch.x1 + notch.x2) / 2, (notch.y1 + notch.y2) / 2, grid).z]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#9b2c2c" outlineWidth={0.01} outlineColor="#FFF7E8" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.6}>
-          {`${fmtCm(notch.x2 - notch.x1)}×${fmtCm(notch.y2 - notch.y1)}`}
-        </Text>
-      )}
-    </group>
+    <instancedMesh
+      key={instances.length}
+      ref={ref}
+      args={[resources.geometry, resources.material, Math.max(1, instances.length)]}
+      castShadow
+      receiveShadow
+      dispose={null}
+    />
   );
 }
 
-/** ≈70 мм на ряд кладки (кирпич на плашку + шов). */
-const MM_PER_COURSE = 70;
-
-/**
- * Дверца (топочная/поддувальная/прочистная): чугунная рамка с полотном и
- * ручкой. Стоит вертикально от низа своего ряда на высоту heightMm — проём
- * поднимается через несколько рядов, как в реальной кладке.
- */
-export function ThreeDoor({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
-  const geometry = brickWorldGeometry(brick, grid);
-  const size = footprintSizeOf(brick);
-  const heightMm = brick.custom?.heightMm ?? 140;
-  const height = (heightMm / MM_PER_COURSE) * BRICK_LAYER_HEIGHT;
-  const bottom = (brick.row - 1) * BRICK_LAYER_HEIGHT + BRICK_LAYER_HEIGHT * 0.04;
-  const centerY = bottom + height / 2;
-  const isCurrent = brick.row === currentRow;
-  const transparent = opacity < 1;
-  // полотно смотрит вдоль короткой стороны следа: рамка растянута по длинной
-  // оси следа (X при alongX, Z при вертикальной ориентации 1×2)
-  const alongX = size.w >= size.h;
-  const frameW = alongX ? size.w - 0.08 : size.w * 0.42;
-  const frameD = alongX ? size.h * 0.42 : size.h - 0.08;
-  const mat = (color: string, metal = 0.5) => <meshStandardMaterial color={color} roughness={0.5} metalness={metal} transparent={transparent} opacity={opacity} />;
-
+/** Collision-aligned wire ghost; never lies about an element's true height or seat. */
+export function BrickHighlight({ brick, grid, color }: { brick: PlacedBrick; grid: GridSpec; color: string }) {
   return (
     <group>
-      {/* рамка */}
-      <mesh position={[geometry.position[0], centerY, geometry.position[2]]} castShadow receiveShadow>
-        <boxGeometry args={[frameW, height, frameD]} />
-        {mat("#2b2f33")}
-      </mesh>
-      {/* полотно дверцы чуть выступает */}
-      <mesh position={[geometry.position[0], centerY, geometry.position[2]]} castShadow>
-        <boxGeometry args={[frameW * 0.78, height * 0.78, frameD + 0.05]} />
-        {mat("#3a4046", 0.6)}
-      </mesh>
-      {/* ручка: смещена вдоль длинной оси рамки, сама перекладина — поперёк узкой */}
-      <mesh position={[geometry.position[0] + (alongX ? frameW * 0.26 : 0), centerY - height * 0.05, geometry.position[2] + (alongX ? 0 : frameD * 0.26)]}>
-        <boxGeometry args={alongX ? [0.1, 0.1, frameD + 0.14] : [frameW + 0.14, 0.1, 0.1]} />
-        {mat("#15181a", 0.7)}
-      </mesh>
-      {isCurrent && !transparent && (
-        <mesh position={[geometry.position[0], bottom + height + 0.02, geometry.position[2]]}>
-          <boxGeometry args={[size.w + 0.05, 0.012, size.h + 0.05]} />
-          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.2} />
-        </mesh>
-      )}
-      <Text position={[geometry.position[0], bottom + height + 0.06, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.15} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
-        {`Дверца ${Math.round((alongX ? size.w : size.h) * 125)}×${heightMm} мм`}
-      </Text>
-    </group>
-  );
-}
-
-/**
- * Варочная плита: тонкая чугунная панель заподлицо с верхом ряда, две
- * конфорки. Края визуально ложатся на полки четвертей соседних кирпичей.
- */
-export function ThreePlate({ grid, brick, currentRow, opacity = 1 }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number }) {
-  const geometry = brickWorldGeometry(brick, grid);
-  const size = footprintSizeOf(brick);
-  const thicknessMm = brick.custom?.thicknessMm ?? 14;
-  const flush = brick.custom?.flush === true;
-  const plateHeight = (thicknessMm / 65) * BRICK_LAYER_HEIGHT * 0.92;
-  const brickHeight = BRICK_LAYER_HEIGHT * 0.92;
-  const rowBottomY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT - brickHeight / 2;
-  const rowTopY = rowBottomY + brickHeight;
-  // «В вырезы»: низ плиты — на посадке из полок (seatZMm, считается при
-  // установке); без полок верх остаётся заподлицо с рядом.
-  // «Поверх»: лежит на ряду, кирпичи под ней не пересекают её объём.
-  const seatMm = brick.custom?.seatZMm ?? 65 - thicknessMm;
-  const plateY = flush
-    ? rowBottomY + (seatMm / 65) * brickHeight + plateHeight / 2 + 0.004
-    : rowTopY + plateHeight / 2 - 0.008;
-  const topY = plateY + plateHeight / 2;
-  const isCurrent = brick.row === currentRow;
-  const transparent = opacity < 1;
-  // короткие плиты — одноконфорочные; конфорки вдоль длинной оси (domain/plate)
-  const burners: Array<[number, number]> = plateBurnerCenters(size.w, size.h)
-    .map(([fx, fy]) => [(fx - 0.5) * size.w, (fy - 0.5) * size.h]);
-  const burnerR = Math.min(0.72, Math.min(size.w, size.h) * 0.27);
-
-  return (
-    <group>
-      <mesh position={[geometry.position[0], plateY, geometry.position[2]]} castShadow receiveShadow>
-        <boxGeometry args={[size.w - 0.06, plateHeight, size.h - 0.06]} />
-        <meshStandardMaterial color={COLORS.plate} roughness={0.45} metalness={0.55} transparent={transparent} opacity={opacity} />
-      </mesh>
-      {burners.map(([dx, dz], index) => (
-        <group key={index} position={[geometry.position[0] + dx, topY + 0.006, geometry.position[2] + dz]}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[burnerR * 0.86, burnerR, 32]} />
-            <meshStandardMaterial color="#1e2124" roughness={0.4} metalness={0.6} transparent={transparent} opacity={opacity} />
+      {solidBoxes(brick, grid, 0).map((box) => (
+        <group key={box.position.join(":")} position={box.position}>
+          <mesh>
+            <boxGeometry args={box.scale} />
+            <meshBasicMaterial color={color} transparent opacity={0.16} depthWrite={false} />
           </mesh>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[burnerR * 0.7, 32]} />
-            <meshStandardMaterial color="#26292d" roughness={0.5} metalness={0.5} transparent={transparent} opacity={opacity} />
+          <mesh>
+            <boxGeometry args={box.scale} />
+            <meshBasicMaterial color={color} wireframe transparent opacity={0.85} depthWrite={false} />
           </mesh>
         </group>
       ))}
-      {isCurrent && !transparent && (
-        <mesh position={[geometry.position[0], topY + 0.03, geometry.position[2]]}>
-          <boxGeometry args={[size.w + 0.05, 0.012, size.h + 0.05]} />
-          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.18} />
-        </mesh>
-      )}
-      <Text position={[geometry.position[0], topY + 0.05, geometry.position[2] + size.h / 2 - 0.35]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#e6d7bd" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
-        {`Плита ${Math.round(size.w * 125)}×${Math.round(size.h * 125)}×${thicknessMm} мм${flush ? " · заподлицо" : ""}`}
-      </Text>
     </group>
   );
 }
 
-/**
- * Задвижка дымохода: чугунная рамка в шве над своим рядом + выдвижное полотно
- * с ручкой. damperOpen 0..1 — полотно выезжает за габарит вдоль длинной оси
- * следа. Клик по задвижке — открыть/закрыть (если передан onToggle).
- */
-export function ThreeDamper({ grid, brick, currentRow, opacity = 1, onToggle }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number; onToggle?: (id: string) => void }) {
-  const geometry = brickWorldGeometry(brick, grid);
+const MetalBox = ({ position, scale, color = "#353a3c" }: SceneBox & { color?: string }) => (
+  <mesh position={position} castShadow receiveShadow>
+    <boxGeometry args={scale} />
+    <meshStandardMaterial color={color} roughness={0.62} metalness={0.65} />
+  </mesh>
+);
+
+export const ThreeBrick = memo(function ThreeBrick({ brick, grid }: { brick: PlacedBrick; grid: GridSpec }) {
+  const box = solidBoxes(brick, grid, 0.025)[0];
+  if (!box) return null;
   const size = footprintSizeOf(brick);
-  const thicknessMm = brick.custom?.thicknessMm ?? 20;
-  const open = (brick.damperOpen ?? 0) >= 0.5;
-  const frameH = (thicknessMm / 65) * BRICK_LAYER_HEIGHT * 0.92;
-  const bladeH = frameH * 0.45;
-  const rowTopY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT + (BRICK_LAYER_HEIGHT * 0.92) / 2;
-  const frameY = rowTopY + frameH / 2 - 0.006; // рамка в шве, следующий ряд ляжет сверху
-  const isCurrent = brick.row === currentRow;
-  const transparent = opacity < 1;
-  const alongX = size.w >= size.h;
-  const long = alongX ? size.w : size.h;
-  // полотно чуть длиннее проёма (перекрывает раму) и выезжает на ~70% длины
-  const slide = open ? long * 0.7 : 0;
-  const bladeLong = long - 0.1;
-  const bladeShort = (alongX ? size.h : size.w) - 0.22;
-  const bladeOffset: [number, number] = alongX ? [slide, 0] : [0, slide];
-  const knobOffset = bladeLong / 2 + 0.08;
-  const mat = (color: string, metal = 0.5) => <meshStandardMaterial color={color} roughness={0.5} metalness={metal} transparent={transparent} opacity={opacity} />;
-  const handleClick = onToggle
-    ? (event: { stopPropagation: () => void; delta?: number }) => {
-        // после drag-вращения OrbitControls click тоже приходит — не переключаем
-        if ((event.delta ?? 0) > 2) return;
-        event.stopPropagation();
-        onToggle(brick.id);
-      }
-    : undefined;
-
-  return (
-    <group onClick={handleClick}>
-      {/* рамка: две щеки вдоль хода полотна + торец с дальней от ручки стороны */}
-      <mesh
-        position={alongX
-          ? [geometry.position[0], frameY, geometry.position[2] - (size.h - 0.15) / 2]
-          : [geometry.position[0] - (size.w - 0.15) / 2, frameY, geometry.position[2]]}
-        castShadow
-        receiveShadow
-      >
-        <boxGeometry args={alongX ? [size.w - 0.06, frameH, 0.09] : [0.09, frameH, size.h - 0.06]} />
-        {mat(COLORS.damper, 0.55)}
-      </mesh>
-      <mesh
-        position={alongX
-          ? [geometry.position[0], frameY, geometry.position[2] + (size.h - 0.15) / 2]
-          : [geometry.position[0] + (size.w - 0.15) / 2, frameY, geometry.position[2]]}
-        castShadow
-        receiveShadow
-      >
-        <boxGeometry args={alongX ? [size.w - 0.06, frameH, 0.09] : [0.09, frameH, size.h - 0.06]} />
-        {mat(COLORS.damper, 0.55)}
-      </mesh>
-      <mesh
-        position={alongX
-          ? [geometry.position[0] - (size.w - 0.15) / 2, frameY, geometry.position[2]]
-          : [geometry.position[0], frameY, geometry.position[2] - (size.h - 0.15) / 2]}
-        castShadow
-        receiveShadow
-      >
-        <boxGeometry args={alongX ? [0.09, frameH, size.h - 0.06] : [size.w - 0.06, frameH, 0.09]} />
-        {mat(COLORS.damper, 0.55)}
-      </mesh>
-      {/* полотно: в закрытом состоянии перекрывает проём, в открытом торчит из кладки */}
-      <mesh position={[geometry.position[0] + bladeOffset[0], frameY + frameH * 0.1, geometry.position[2] + bladeOffset[1]]} castShadow>
-        <boxGeometry args={alongX ? [bladeLong, bladeH, bladeShort] : [bladeShort, bladeH, bladeLong]} />
-        {mat("#3a4046", 0.62)}
-      </mesh>
-      {/* ручка на торце полотна */}
-      <mesh position={[
-        geometry.position[0] + bladeOffset[0] + (alongX ? knobOffset : 0),
-        frameY + frameH * 0.1,
-        geometry.position[2] + bladeOffset[1] + (alongX ? 0 : knobOffset)
-      ]}>
-        <boxGeometry args={alongX ? [0.16, 0.09, 0.09] : [0.09, 0.09, 0.16]} />
-        {mat("#15181a", 0.7)}
-      </mesh>
-      {isCurrent && !transparent && (
-        <mesh position={[geometry.position[0], frameY + frameH / 2 + 0.03, geometry.position[2]]}>
-          <boxGeometry args={[size.w + 0.05, 0.012, size.h + 0.05]} />
-          <meshBasicMaterial color={COLORS.sage} transparent opacity={0.18} />
-        </mesh>
-      )}
-      <Text position={[geometry.position[0], frameY + frameH / 2 + 0.06, geometry.position[2] + (alongX ? size.h / 2 + 0.14 : 0)]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.15} color={COLORS.sageDark} outlineWidth={0.01} outlineColor="#FFF7E8" anchorX="center" anchorY="middle" fillOpacity={opacity >= 0.95 ? 1 : 0.55}>
-        {`Задвижка ${Math.round((alongX ? size.w : size.h) * 125)}×${Math.round((alongX ? size.h : size.w) * 125)} мм · ${open ? "открыта" : "закрыта"}`}
-      </Text>
-    </group>
-  );
-}
-
-/**
- * Колосниковая решётка: чугунные прутья на посадке из полок (seatZMm считается
- * при установке автоподрезом, как у плиты). Размер — из custom-спеки;
- * старые колосники без неё — 3×2 ячейки заподлицо с верхом ряда.
- */
-export function ThreeGrate({ grid, brick, currentRow, opacity = 1, unit }: { grid: GridSpec; brick: PlacedBrick; currentRow: number; opacity?: number; unit: string }) {
-  const geometry = brickWorldGeometry(brick, grid);
-  const grateSize = footprintSizeOf(brick);
-  const thicknessMm = brick.custom?.thicknessMm ?? 22;
-  const seatMm = brick.custom?.seatZMm ?? 65 - thicknessMm;
-  // Grate should not inherit full brick mortar gaps; keep it almost flush with support cuts.
-  const grateScaleX = Math.max(0.1, grateSize.w - BRICK_GAP * 0.12);
-  const grateScaleZ = Math.max(0.1, grateSize.h - BRICK_GAP * 0.12);
-  const brickHeight = BRICK_LAYER_HEIGHT * 0.92;
-  const grateHeight = Math.max(0.05, (thicknessMm / 65) * brickHeight);
-  const rowBottomY = (brick.row - 0.5) * BRICK_LAYER_HEIGHT - brickHeight / 2;
-  const grateY = rowBottomY + (seatMm / 65) * brickHeight + grateHeight / 2 + 0.004;
-  const isCurrent = brick.row === currentRow;
-  const bars = 5;
-  const longX = grateScaleX >= grateScaleZ;
-  const span = longX ? grateScaleZ : grateScaleX;
-  const barSize = span / (bars * 1.7);
-  const gap = (span - barSize * bars) / Math.max(1, bars - 1);
-  const alongXCm = grateSize.w * 12.5;
-  const alongZCm = grateSize.h * 12.5;
-  const topLabelY = grateY + grateHeight / 2 + 0.035;
-  const labelOpacity = opacity >= 0.95 ? 1 : 0.55;
-  const lengthMm = Math.round((longX ? grateSize.w : grateSize.h) * 125);
-  const widthMm = Math.round((longX ? grateSize.h : grateSize.w) * 125);
-
+  if (brick.kind === "vent") {
+    // A flue is empty space. Its footprint is an editing aid, never a solid dark brick.
+    return null;
+  }
+  if (brick.kind === "cleanout") {
+    // Build in one local frame, then rotate the entire assembly, including door and handle.
+    const alongX = size.w >= size.h;
+    const width = Math.max(size.w, size.h) - 0.04;
+    const depth = Math.min(size.w, size.h) * 0.26;
+    const height = box.scale[1];
+    return (
+      <group position={box.position} rotation={[0, alongX ? 0 : Math.PI / 2, 0]}>
+        <MetalBox position={[0, 0, 0]} scale={[width, height, depth]} />
+        <MetalBox position={[0, 0, depth / 2]} scale={[width * 0.82, height * 0.8, 0.035]} color="#45494a" />
+        <MetalBox
+          position={[width * 0.26, 0, depth / 2 + 0.055]}
+          scale={[0.055, height * 0.23, 0.065]}
+          color="#222627"
+        />
+        {[-1, 1].map((s) => (
+          <MetalBox
+            key={s}
+            position={[-width * 0.4, s * height * 0.27, depth / 2 + 0.03]}
+            scale={[0.08, 0.12, 0.055]}
+          />
+        ))}
+      </group>
+    );
+  }
+  if (brick.kind === "plate") {
+    const r = Math.min(size.w, size.h) * 0.28;
+    return (
+      <group>
+        <MetalBox {...box} />
+        {plateBurnerCenters(size.w, size.h).map(([x, z]) => (
+          <group
+            key={`${x}:${z}`}
+            position={[
+              box.position[0] + (x - 0.5) * size.w,
+              box.position[1] + box.scale[1] / 2 + 0.004,
+              box.position[2] + (z - 0.5) * size.h
+            ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            {[0.45, 0.7, 1].map((fraction) => (
+              <mesh key={fraction}>
+                <ringGeometry args={[r * fraction - 0.015, r * fraction, 40]} />
+                <meshStandardMaterial color="#171b1c" roughness={0.65} metalness={0.65} />
+              </mesh>
+            ))}
+          </group>
+        ))}
+      </group>
+    );
+  }
+  if (brick.kind === "grate" || brick.kind === "damper") {
+    const alongX = size.w >= size.h;
+    const long = Math.max(size.w, size.h) - 0.04;
+    const short = Math.min(size.w, size.h) - 0.04;
+    const height = box.scale[1];
+    const open = brick.damperOpen ?? 0;
+    return (
+      <group position={box.position} rotation={[0, alongX ? 0 : Math.PI / 2, 0]}>
+        {[-1, 1].map((s) => (
+          <group key={s}>
+            <MetalBox position={[s * (long / 2 - 0.045), 0, 0]} scale={[0.09, height, short]} />
+            <MetalBox position={[0, 0, s * (short / 2 - 0.045)]} scale={[long, height, 0.09]} />
+          </group>
+        ))}
+        {brick.kind === "grate" ? (
+          [-3, -2, -1, 0, 1, 2, 3].map((bar) => (
+            <MetalBox
+              key={bar}
+              position={[0, 0, (bar * (short - 0.22)) / 7]}
+              scale={[long - 0.12, height * 0.85, (short - 0.22) / 12]}
+            />
+          ))
+        ) : (
+          <>
+            <MetalBox
+              position={[open * long * 0.7, 0, 0]}
+              scale={[long - 0.12, height * 0.35, short - 0.14]}
+              color="#45494a"
+            />
+            <MetalBox
+              position={[open * long * 0.7 + long / 2 + 0.12, 0, 0]}
+              scale={[0.3, 0.055, 0.09]}
+              color="#222627"
+            />
+          </>
+        )}
+      </group>
+    );
+  }
+  // Only used for a single prospective brick. The permanent model is instanced.
+  const outer = brickBounds(brick);
   return (
     <group>
-      {/* торцевые перемычки рамки — по коротким сторонам */}
-      {[-1, 1].map((s) => (
-        <mesh
-          key={`end-${s}`}
-          position={longX
-            ? [geometry.position[0] + s * (grateScaleX / 2 - 0.05), grateY, geometry.position[2]]
-            : [geometry.position[0], grateY, geometry.position[2] + s * (grateScaleZ / 2 - 0.05)]}
-          castShadow
-          receiveShadow
-        >
-          <boxGeometry args={longX ? [0.1, grateHeight, grateScaleZ] : [grateScaleX, grateHeight, 0.1]} />
-          <meshStandardMaterial color={COLORS.grate} roughness={0.58} metalness={0.42} transparent opacity={opacity} />
+      {solidBoxes(brick, grid).map((part) => (
+        <mesh key={part.position.join(":")} position={part.position} castShadow receiveShadow>
+          <boxGeometry args={part.scale} />
+          <meshStandardMaterial color={brickColor(brick)} roughness={0.93} />
         </mesh>
       ))}
-
-      {Array.from({ length: bars }).map((_, i) => {
-        const offset = -span / 2 + barSize / 2 + i * (barSize + gap);
-        const position: [number, number, number] = longX
-          ? [geometry.position[0], grateY, geometry.position[2] + offset]
-          : [geometry.position[0] + offset, grateY, geometry.position[2]];
-        const args: [number, number, number] = longX
-          ? [grateScaleX, grateHeight, Math.max(0.04, barSize)]
-          : [Math.max(0.04, barSize), grateHeight, grateScaleZ];
-        return <mesh key={i} position={position} castShadow receiveShadow><boxGeometry args={args} /><meshStandardMaterial color={COLORS.grate} roughness={0.58} metalness={0.42} transparent opacity={opacity} /></mesh>;
-      })}
-
-      {isCurrent && <mesh position={[geometry.position[0], topLabelY + 0.002, geometry.position[2]]}><boxGeometry args={[grateScaleX + 0.05, 0.012, grateScaleZ + 0.05]} /><meshBasicMaterial color={COLORS.sage} transparent opacity={0.16} /></mesh>}
-      <Text position={[geometry.position[0], topLabelY + 0.03, geometry.position[2]]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.16} color="#f4e3c4" anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{`РУ ${lengthMm}×${widthMm}×${thicknessMm} мм`}</Text>
-
-      <mesh position={[geometry.position[0], topLabelY, geometry.position[2] - grateScaleZ / 2 - 0.22]}>
-        <boxGeometry args={[grateScaleX, 0.012, 0.018]} />
-        <meshBasicMaterial color={COLORS.sageDark} transparent opacity={labelOpacity * 0.75} />
-      </mesh>
-      <Text position={[geometry.position[0], topLabelY + 0.012, geometry.position[2] - grateScaleZ / 2 - 0.32]} rotation={[-Math.PI / 2, 0, 0]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongXCm.toLocaleString("ru-RU")} {unit}</Text>
-      <mesh position={[geometry.position[0] - grateScaleX / 2 - 0.22, topLabelY, geometry.position[2]]}>
-        <boxGeometry args={[0.018, 0.012, grateScaleZ]} />
-        <meshBasicMaterial color={COLORS.sageDark} transparent opacity={labelOpacity * 0.75} />
-      </mesh>
-      <Text position={[geometry.position[0] - grateScaleX / 2 - 0.32, topLabelY + 0.012, geometry.position[2]]} rotation={[-Math.PI / 2, 0, Math.PI / 2]} fontSize={0.14} color={COLORS.sageDark} anchorX="center" anchorY="middle" fillOpacity={labelOpacity}>{alongZCm.toLocaleString("ru-RU")} {unit}</Text>
+      <group name={`brick-${outer.x1}-${outer.y1}`} />
     </group>
   );
-}
+});

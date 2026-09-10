@@ -39,6 +39,7 @@ function queryResult(getValue) {
     lean() {
       return Promise.resolve(getValue());
     },
+    // biome-ignore lint/suspicious/noThenProperty: the mock intentionally mirrors Mongoose's thenable query API.
     then(resolve, reject) {
       return Promise.resolve(getValue()).then(resolve, reject);
     },
@@ -54,7 +55,10 @@ function applyUpdate(target, update) {
     if (key.includes(".")) {
       const parts = key.split(".");
       const leaf = parts.pop();
-      const parent = parts.reduce((item, part) => (item[part] ??= {}), target);
+      const parent = parts.reduce((item, part) => {
+        item[part] ??= {};
+        return item[part];
+      }, target);
       parent[leaf] = value;
     } else target[key] = value;
   }
@@ -71,9 +75,16 @@ export const Project = {
     return Promise.resolve(stores.projects.filter((item) => matches(item, query)).length);
   },
   async create(value) {
-    if (stores.projects.some((item) => item.slug === value.slug)) throw Object.assign(new Error("duplicate"), { code: 11000 });
+    if (stores.projects.some((item) => item.slug === value.slug))
+      throw Object.assign(new Error("duplicate"), { code: 11000 });
     const now = new Date();
-    const item = { _id: new mongoose.Types.ObjectId(), showcase: {}, ...structuredClone(value), createdAt: now, updatedAt: now };
+    const item = {
+      _id: new mongoose.Types.ObjectId(),
+      showcase: {},
+      ...structuredClone(value),
+      createdAt: now,
+      updatedAt: now
+    };
     stores.projects.push(item);
     return document(item);
   },
@@ -99,7 +110,14 @@ export const Draft = {
     if (!item && stores.drafts.some((candidate) => candidate.ownerLogin === update.ownerLogin)) {
       throw Object.assign(new Error("duplicate"), { code: 11000 });
     }
-    if (!update.parameters || !Number.isInteger(update.rowCount) || update.rowCount < 1 || update.rowCount > 200 || !Number.isInteger(update.currentRow) || update.currentRow < 1) {
+    if (
+      !update.parameters ||
+      !Number.isInteger(update.rowCount) ||
+      update.rowCount < 1 ||
+      update.rowCount > 200 ||
+      !Number.isInteger(update.currentRow) ||
+      update.currentRow < 1
+    ) {
       throw new Error("validation failed");
     }
     if (!item) {

@@ -37,10 +37,12 @@ export function PrintOrder({
           .print-order .row-card { break-inside: avoid; }
         }
       `}</style>
-      <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>{t("appTitle")} — {t("printOrderTitle")}</h1>
+      <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>
+        {t("appTitle")} — {t("printOrderTitle")}
+      </h1>
       <p style={{ fontSize: 12, margin: "0 0 12px", color: "#555" }}>
-        {t("projectFootprint")}: {parameters.foundationWidth}×{parameters.foundationLength} {unit} ·{" "}
-        {rowCount} {t("projectRows")} · {t("totalPlaced")}: {materials.total}
+        {t("projectFootprint")}: {parameters.foundationWidth}×{parameters.foundationLength} {unit} · {rowCount}{" "}
+        {t("projectRows")} · {t("totalPlaced")}: {materials.total}
       </p>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -77,7 +79,9 @@ export function PrintOrder({
           ].map(([label, value]) => (
             <tr key={String(label)}>
               <td style={{ border: "1px solid #bbb", padding: "3px 10px" }}>{label}</td>
-              <td style={{ border: "1px solid #bbb", padding: "3px 10px", textAlign: "right", fontWeight: 700 }}>{value}</td>
+              <td style={{ border: "1px solid #bbb", padding: "3px 10px", textAlign: "right", fontWeight: 700 }}>
+                {value}
+              </td>
             </tr>
           ))}
         </tbody>

@@ -1,8 +1,13 @@
 import type { BrickFootprint, PlacedBrick } from "../types";
 import { brickBounds, brickBoxes, notchBox, type BrickBox } from "./bounds";
 
-function boxesIntersect(a: BrickBox, b: BrickBox): boolean {
-  return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+export const GEOMETRY_EPS = 1e-6;
+
+export function boxesIntersect(a: BrickBox, b: BrickBox): boolean {
+  return (
+    Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) > GEOMETRY_EPS &&
+    Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) > GEOMETRY_EPS
+  );
 }
 
 /**
@@ -49,6 +54,12 @@ const TRIM_SEAT_MM = BRICK_MM / 2;
 
 export type BrickSolid = { box: BrickBox; z1: number; z2: number };
 
+/** A through-cut stays empty even if an older document also stores a shallow depth. */
+export function notchDepthMm(brick: BrickFootprint): number {
+  if (brick.custom?.ledge === false) return BRICK_MM;
+  return Math.min(BRICK_MM, Math.max(0, brick.custom?.notchDepthMm ?? BRICK_MM / 2));
+}
+
 /**
  * Занятые объёмы элемента: плановые боксы + вертикальный интервал в мм
  * ОТ НИЗА СВОЕГО РЯДА. Это и есть «честная» высота: колосник — только верхние
@@ -85,13 +96,12 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
 
   const notch = notchBox(brick);
   if (!notch) return [{ box: bounds, z1: 0, z2: BRICK_MM }];
-  const depthMm = brick.custom?.notchDepthMm ?? (brick.custom?.ledge === false ? BRICK_MM : BRICK_MM / 2);
+  const depthMm = notchDepthMm(brick);
   const solids: BrickSolid[] = brickBoxes(brick).map((box) => ({ box, z1: 0, z2: BRICK_MM }));
   const ledgeTop = Math.max(0, BRICK_MM - depthMm);
   if (ledgeTop > 0) solids.push({ box: notch, z1: 0, z2: ledgeTop });
   return solids;
 }
-
 
 export function overlaps3D(a: PlacedBrick, b: PlacedBrick): boolean {
   if (isOverlayBrick(a) !== isOverlayBrick(b)) return false;
@@ -101,8 +111,7 @@ export function overlaps3D(a: PlacedBrick, b: PlacedBrick): boolean {
     brickSolids(b).some(
       (sb) =>
         boxesIntersect(sa.box, sb.box) &&
-        aBase + sa.z1 < bBase + sb.z2 &&
-        aBase + sa.z2 > bBase + sb.z1
+        Math.min(aBase + sa.z2, bBase + sb.z2) - Math.max(aBase + sa.z1, bBase + sb.z1) > GEOMETRY_EPS
     )
   );
 }

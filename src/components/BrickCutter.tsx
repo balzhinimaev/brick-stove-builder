@@ -1,9 +1,7 @@
-import { Suspense, lazy, useMemo, useState } from "react";
+import { Suspense, lazy, useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { COLORS } from "../theme/colors";
 import type { Translate } from "../i18n";
 import type { CustomBrickSpec } from "../domain/types";
-import { notchedShape } from "../domain/outline";
 
 // Three.js тяжёлый — 3D-превью резака грузим лениво, как и основную сцену.
 const CutterPreview3D = lazy(() => import("./three/CutterPreview3D"));
@@ -14,13 +12,24 @@ const BLANK_W = 120;
 const BLANK_H_MM = 65;
 const MM_PER_CELL = 125;
 const STEP_MM = 5;
-const SCALE = 1.7; // px на мм
-const RULER = 30;
-const PAD = 14;
 
 type Corner = "none" | "nw" | "ne" | "sw" | "se";
 
-export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spec: CustomBrickSpec) => void; onClose: () => void }) {
+export function BrickCutter({
+  t,
+  onSave,
+  onClose
+}: {
+  t: Translate;
+  onSave: (spec: CustomBrickSpec) => void;
+  onClose: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = dialog.current;
+    element?.showModal();
+    return () => element?.close();
+  }, []);
   const [lengthMm, setLengthMm] = useState(BLANK_L);
   const [widthMm, setWidthMm] = useState(BLANK_W);
   const [corner, setCorner] = useState<Corner>("ne");
@@ -29,7 +38,6 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
   /** Глубина выреза по высоте кирпича (65 мм = насквозь), полка = остаток. */
   const [notchDepthMm, setNotchDepthMm] = useState(35);
   const [name, setName] = useState("");
-  const [view, setView] = useState<"3d" | "2d">("3d");
   const ledge = notchDepthMm < BLANK_H_MM;
 
   const clampedNotchLen = Math.min(notchLenMm, lengthMm - STEP_MM);
@@ -50,7 +58,9 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
       };
     }
     return {
-      name: name.trim() || `${lengthMm}×${widthMm}${corner !== "none" ? ` −${clampedNotchLen}×${clampedNotchWid}×${notchDepthMm}` : ""}`,
+      name:
+        name.trim() ||
+        `${lengthMm}×${widthMm}${corner !== "none" ? ` −${clampedNotchLen}×${clampedNotchWid}×${notchDepthMm}` : ""}`,
       w,
       h,
       notch,
@@ -59,150 +69,80 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
     };
   }, [lengthMm, widthMm, corner, clampedNotchLen, clampedNotchWid, ledge, notchDepthMm, name]);
 
-  const svgW = RULER + BLANK_L * SCALE + PAD;
-  const svgH = RULER + BLANK_W * SCALE + PAD;
-  const mx = (mm: number) => RULER + mm * SCALE;
-  const my = (mm: number) => RULER + mm * SCALE;
-
-  // контур результата в мм (для L-формы) — общий polygon-builder (domain/outline)
-  const bodyPath = useMemo(() => {
-    const L = lengthMm;
-    const W = widthMm;
-    const west = corner === "nw" || corner === "sw";
-    const north = corner === "nw" || corner === "ne";
-    const notchMm = corner === "none"
-      ? null
-      : {
-          x1: west ? 0 : L - clampedNotchLen,
-          x2: west ? clampedNotchLen : L,
-          y1: north ? 0 : W - clampedNotchWid,
-          y2: north ? clampedNotchWid : W
-        };
-    const shape = notchedShape({ x1: 0, y1: 0, x2: L, y2: W }, notchMm);
-    const points: Array<[number, number]> = shape.kind === "polygon"
-      ? shape.points
-      : [[shape.rect.x1, shape.rect.y1], [shape.rect.x2, shape.rect.y1], [shape.rect.x2, shape.rect.y2], [shape.rect.x1, shape.rect.y2]];
-    return `M${points.map(([x, y]) => `${mx(x)} ${my(y)}`).join(" L")} Z`;
-  }, [lengthMm, widthMm, corner, clampedNotchLen, clampedNotchWid]);
-
-  const numberInput = (value: number, set: (v: number) => void, min: number, max: number) => (
+  const numberInput = (id: string, value: number, set: (v: number) => void, min: number, max: number) => (
     <div className="flex items-center gap-2">
-      <input type="range" min={min} max={max} step={STEP_MM} value={value} onChange={(e) => set(Number(e.target.value))} className="h-2 flex-1 accent-[#C1440E]" />
-      <span className="w-16 shrink-0 rounded-lg bg-white px-2 py-1 text-right text-sm font-black">{value} <span className="text-[10px] font-bold text-[#3D2B1F]/50">мм</span></span>
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={STEP_MM}
+        value={value}
+        onChange={(e) => set(Number(e.target.value))}
+        className="h-2 flex-1 accent-[#C1440E]"
+      />
+      <span className="w-16 shrink-0 rounded-lg bg-white px-2 py-1 text-right text-sm font-black">
+        {value} <span className="text-[10px] font-bold text-[#3D2B1F]/50">мм</span>
+      </span>
     </div>
   );
 
   return createPortal(
-    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#3D2B1F]/45 p-3" onClick={onClose}>
-      <div className="max-h-[92dvh] w-full max-w-[620px] overflow-y-auto rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <dialog
+      ref={dialog}
+      onCancel={onClose}
+      aria-label={t("cutterTitle")}
+      className="fixed inset-0 m-0 h-[100dvh] max-h-none w-screen max-w-none items-center justify-center border-0 bg-transparent p-3 backdrop:bg-[#3D2B1F]/45 [&[open]]:flex"
+    >
+      <div className="max-h-[92dvh] w-full max-w-[620px] overflow-y-auto rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] p-4 shadow-2xl">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-xl font-black">✂ {t("cutterTitle")}</h3>
-          <button onClick={onClose} aria-label={t("cancel")} className="grid h-10 w-10 place-items-center rounded-2xl bg-[#3D2B1F]/10 text-lg font-black">✕</button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("cancel")}
+            className="grid h-10 w-10 place-items-center rounded-2xl bg-[#3D2B1F]/10 text-lg font-black"
+          >
+            ✕
+          </button>
         </div>
         <p className="mb-2 text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("cutterHint")}</p>
 
-        <div className="mb-2 grid grid-cols-2 gap-1.5">
-          <button onClick={() => setView("3d")} aria-pressed={view === "3d"} className={`min-h-9 rounded-2xl text-xs font-black ${view === "3d" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>{t("view3d")}</button>
-          <button onClick={() => setView("2d")} aria-pressed={view === "2d"} className={`min-h-9 rounded-2xl text-xs font-black ${view === "2d" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>{t("cutterBlueprint")}</button>
-        </div>
-
-        {view === "3d" && (
-          <div className="h-[280px] overflow-hidden rounded-[18px] bg-[#F5E6C8]">
-            <Suspense fallback={<div className="grid h-full place-items-center text-sm font-black text-[#3D2B1F]/55">{t("view3d")}…</div>}>
-              <CutterPreview3D spec={spec} />
-            </Suspense>
-          </div>
-        )}
-
-        <div className={`overflow-x-auto rounded-[18px] bg-[#F5E6C8] p-2 ${view === "3d" ? "hidden" : ""}`}>
-          <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
-            <defs>
-              {/* штриховка отпиливаемых зон */}
-              <pattern id="cutHatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
-                <line x1="0" y1="0" x2="0" y2="7" stroke="#9b2c2c" strokeWidth="1.4" opacity="0.5" />
-              </pattern>
-            </defs>
-            {/* линейки: см-подписи, деления 10 и 5 мм */}
-            {Array.from({ length: BLANK_L / STEP_MM + 1 }, (_, i) => i * STEP_MM).map((mm) => {
-              const big = mm % 50 === 0;
-              const mid = mm % 10 === 0;
-              return (
-                <g key={`rx-${mm}`}>
-                  <line x1={mx(mm)} y1={RULER - (big ? 12 : mid ? 8 : 5)} x2={mx(mm)} y2={RULER - 1} stroke={COLORS.charcoal} strokeWidth={big ? 1.4 : 0.7} opacity={big ? 0.85 : 0.45} />
-                  {big && <text x={mx(mm)} y={RULER - 15} textAnchor="middle" fontSize="9" fontWeight="800" fill={COLORS.charcoal}>{mm / 10}{mm === 0 ? " см" : ""}</text>}
-                </g>
-              );
-            })}
-            {Array.from({ length: BLANK_W / STEP_MM + 1 }, (_, i) => i * STEP_MM).map((mm) => {
-              const big = mm % 50 === 0;
-              const mid = mm % 10 === 0;
-              return (
-                <g key={`ry-${mm}`}>
-                  <line x1={RULER - (big ? 12 : mid ? 8 : 5)} y1={my(mm)} x2={RULER - 1} y2={my(mm)} stroke={COLORS.charcoal} strokeWidth={big ? 1.4 : 0.7} opacity={big ? 0.85 : 0.45} />
-                  {big && mm > 0 && <text x={RULER - 15} y={my(mm) + 3} textAnchor="end" fontSize="9" fontWeight="800" fill={COLORS.charcoal}>{mm / 10}</text>}
-                </g>
-              );
-            })}
-
-            {/* заготовка 250×120 пунктиром */}
-            <rect x={mx(0)} y={my(0)} width={BLANK_L * SCALE} height={BLANK_W * SCALE} fill="#fff" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="5 4" opacity="0.5" />
-            {/* отпиливаемые зоны — штриховкой */}
-            {lengthMm < BLANK_L && <rect x={mx(lengthMm)} y={my(0)} width={(BLANK_L - lengthMm) * SCALE} height={BLANK_W * SCALE} fill="url(#cutHatch)" />}
-            {widthMm < BLANK_W && <rect x={mx(0)} y={my(widthMm)} width={lengthMm * SCALE} height={(BLANK_W - widthMm) * SCALE} fill="url(#cutHatch)" />}
-            {/* результат */}
-            <path d={bodyPath} fill={COLORS.customBrick} stroke={COLORS.charcoal} strokeWidth="2" strokeLinejoin="round" opacity="0.92" />
-            {/* вырез угла: штриховка, полка и РАЗМЕРНЫЕ ЛИНИИ с текущими мм */}
-            {corner !== "none" ? (() => {
-              const west = corner === "nw" || corner === "sw";
-              const north = corner === "nw" || corner === "ne";
-              const nx1 = west ? 0 : lengthMm - clampedNotchLen;
-              const nx2 = west ? clampedNotchLen : lengthMm;
-              const ny1 = north ? 0 : widthMm - clampedNotchWid;
-              const ny2 = north ? clampedNotchWid : widthMm;
-              // размерная линия «по длине» — с внутренней стороны выреза
-              const dimY = north ? my(ny2) + 11 : my(ny1) - 11;
-              // размерная линия «по ширине» — сбоку от выреза, внутрь кирпича
-              const dimX = west ? mx(nx2) + 11 : mx(nx1) - 11;
-              const dim = "#7a1f1f";
-              return (
-                <g>
-                  <rect x={mx(nx1)} y={my(ny1)} width={(nx2 - nx1) * SCALE} height={(ny2 - ny1) * SCALE} fill="url(#cutHatch)" />
-                  {ledge && <rect x={mx(nx1) + 2} y={my(ny1) + 2} width={(nx2 - nx1) * SCALE - 4} height={(ny2 - ny1) * SCALE - 4} fill={COLORS.cutBrick} opacity="0.35" stroke={COLORS.charcoal} strokeWidth="1" strokeDasharray="3 3" />}
-                  {/* по длине */}
-                  <line x1={mx(nx1)} y1={dimY} x2={mx(nx2)} y2={dimY} stroke={dim} strokeWidth="1.4" />
-                  <line x1={mx(nx1)} y1={dimY - 4} x2={mx(nx1)} y2={dimY + 4} stroke={dim} strokeWidth="1.4" />
-                  <line x1={mx(nx2)} y1={dimY - 4} x2={mx(nx2)} y2={dimY + 4} stroke={dim} strokeWidth="1.4" />
-                  <text x={(mx(nx1) + mx(nx2)) / 2} y={dimY + (north ? 12 : -6)} textAnchor="middle" fontSize="10" fontWeight="900" fill={dim}>{clampedNotchLen} мм</text>
-                  {/* по ширине */}
-                  <line x1={dimX} y1={my(ny1)} x2={dimX} y2={my(ny2)} stroke={dim} strokeWidth="1.4" />
-                  <line x1={dimX - 4} y1={my(ny1)} x2={dimX + 4} y2={my(ny1)} stroke={dim} strokeWidth="1.4" />
-                  <line x1={dimX - 4} y1={my(ny2)} x2={dimX + 4} y2={my(ny2)} stroke={dim} strokeWidth="1.4" />
-                  <text x={dimX + (west ? 6 : -6)} y={(my(ny1) + my(ny2)) / 2 + 3} textAnchor={west ? "start" : "end"} fontSize="10" fontWeight="900" fill={dim}>{clampedNotchWid} мм</text>
-                  {/* маркер выбранного угла */}
-                  <circle cx={mx(west ? 0 : lengthMm)} cy={my(north ? 0 : widthMm)} r="5" fill={dim} opacity="0.85" />
-                </g>
-              );
-            })() : null}
-            {/* размеры результата */}
-            <text x={mx(lengthMm / 2)} y={my(widthMm) + 12} textAnchor="middle" fontSize="11" fontWeight="900" fill={COLORS.charcoal}>{lengthMm} мм</text>
-          </svg>
+        <div className="h-[280px] overflow-hidden rounded-[18px] bg-[#F5E6C8]">
+          <Suspense fallback={<div className="grid h-full place-items-center">{t("loadingScene")}</div>}>
+            <CutterPreview3D spec={spec} />
+          </Suspense>
         </div>
 
         <div className="mt-3 space-y-2.5">
-          <label className="block">
+          <label htmlFor="cutter-length" className="block">
             <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterLength")}</span>
-            {numberInput(lengthMm, setLengthMm, 30, BLANK_L)}
+            {numberInput("cutter-length", lengthMm, setLengthMm, 30, BLANK_L)}
           </label>
-          <label className="block">
+          <label htmlFor="cutter-width" className="block">
             <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterWidth")}</span>
-            {numberInput(widthMm, setWidthMm, 30, BLANK_W)}
+            {numberInput("cutter-width", widthMm, setWidthMm, 30, BLANK_W)}
           </label>
 
           <div>
             <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterCorner")}</span>
             <div className="mt-1 grid grid-cols-5 gap-1.5">
-              {([["none", "▭"], ["nw", "◰"], ["ne", "◳"], ["sw", "◱"], ["se", "◲"]] as Array<[Corner, string]>).map(([key, glyph]) => (
-                <button key={key} onClick={() => setCorner(key)} aria-pressed={corner === key} className={`min-h-10 rounded-2xl text-sm font-black ${corner === key ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}>
+              {(
+                [
+                  ["none", "▭"],
+                  ["nw", "◰"],
+                  ["ne", "◳"],
+                  ["sw", "◱"],
+                  ["se", "◲"]
+                ] as Array<[Corner, string]>
+              ).map(([key, glyph]) => (
+                <button
+                  type="button"
+                  key={key}
+                  onClick={() => setCorner(key)}
+                  aria-pressed={corner === key}
+                  className={`min-h-10 rounded-2xl text-sm font-black ${corner === key ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}
+                >
                   {glyph}
                 </button>
               ))}
@@ -211,17 +151,21 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
 
           {corner !== "none" && (
             <>
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterNotchLen")}</span>
-                {numberInput(clampedNotchLen, setNotchLenMm, STEP_MM * 2, lengthMm - STEP_MM)}
+              <label htmlFor="cutter-notch-length" className="block">
+                <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">
+                  {t("cutterNotchLen")}
+                </span>
+                {numberInput("cutter-notch-length", clampedNotchLen, setNotchLenMm, STEP_MM * 2, lengthMm - STEP_MM)}
               </label>
-              <label className="block">
-                <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterNotchWid")}</span>
-                {numberInput(clampedNotchWid, setNotchWidMm, STEP_MM * 2, widthMm - STEP_MM)}
+              <label htmlFor="cutter-notch-width" className="block">
+                <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">
+                  {t("cutterNotchWid")}
+                </span>
+                {numberInput("cutter-notch-width", clampedNotchWid, setNotchWidMm, STEP_MM * 2, widthMm - STEP_MM)}
               </label>
-              <label className="block">
+              <label htmlFor="cutter-depth" className="block">
                 <span className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("cutterDepth")}</span>
-                {numberInput(notchDepthMm, setNotchDepthMm, STEP_MM, BLANK_H_MM)}
+                {numberInput("cutter-depth", notchDepthMm, setNotchDepthMm, STEP_MM, BLANK_H_MM)}
                 <span className="text-[11px] font-bold text-[#3D2B1F]/55">
                   {ledge ? `${t("cutterLedgeLeft")}: ${BLANK_H_MM - notchDepthMm} мм` : t("cutterThrough")}
                 </span>
@@ -229,15 +173,35 @@ export function BrickCutter({ t, onSave, onClose }: { t: Translate; onSave: (spe
             </>
           )}
 
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("cutterName")} className="min-h-11 w-full rounded-[14px] border-2 border-[#3D2B1F]/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#C1440E]/60" />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("cutterName")}
+            className="min-h-11 w-full rounded-[14px] border-2 border-[#3D2B1F]/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#C1440E]/60"
+          />
 
           <div className="flex gap-2 pt-1">
-            <button onClick={() => { onSave(spec); onClose(); }} className="min-h-12 flex-1 rounded-[18px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8]">{t("cutterSave")}</button>
-            <button onClick={onClose} className="min-h-12 rounded-[18px] bg-[#3D2B1F]/10 px-4 text-sm font-black">{t("cancel")}</button>
+            <button
+              type="button"
+              onClick={() => {
+                onSave(spec);
+                onClose();
+              }}
+              className="min-h-12 flex-1 rounded-[18px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8]"
+            >
+              {t("cutterSave")}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-12 rounded-[18px] bg-[#3D2B1F]/10 px-4 text-sm font-black"
+            >
+              {t("cancel")}
+            </button>
           </div>
         </div>
       </div>
-    </div>,
+    </dialog>,
     document.body
   );
 }

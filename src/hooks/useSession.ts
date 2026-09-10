@@ -37,9 +37,10 @@ export function useSession(t: Translate) {
       return;
     }
 
-    const result = authMode === "register"
-      ? await registerRequest(normalized, authPassword)
-      : await loginRequest(normalized, authPassword);
+    const result =
+      authMode === "register"
+        ? await registerRequest(normalized, authPassword)
+        : await loginRequest(normalized, authPassword);
 
     if (!result.ok) {
       window.alert(authMode === "register" && result.status === 409 ? t("authTaken") : t("authBadCredentials"));

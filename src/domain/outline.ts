@@ -6,9 +6,7 @@
 
 export type OutlineRect = { x1: number; y1: number; x2: number; y2: number };
 
-export type NotchedShape =
-  | { kind: "rect"; rect: OutlineRect }
-  | { kind: "polygon"; points: Array<[number, number]> };
+export type NotchedShape = { kind: "rect"; rect: OutlineRect } | { kind: "polygon"; points: Array<[number, number]> };
 
 const DEFAULT_EPS = 1e-6;
 
@@ -48,10 +46,38 @@ export function notchedShape(bounds: OutlineRect, notch: OutlineRect | null, eps
 
   const points: Array<[number, number]> = west
     ? north
-      ? [[notch.x2, bounds.y1], [bounds.x2, bounds.y1], [bounds.x2, bounds.y2], [bounds.x1, bounds.y2], [bounds.x1, notch.y2], [notch.x2, notch.y2]]
-      : [[bounds.x1, bounds.y1], [bounds.x2, bounds.y1], [bounds.x2, bounds.y2], [notch.x2, bounds.y2], [notch.x2, notch.y1], [bounds.x1, notch.y1]]
+      ? [
+          [notch.x2, bounds.y1],
+          [bounds.x2, bounds.y1],
+          [bounds.x2, bounds.y2],
+          [bounds.x1, bounds.y2],
+          [bounds.x1, notch.y2],
+          [notch.x2, notch.y2]
+        ]
+      : [
+          [bounds.x1, bounds.y1],
+          [bounds.x2, bounds.y1],
+          [bounds.x2, bounds.y2],
+          [notch.x2, bounds.y2],
+          [notch.x2, notch.y1],
+          [bounds.x1, notch.y1]
+        ]
     : north
-      ? [[bounds.x1, bounds.y1], [notch.x1, bounds.y1], [notch.x1, notch.y2], [bounds.x2, notch.y2], [bounds.x2, bounds.y2], [bounds.x1, bounds.y2]]
-      : [[bounds.x1, bounds.y1], [bounds.x2, bounds.y1], [bounds.x2, notch.y1], [notch.x1, notch.y1], [notch.x1, bounds.y2], [bounds.x1, bounds.y2]];
+      ? [
+          [bounds.x1, bounds.y1],
+          [notch.x1, bounds.y1],
+          [notch.x1, notch.y2],
+          [bounds.x2, notch.y2],
+          [bounds.x2, bounds.y2],
+          [bounds.x1, bounds.y2]
+        ]
+      : [
+          [bounds.x1, bounds.y1],
+          [bounds.x2, bounds.y1],
+          [bounds.x2, notch.y1],
+          [notch.x1, notch.y1],
+          [notch.x1, bounds.y2],
+          [bounds.x1, bounds.y2]
+        ];
   return { kind: "polygon", points };
 }

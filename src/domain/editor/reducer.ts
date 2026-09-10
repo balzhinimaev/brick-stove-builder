@@ -1,13 +1,16 @@
-import { DEFAULT_CAMERA } from "../constants";
-import { cloneRows, gridFromParameters, overlaps3D, placeBricksInRows, pruneRowsToGrid, removeBrickAt } from "../geometry";
+import {
+  cloneRows,
+  gridFromParameters,
+  overlaps3D,
+  placeBricksInRows,
+  pruneRowsToGrid,
+  removeBrickAt
+} from "../geometry";
 import { PARAM_BOUNDS, clamp } from "../parameters";
 import type { PlacedBrick } from "../types";
 import { damperSpecFromMm, doorSpecFromMm, grateSpecFromMm, plateSpecFromMm } from "./specs";
 import { initialEditorState } from "./state";
 import type { EditorAction, EditorState } from "./types";
-
-const CAMERA_ZOOM_MIN = 0.65;
-const CAMERA_ZOOM_MAX = 1.55;
 
 function isLocked(state: EditorState, row = state.currentRow): boolean {
   return state.lockedRows.includes(row);
@@ -34,7 +37,10 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "pickCustomBrick":
       return { ...state, activeTool: "custom", customBrick: action.spec };
     case "setPlateSize":
-      return { ...state, plateSpec: plateSpecFromMm(action.lengthMm, action.widthMm, action.thicknessMm, action.flush) };
+      return {
+        ...state,
+        plateSpec: plateSpecFromMm(action.lengthMm, action.widthMm, action.thicknessMm, action.flush)
+      };
     case "setDoorSize":
       return { ...state, doorSpec: doorSpecFromMm(action.widthMm, action.heightMm) };
     case "setDamperSize":
@@ -53,8 +59,6 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       );
       return { ...state, rows: { ...state.rows, [Number(key)]: next } };
     }
-    case "setViewMode":
-      return { ...state, viewMode: action.mode };
 
     case "updateParameter": {
       const bounds = PARAM_BOUNDS[action.key];
@@ -76,10 +80,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         rowCount: action.project.rowCount,
         currentRow: 1,
         lockedRows: [...action.project.lockedRows],
-        viewMode: "3d",
         activeTool: "standard",
-        orientation: "h",
-        camera: DEFAULT_CAMERA
+        orientation: "h"
       };
 
     case "loadDraft":
@@ -125,8 +127,12 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       }
       // Компактация опускает верхнюю кладку на ряд: если она въезжает в объём
       // элемента снизу (дверца, тянущаяся через ряды), удаление отклоняется.
-      const shifted = Object.values(rows).flat().filter((brick) => brick.row >= deleted);
-      const below = Object.values(rows).flat().filter((brick) => brick.row < deleted);
+      const shifted = Object.values(rows)
+        .flat()
+        .filter((brick) => brick.row >= deleted);
+      const below = Object.values(rows)
+        .flat()
+        .filter((brick) => brick.row < deleted);
       if (shifted.some((a) => below.some((b) => overlaps3D(a, b)))) return state;
       const rowCount = state.rowCount - 1;
       return {
@@ -134,9 +140,7 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         rows,
         rowCount,
         currentRow: Math.min(deleted, rowCount),
-        lockedRows: state.lockedRows
-          .filter((row) => row !== deleted)
-          .map((row) => (row > deleted ? row - 1 : row))
+        lockedRows: state.lockedRows.filter((row) => row !== deleted).map((row) => (row > deleted ? row - 1 : row))
       };
     }
 
@@ -144,7 +148,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       if (state.currentRow <= 1 || isLocked(state)) return state;
       const target = state.rows[state.currentRow] ?? [];
       // Плиту, задвижку и колосник, как и везде, молча не стираем — сначала ластик.
-      if (target.some((brick) => brick.kind === "plate" || brick.kind === "damper" || brick.kind === "grate")) return state;
+      if (target.some((brick) => brick.kind === "plate" || brick.kind === "damper" || brick.kind === "grate"))
+        return state;
       if (!action.bricks.length) return target.length ? withRow(state, []) : state;
       // Копия проходит те же ворота, что и ручное размещение: дверца из
       // нижнего ряда, тянущаяся в текущий, делает копирование невозможным.
@@ -167,15 +172,6 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "unlockRow":
       if (!isLocked(state)) return state;
       return { ...state, lockedRows: state.lockedRows.filter((row) => row !== state.currentRow) };
-
-    case "cameraZoom":
-      return { ...state, camera: { ...state.camera, zoom: clamp(Number((state.camera.zoom + action.delta).toFixed(2)), CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX) } };
-    case "cameraRotate":
-      return { ...state, camera: { ...state.camera, angle: (state.camera.angle + action.delta + 360) % 360 } };
-    case "cameraPan":
-      return { ...state, camera: { ...state.camera, offsetX: state.camera.offsetX + action.dx, offsetY: state.camera.offsetY + action.dy } };
-    case "cameraReset":
-      return { ...state, camera: DEFAULT_CAMERA };
 
     default:
       return state;

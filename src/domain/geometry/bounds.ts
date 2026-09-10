@@ -1,4 +1,4 @@
-import { BRICK_GAP, BRICK_LAYER_HEIGHT, CELL_CM, MIN_GRID_COLS, MIN_GRID_ROWS } from "../constants";
+import { BRICK_GAP, BRICK_BODY_HEIGHT, BRICK_LAYER_HEIGHT, CELL_CM, MIN_GRID_COLS, MIN_GRID_ROWS } from "../constants";
 import type { BrickFootprint, GridSpec, NotchCorner, Orientation, Parameters, PlacedBrick } from "../types";
 
 const EPS = 1e-6;
@@ -135,8 +135,14 @@ export function brickBoxes(brick: BrickFootprint): BrickBox[] {
 
   // паз во всю грань — остаётся один бокс; вырез во весь габарит
   // (автоподрез под плиту) — тело пустое, остаётся только полка
-  if (fullY) return [west ? { x1: notch.x2, y1: b.y1, x2: b.x2, y2: b.y2 } : { x1: b.x1, y1: b.y1, x2: notch.x1, y2: b.y2 }].filter(hasArea);
-  if (fullX) return [north ? { x1: b.x1, y1: notch.y2, x2: b.x2, y2: b.y2 } : { x1: b.x1, y1: b.y1, x2: b.x2, y2: notch.y1 }].filter(hasArea);
+  if (fullY)
+    return [
+      west ? { x1: notch.x2, y1: b.y1, x2: b.x2, y2: b.y2 } : { x1: b.x1, y1: b.y1, x2: notch.x1, y2: b.y2 }
+    ].filter(hasArea);
+  if (fullX)
+    return [
+      north ? { x1: b.x1, y1: notch.y2, x2: b.x2, y2: b.y2 } : { x1: b.x1, y1: b.y1, x2: b.x2, y2: notch.y1 }
+    ].filter(hasArea);
 
   // угловой вырез — Г из двух боксов
   return [
@@ -163,21 +169,20 @@ export type BrickWorldGeometry = {
 export function boxWorldGeometry(box: BrickBox, row: number, grid: GridSpec): BrickWorldGeometry {
   const center = cellToWorld((box.x1 + box.x2) / 2, (box.y1 + box.y2) / 2, grid);
   return {
-    position: [center.x, (row - 0.5) * BRICK_LAYER_HEIGHT, center.z],
-    scale: [
-      Math.max(0.08, box.x2 - box.x1 - BRICK_GAP),
-      BRICK_LAYER_HEIGHT * 0.92,
-      Math.max(0.08, box.y2 - box.y1 - BRICK_GAP)
-    ]
+    position: [center.x, (row - 1) * BRICK_LAYER_HEIGHT + BRICK_BODY_HEIGHT / 2, center.z],
+    scale: [Math.max(0.08, box.x2 - box.x1 - BRICK_GAP), BRICK_BODY_HEIGHT, Math.max(0.08, box.y2 - box.y1 - BRICK_GAP)]
   };
 }
 
-export function brickWorldGeometry(brick: Pick<PlacedBrick, "x" | "y" | "row" | "kind" | "orientation" | "custom">, grid: GridSpec): BrickWorldGeometry {
+export function brickWorldGeometry(
+  brick: Pick<PlacedBrick, "x" | "y" | "row" | "kind" | "orientation" | "custom">,
+  grid: GridSpec
+): BrickWorldGeometry {
   const size = footprintSizeOf(brick);
   const center = cellToWorld(brick.x + size.w / 2, brick.y + size.h / 2, grid);
-  const y = (brick.row - 0.5) * BRICK_LAYER_HEIGHT;
+  const y = (brick.row - 1) * BRICK_LAYER_HEIGHT + BRICK_BODY_HEIGHT / 2;
   return {
     position: [center.x, y, center.z],
-    scale: [Math.max(0.1, size.w - BRICK_GAP), BRICK_LAYER_HEIGHT * 0.92, Math.max(0.1, size.h - BRICK_GAP)]
+    scale: [Math.max(0.1, size.w - BRICK_GAP), BRICK_BODY_HEIGHT, Math.max(0.1, size.h - BRICK_GAP)]
   };
 }

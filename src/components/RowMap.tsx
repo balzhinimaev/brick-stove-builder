@@ -37,13 +37,22 @@ const STYLES: Record<"print" | "screen", RowMapStyle> = {
   }
 };
 
-export function RowMap({ grid, bricks, variant }: { grid: GridSpec; bricks: PlacedBrick[]; variant: "print" | "screen" }) {
+export function RowMap({
+  grid,
+  bricks,
+  variant
+}: {
+  grid: GridSpec;
+  bricks: PlacedBrick[];
+  variant: "print" | "screen";
+}) {
   const s = STYLES[variant];
   const cell = Math.min(s.maxCell, s.maxSpan / Math.max(grid.cols, grid.rows));
   const width = grid.cols * cell + s.pad * 2;
   const height = grid.rows * cell + s.pad * 2;
   return (
     <svg className={s.className} width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+      <title>Stove row layout</title>
       <rect
         x={s.frame.inset}
         y={s.frame.inset}
@@ -55,49 +64,68 @@ export function RowMap({ grid, bricks, variant }: { grid: GridSpec; bricks: Plac
         strokeWidth={s.frame.strokeWidth}
         opacity={s.frame.opacity}
       />
-      {Array.from({ length: grid.cols + 1 }).map((_, x) => (
-        <line key={`rmx-${x}`} x1={s.pad + x * cell} y1={s.pad} x2={s.pad + x * cell} y2={s.pad + grid.rows * cell} stroke={s.gridLine.stroke} strokeWidth={s.gridLine.strokeWidth} />
+      {Array.from({ length: grid.cols + 1 }, (_, x) => x).map((x) => (
+        <line
+          key={`rmx-${x}`}
+          x1={s.pad + x * cell}
+          y1={s.pad}
+          x2={s.pad + x * cell}
+          y2={s.pad + grid.rows * cell}
+          stroke={s.gridLine.stroke}
+          strokeWidth={s.gridLine.strokeWidth}
+        />
       ))}
-      {Array.from({ length: grid.rows + 1 }).map((_, y) => (
-        <line key={`rmy-${y}`} x1={s.pad} y1={s.pad + y * cell} x2={s.pad + grid.cols * cell} y2={s.pad + y * cell} stroke={s.gridLine.stroke} strokeWidth={s.gridLine.strokeWidth} />
+      {Array.from({ length: grid.rows + 1 }, (_, y) => y).map((y) => (
+        <line
+          key={`rmy-${y}`}
+          x1={s.pad}
+          y1={s.pad + y * cell}
+          x2={s.pad + grid.cols * cell}
+          y2={s.pad + y * cell}
+          stroke={s.gridLine.stroke}
+          strokeWidth={s.gridLine.strokeWidth}
+        />
       ))}
       {/* накладные элементы (плита, задвижка) рисуются последними — поверх кладки */}
-      {[...bricks].sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind))).flatMap((brick) => {
-        // автоподрез из шамота остаётся шамотного цвета
-        const fill = brick.custom?.cutFrom === "firebrick" ? COLORS.firebrick : getToolColor(brick.kind);
-        const body = brickBoxes(brick).map((box, index) => (
-          <rect
-            key={`${brick.id}-${index}`}
-            x={s.pad + box.x1 * cell + s.brick.inset}
-            y={s.pad + box.y1 * cell + s.brick.inset}
-            width={(box.x2 - box.x1) * cell - s.brick.inset * 2}
-            height={(box.y2 - box.y1) * cell - s.brick.inset * 2}
-            rx={s.brick.rx}
-            fill={fill}
-            stroke={s.brick.stroke}
-            strokeWidth={s.brick.strokeWidth}
-          />
-        ));
-        // полка выреза (в т.ч. полностью срезанный кирпич, у которого тела нет) —
-        // бледным, чтобы печник видел посадочные места на печати и карточках
-        const notch = notchBox(brick);
-        const ledge = notch && brick.custom?.ledge !== false ? (
-          <rect
-            key={`${brick.id}-ledge`}
-            x={s.pad + notch.x1 * cell + s.brick.inset}
-            y={s.pad + notch.y1 * cell + s.brick.inset}
-            width={(notch.x2 - notch.x1) * cell - s.brick.inset * 2}
-            height={(notch.y2 - notch.y1) * cell - s.brick.inset * 2}
-            rx={s.brick.rx}
-            fill={fill}
-            opacity={0.38}
-            stroke={s.brick.stroke}
-            strokeWidth={s.brick.strokeWidth * 0.8}
-            strokeDasharray="3 2"
-          />
-        ) : null;
-        return ledge ? [ledge, ...body] : body;
-      })}
+      {[...bricks]
+        .sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind)))
+        .flatMap((brick) => {
+          // автоподрез из шамота остаётся шамотного цвета
+          const fill = brick.custom?.cutFrom === "firebrick" ? COLORS.firebrick : getToolColor(brick.kind);
+          const body = brickBoxes(brick).map((box) => (
+            <rect
+              key={`${brick.id}-${box.x1}-${box.y1}-${box.x2}-${box.y2}`}
+              x={s.pad + box.x1 * cell + s.brick.inset}
+              y={s.pad + box.y1 * cell + s.brick.inset}
+              width={(box.x2 - box.x1) * cell - s.brick.inset * 2}
+              height={(box.y2 - box.y1) * cell - s.brick.inset * 2}
+              rx={s.brick.rx}
+              fill={fill}
+              stroke={s.brick.stroke}
+              strokeWidth={s.brick.strokeWidth}
+            />
+          ));
+          // полка выреза (в т.ч. полностью срезанный кирпич, у которого тела нет) —
+          // бледным, чтобы печник видел посадочные места на печати и карточках
+          const notch = notchBox(brick);
+          const ledge =
+            notch && brick.custom?.ledge !== false ? (
+              <rect
+                key={`${brick.id}-ledge`}
+                x={s.pad + notch.x1 * cell + s.brick.inset}
+                y={s.pad + notch.y1 * cell + s.brick.inset}
+                width={(notch.x2 - notch.x1) * cell - s.brick.inset * 2}
+                height={(notch.y2 - notch.y1) * cell - s.brick.inset * 2}
+                rx={s.brick.rx}
+                fill={fill}
+                opacity={0.38}
+                stroke={s.brick.stroke}
+                strokeWidth={s.brick.strokeWidth * 0.8}
+                strokeDasharray="3 2"
+              />
+            ) : null;
+          return ledge ? [ledge, ...body] : body;
+        })}
     </svg>
   );
 }

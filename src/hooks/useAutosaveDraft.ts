@@ -18,7 +18,11 @@ const AUTOSAVE_DEBOUNCE_MS = 900;
  * черновик и локально, и на сервере (медленная сеть > дебаунс). Сервер со
  * своей стороны отбрасывает устаревшие пуши (409 stale) — это не ошибка.
  */
-export function useAutosaveDraft(session: Session | null, snapshot: DraftSnapshot, onLoadDraft: (draft: DraftSnapshot) => boolean): AutosaveState {
+export function useAutosaveDraft(
+  session: Session | null,
+  snapshot: DraftSnapshot,
+  onLoadDraft: (draft: DraftSnapshot) => boolean
+): AutosaveState {
   const [autosaveState, setAutosaveState] = useState<AutosaveState>("idle");
   const hydrated = useRef(false);
   // Свежий колбэк для отложенного ответа сервера (замыкание эффекта успевает
@@ -28,6 +32,7 @@ export function useAutosaveDraft(session: Session | null, snapshot: DraftSnapsho
 
   const login = session?.login ?? "";
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: hydration intentionally runs once per login, while current values are read through refs or that login's session.
   useEffect(() => {
     hydrated.current = false;
     const local = loadLocalDraft(login);
@@ -63,6 +68,7 @@ export function useAutosaveDraft(session: Session | null, snapshot: DraftSnapsho
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [login]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: autosave tracks the snapshot fields, not the frequently recreated snapshot wrapper.
   useEffect(() => {
     if (!hydrated.current) return;
     setAutosaveState("saving");

@@ -45,7 +45,13 @@ export function useStudioState() {
   );
   const autosaveState = useAutosaveDraft(
     session.session,
-    { parameters: editor.parameters, rowCount: editor.rowCount, currentRow: editor.currentRow, lockedRows: editor.lockedRows, rows: editor.rows },
+    {
+      parameters: editor.parameters,
+      rowCount: editor.rowCount,
+      currentRow: editor.currentRow,
+      lockedRows: editor.lockedRows,
+      rows: editor.rows
+    },
     // Черновик молча заменяет только нетронутый редактор: если пользователь
     // уже что-то строил (например, час работал анонимно и вошёл, чтобы
     // сохранить), — спрашиваем. Отказ безопасен: текущая работа получит
@@ -122,7 +128,11 @@ export function useStudioState() {
     const project: ReadyProject = {
       id: editingOwn?.id ?? uniqueId("custom"),
       title: { ru: title.trim(), en: title.trim(), lt: title.trim() },
-      subtitle: editingOwn?.subtitle ?? { ru: t("savedProjectSubtitle"), en: t("savedProjectSubtitle"), lt: t("savedProjectSubtitle") },
+      subtitle: editingOwn?.subtitle ?? {
+        ru: t("savedProjectSubtitle"),
+        en: t("savedProjectSubtitle"),
+        lt: t("savedProjectSubtitle")
+      },
       parameters: editor.parameters,
       rowCount: editor.rowCount,
       lockedRows: editor.lockedRows,
@@ -180,8 +190,10 @@ export function useStudioState() {
 
   return {
     // navigation + i18n
-    locale, setLocale,
-    screen, setScreen,
+    locale,
+    setLocale,
+    screen,
+    setScreen,
     t,
     // editor document + selections
     parameters: editor.parameters,
@@ -212,14 +224,10 @@ export function useStudioState() {
     toggleDamper: editor.toggleDamper,
     grateSpec: editor.grateSpec,
     setGrateSize: editor.setGrateSize,
-    viewMode: editor.viewMode,
-    setViewMode: editor.setViewMode,
-    camera: editor.camera,
     materials: editor.materials,
     updateParameter: editor.updateParameter,
     placeAt: editor.placeAt,
-    canPlaceAt: editor.canPlaceAt,
-    rejectedIds: editor.rejectedIds,
+    previewAt: editor.previewAt,
     addRow: editor.addRow,
     deleteCurrentRow: editor.deleteCurrentRow,
     copyPreviousRow: editor.copyPreviousRow,
@@ -231,10 +239,6 @@ export function useStudioState() {
     canRedo: editor.canRedo,
     undo: editor.undo,
     redo: editor.redo,
-    cameraZoom: editor.cameraZoom,
-    cameraRotate: editor.cameraRotate,
-    cameraPan: editor.cameraPan,
-    cameraReset: editor.cameraReset,
     reset,
     loadProject,
     // session

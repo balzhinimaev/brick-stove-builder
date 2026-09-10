@@ -39,16 +39,33 @@ async function call(path, options) {
 
 describe("projects routes", () => {
   it("creates, lists, reads, updates, publishes, unpublishes and deletes a project", async () => {
-    expect(await call("/api/projects", { method: "POST", token: tokens.alice, body: payload })).toMatchObject({ status: 201, body: { project: { id: "oven-one" } } });
+    expect(await call("/api/projects", { method: "POST", token: tokens.alice, body: payload })).toMatchObject({
+      status: 201,
+      body: { project: { id: "oven-one" } }
+    });
     expect((await call("/api/projects", { token: tokens.alice })).body.projects).toHaveLength(1);
     expect((await call("/api/projects/oven-one", { token: tokens.alice })).body.project.title.ru).toBe("Печь");
 
-    const changed = await call("/api/projects/oven-one", { method: "PUT", token: tokens.alice, body: { ...payload, title: { ru: "Новая печь" } } });
+    const changed = await call("/api/projects/oven-one", {
+      method: "PUT",
+      token: tokens.alice,
+      body: { ...payload, title: { ru: "Новая печь" } }
+    });
     expect(changed.body.project.title.ru).toBe("Новая печь");
-    const published = await call("/api/projects/oven-one/publish", { method: "POST", token: tokens.alice, body: { description: "Готово", price: 1234, region: "Москва" } });
+    const published = await call("/api/projects/oven-one/publish", {
+      method: "POST",
+      token: tokens.alice,
+      body: { description: "Готово", price: 1234, region: "Москва" }
+    });
     expect(published.body.project.showcase).toMatchObject({ published: true, description: "Готово", price: 1234 });
-    expect((await call("/api/projects/oven-one/unpublish", { method: "POST", token: tokens.alice, body: {} })).body.project.showcase.published).toBe(false);
-    expect(await call("/api/projects/oven-one", { method: "DELETE", token: tokens.alice })).toMatchObject({ status: 200, body: { ok: true, id: "oven-one" } });
+    expect(
+      (await call("/api/projects/oven-one/unpublish", { method: "POST", token: tokens.alice, body: {} })).body.project
+        .showcase.published
+    ).toBe(false);
+    expect(await call("/api/projects/oven-one", { method: "DELETE", token: tokens.alice })).toMatchObject({
+      status: 200,
+      body: { ok: true, id: "oven-one" }
+    });
     expect((await call("/api/projects", { token: tokens.alice })).body.projects).toEqual([]);
   });
 
@@ -60,7 +77,10 @@ describe("projects routes", () => {
     ["delete", "DELETE", "/api/projects/oven-one", undefined]
   ])("does not let another user %s a project", async (_name, method, path, body) => {
     await call("/api/projects", { method: "POST", token: tokens.alice, body: payload });
-    expect(await call(path, { method, token: tokens.bob, body })).toMatchObject({ status: 404, body: { error: "Project not found" } });
+    expect(await call(path, { method, token: tokens.bob, body })).toMatchObject({
+      status: 404,
+      body: { error: "Project not found" }
+    });
   });
 
   it("treats an offline retry with the same owner and slug as idempotent", async () => {
@@ -72,7 +92,9 @@ describe("projects routes", () => {
 
   it("rejects a duplicate global slug owned by somebody else", async () => {
     await call("/api/projects", { method: "POST", token: tokens.alice, body: payload });
-    expect(await call("/api/projects", { method: "POST", token: tokens.bob, body: payload })).toMatchObject({ status: 409 });
+    expect(await call("/api/projects", { method: "POST", token: tokens.bob, body: payload })).toMatchObject({
+      status: 409
+    });
   });
 
   it("requires authentication", async () => {

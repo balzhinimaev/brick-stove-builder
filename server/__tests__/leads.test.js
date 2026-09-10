@@ -35,14 +35,32 @@ describe("leads route", () => {
 
   it("enforces and stores every documented length limit", async () => {
     const long = "x".repeat(600);
-    expect((await submit({ phone: "+7 999 123-45-67", name: long, email: "a@example.com", city: long, comment: long, source: long, utm: { source: long } })).status).toBe(201);
-    expect(stored("leads")[0]).toMatchObject({ name: "x".repeat(100), city: "x".repeat(100), comment: "x".repeat(500), source: "x".repeat(100) });
+    expect(
+      (
+        await submit({
+          phone: "+7 999 123-45-67",
+          name: long,
+          email: "a@example.com",
+          city: long,
+          comment: long,
+          source: long,
+          utm: { source: long }
+        })
+      ).status
+    ).toBe(201);
+    expect(stored("leads")[0]).toMatchObject({
+      name: "x".repeat(100),
+      city: "x".repeat(100),
+      comment: "x".repeat(500),
+      source: "x".repeat(100)
+    });
     expect(stored("leads")[0].utm.source).toHaveLength(100);
   });
 
   it("rate limits the fourth request from one IP", async () => {
     const ip = `198.51.100.${ipSequence}`;
-    for (let index = 0; index < 3; index += 1) expect((await submit({ phone: "+7 999 123-45-67" }, ip)).status).toBe(201);
+    for (let index = 0; index < 3; index += 1)
+      expect((await submit({ phone: "+7 999 123-45-67" }, ip)).status).toBe(201);
     expect(await json(await submit({ phone: "+7 999 123-45-67" }, ip))).toMatchObject({ status: 429 });
   });
 });

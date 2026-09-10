@@ -25,7 +25,13 @@ export function isAuthError(error: unknown): boolean {
  * (в отличие от сети/5xx/429, которые лечатся ретраем).
  */
 export function isPermanentError(error: unknown): boolean {
-  return error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 401 && error.status !== 429;
+  return (
+    error instanceof ApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 401 &&
+    error.status !== 429
+  );
 }
 
 async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -42,7 +48,11 @@ export function apiBaseUrl(): string {
 }
 
 export function normalizeLogin(value: string): string {
-  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 32);
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 32);
 }
 
 export function loadSession(): Session | null {
@@ -150,7 +160,12 @@ export async function pushRemoteDraft(draft: LocalDraft, token: string): Promise
 
 export type PublishFields = { description: string; price: number | null; region: string };
 
-async function projectAction(id: string, action: "publish" | "unpublish", body: object, token: string): Promise<ReadyProject> {
+async function projectAction(
+  id: string,
+  action: "publish" | "unpublish",
+  body: object,
+  token: string
+): Promise<ReadyProject> {
   const response = await apiFetch(`/projects/${encodeURIComponent(id)}/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders(token) },
@@ -174,7 +189,12 @@ export async function fetchShowcaseProjects(): Promise<ReadyProject[]> {
   return Array.isArray(data.projects) ? data.projects : [];
 }
 
-export async function submitLead(lead: { name: string; phone: string; comment: string; source: string }): Promise<boolean> {
+export async function submitLead(lead: {
+  name: string;
+  phone: string;
+  comment: string;
+  source: string;
+}): Promise<boolean> {
   const response = await fetch(`${apiBaseUrl()}/leads`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -14,7 +14,10 @@ function escapeHtml(value) {
  */
 export async function notifyTelegram(text) {
   const token = process.env.TG_BOT_TOKEN;
-  const chatIds = (process.env.TG_CHAT_IDS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const chatIds = (process.env.TG_CHAT_IDS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (!token || chatIds.length === 0) return;
 
   for (const chatId of chatIds) {

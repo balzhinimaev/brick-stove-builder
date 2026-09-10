@@ -1,9 +1,30 @@
 import type { Locale } from "../i18n";
 
 export type Screen = "parameters" | "projects" | "builder" | "showcase" | "auth";
-export type ViewMode = "2d" | "3d";
-export type BrickKind = "standard" | "cut" | "trim" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate" | "damper" | "custom";
-export type ToolKind = "standard" | "cut" | "firebrick" | "vent" | "cleanout" | "grate" | "rebate" | "plate" | "damper" | "custom" | "eraser";
+export type BrickKind =
+  | "standard"
+  | "cut"
+  | "trim"
+  | "firebrick"
+  | "vent"
+  | "cleanout"
+  | "grate"
+  | "rebate"
+  | "plate"
+  | "damper"
+  | "custom";
+export type ToolKind =
+  | "standard"
+  | "cut"
+  | "firebrick"
+  | "vent"
+  | "cleanout"
+  | "grate"
+  | "rebate"
+  | "plate"
+  | "damper"
+  | "custom"
+  | "eraser";
 export type Orientation = "h" | "v";
 /** Шаг привязки клика к сетке: целая ячейка или полячейки (четверть кирпича). */
 export type SnapStep = 1 | 0.5;
@@ -46,8 +67,8 @@ export type CustomBrickSpec = {
   flush?: boolean;
   /**
    * Посадка flush-плиты: высота опоры (низа плиты) от низа ряда, мм.
-   * Вычисляется при установке из полок вырезов под следом плиты
-   * (плита ложится на самую высокую полку); без полок — 65 − толщина.
+   * Новая установка заподлицо: 65 − толщина, с проверкой контакта с полкой.
+   * Сохранённая посадка старых проектов остаётся без изменений при загрузке.
    */
   seatZMm?: number;
   /**
@@ -90,8 +111,6 @@ export type MaterialsEstimate = {
   concreteVolumeM3: number;
   total: number;
 };
-
-export type CameraState = { zoom: number; angle: number; offsetX: number; offsetY: number };
 
 export type ShowcaseInfo = {
   published: boolean;

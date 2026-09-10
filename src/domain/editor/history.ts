@@ -56,9 +56,7 @@ function restoreDocument(snapshot: EditorState, view: EditorState): EditorState 
     plateSpec: view.plateSpec,
     doorSpec: view.doorSpec,
     damperSpec: view.damperSpec,
-    grateSpec: view.grateSpec,
-    viewMode: view.viewMode,
-    camera: view.camera
+    grateSpec: view.grateSpec
   };
 }
 

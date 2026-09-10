@@ -14,7 +14,12 @@ const project = (id: string): ReadyProject => ({
 });
 
 const createOp = (id: string): PendingOp => ({ kind: "create", project: project(id), queuedAt: 1 });
-const updateOp = (id: string, marker = ""): PendingOp => ({ kind: "update", id, project: { ...project(id), accent: marker || "#C1440E" }, queuedAt: 1 });
+const updateOp = (id: string, marker = ""): PendingOp => ({
+  kind: "update",
+  id,
+  project: { ...project(id), accent: marker || "#C1440E" },
+  queuedAt: 1
+});
 const deleteOp = (id: string): PendingOp => ({ kind: "delete", id, queuedAt: 1 });
 
 class Permanent extends Error {}

@@ -2,9 +2,21 @@ import { brickSizeFor } from "../geometry";
 import type { PlacedBrick } from "../types";
 import type { PlacementSelection } from "./types";
 
-export function buildPlacementDrafts(sel: PlacementSelection, x: number, y: number, nextId: () => number): PlacedBrick[] | null {
+export function buildPlacementDrafts(
+  sel: PlacementSelection,
+  x: number,
+  y: number,
+  nextId: () => number
+): PlacedBrick[] | null {
   if (sel.activeTool === "eraser") return null;
-  const brick: PlacedBrick = { id: `r${sel.currentRow}-${nextId()}-${x}-${y}`, row: sel.currentRow, x, y, kind: sel.activeTool, orientation: sel.orientation };
+  const brick: PlacedBrick = {
+    id: `r${sel.currentRow}-${nextId()}-${x}-${y}`,
+    row: sel.currentRow,
+    x,
+    y,
+    kind: sel.activeTool,
+    orientation: sel.orientation
+  };
   if (sel.activeTool === "grate") brick.custom = sel.grateSpec;
   if (sel.activeTool === "rebate") {
     brick.notchCorner = sel.notchCorner;

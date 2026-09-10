@@ -1,4 +1,4 @@
-import { brickSolids, profilePolyhedron, polyhedronFaces } from "../../geometry";
+import { brickPhysicalSolids, profilePolyhedron, polyhedronFaces } from "../../geometry";
 import type { PlacedBrick } from "../../types";
 
 /** Whole bounding volume, not a predeclared graph of permitted gas cells.
@@ -32,7 +32,7 @@ export function teplushkaVolume(bricks: PlacedBrick[], removedIds: string[] = []
             z2: Math.max(...profile.vertices.map((p) => p.z))
           }
         ]
-      : brickSolids(b);
+      : brickPhysicalSolids(b);
     for (const s of solids) {
       const masonry = !["plate", "grate", "damper", "cleanout", "vent"].includes(b.kind);
       const x1 = Math.max(0, Math.floor((s.box.x1 * 125) / step)),

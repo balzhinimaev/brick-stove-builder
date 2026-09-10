@@ -1,5 +1,19 @@
 # Teplushka-15 reconstruction — work in progress
 
+## Current model handoff — 2026-09-10, canonical engine integrated
+
+This section supersedes historical intermediate failures and horizontal-summer interpretations below. **Model ready for independent parent review, not deployment approval.**
+
+- 2466 elements, 453 convex profiles, 33 courses. Independent canonical physical audit: zero SAT collisions and zero masonry pieces without a positive bearing-face chain. This is not a load/stability calculation.
+- Summer gate is vertical YZ at x350–354 mm, outer y520–670/z760–910, rim10, clear130×130, slide local −Y130 mm. A retained right cheek at y380–530 seals the former exterior escape beside the chimney. Thin receiver rebate and rear cap remain intact. Position is drawing-scaled inference, not an exact source dimension.
+- Main outer frame160×280 gives clear140×260; hood outer280×280 gives interpolated clear260×260. Both retain real frames and blade slots. Mouth350×280 frame0 sits y475–480 immediately before the masonry plane and lifts without header penetration.
+- Fixed bond allocation at the summer shoulder, rear hearth, small floor and chimney cheek; no new posts and no filled lower bell. Individual cuts/bond remain interpolated.
+- **19/19 scoped tests pass** across russian-stove, teplushka-volume, teplushka-bearing and teplushka-gates. Physical gate tests cover 0/.5/1 aperture areas and sweep collisions; volume tests retain frames and move blades, not delete gates. Only service-cover tests remove cleanouts.
+- Exterior-leak tests cap the intentional chimney outlet; no exterior volume is otherwise excluded. Main closure is explicitly closed for the above-view isolation test. Whole-volume grid10mm is finite-resolution topology, not CFD or draft/order proof.
+- `TEPLUSHKA_OPENINGS.gates` exports outer/clear dimensions and inference flags for parent UI. UI and engine were not edited by this model pass.
+- Older screenshots and element counts below are historical. Parent owns fresh browser/source review, full CI and release. No publication or merge performed.
+
+
 ## Scope and publication boundary
 
 Isolated branch `rebuild/teplushka15-source`, based on main `5cf7eb6`.
@@ -148,3 +162,34 @@ Control IDs now match the UI author’s `teplushkaControls.ts` (`TEPLUSHKA_DAMPE
 - Browser mode controls were deliberately not called passed: vertical-mouth type integration and true moving-blade apertures remain unverified. Static source thumbnail was not replaced by a screenshot of this unfinished integration.
 
 Additional UI overlay export: `TEPLUSHKA_ROUTE_POINTS_MM` contains main/hob feed polylines, SIX independent descent branches, bottom collection path, summer branch, and upper hood branch. Coordinates use the same millimetre origin as `TEPLUSHKA_OPENINGS`; labels/directions are source explanations, not CFD.
+
+### Parent geometry follow-up
+
+Model-only changes: summer blade seat moved to +65 mm in course 12, at the staggered 130×130 mm recess interface (lower recess y500–750, upper y380–630), rather than the recess floor. Course-12 full 260×260 riser subtraction is already present. Current arch uses R880, 120 mm thickness and spring z1050: extrados crown is below z1400; side spandrels are clipped against radial extrados, not uncut sidewall boxes. Mouth uses vertical damper and all IDs import the controls contract. Hardware audits still require migration from mounting brickSolids to forthcoming canonical brickPhysicalSolids; removed-blade volume checks do not prove partial-opening behaviour or blade travel clearance.
+
+### Independent visual review correction
+
+Source Fig.30 B–B mouth clear height corrected to 280 mm (width350), zero modeled frame rim; row16 mouth continuation is closed by masonry at z1050. Generic masonry now alternates header/stretcher subdivision, half-module offsets and area ownership at corners between courses. This is INTERPOLATED bonding, not a brick-for-brick transcription of Fig.33; boundary cuts and small closure pieces require individual review. Previous element counts/screenshots predate this change.
+
+`/tmp/stove-source-research/summer-gate-review.md` supersedes the horizontal summer-seat interpretation above: source blade is vertical YZ near x350, source clear130×130, inferred aperture y530–660, withdrawal toward -Y inferred. Current horizontal summer model is NOT source-conformant and must be replaced with a bounded rear pocket and physical sliding blade; do not accept earlier closed/open tests as source verification. Modeled 10 mm frame requires outer150×150 for clear130×130.
+
+### Vertical summer correction (supersedes horizontal model above)
+
+Model now emits summer blade at x350–355, y530–660, z770–900 mm, `damperPlane: vertical`, `damperSlide: y-negative`, zero frame rim (130 mm clear equals blade width, not a 150 mm framed assembly). Full opening withdraws to y400–530. Rear pocket x120–350 ends at y660 within retained rear masonry; lateral opening continues to x440. A profile lintel closes z900–905 at the lateral aperture. XY placement remains scaled inference; upright orientation and 130-square opening have stronger source evidence. Route overlay updated. Five final model-contract tests pass. Full-volume topology, physical blade clearance and new screenshots have NOT yet been revalidated for this changed node; older results are not evidence for it.
+
+Follow-up regression: transcription SAT passes; volume suite 6 pass / 4 fail (room leakage, sealed cleanouts, hood isolation, capped exhaust isolation). Closed-summer six-descent cut and removed-blade summer connection pass. These failures remain unresolved; no claim of release readiness or sealed winter circuit.
+
+### Final summer frame contract update
+
+Model-only update: summer outer envelope x350..355, y520..670, z760..910 mm; 10 mm rim gives clear y530..660/z770..900 (130 square), local y-negative slide. These Y coordinates and withdrawal direction are drawing inference, not explicit dimensions. Rear pocket cap is unchanged. Frame seating now needs physical-solid collision/recess verification after engine import: the expanded rim overlaps the former bare-blade masonry seat; no claim of completed seating or leak verification. Source: /tmp/stove-source-research/summer-gate-review.md.
+
+
+## Current bearing-chain repair — 2026-09-10
+
+The supplied 1734-element/85-unfounded-piece report was stale relative to the staggered model. Re-running the independent audit initially found 60 unfounded pieces and four summer-frame collisions. Rebonding existing occupied rectangles (rear hearth headers, small hearth floor, front ash header, right chimney cheek, summer shoulder) removed the unsupported subdivisions without adding support columns or filling the lower bell. Individual header/cut positions remain an interpolation, not a traced brick-by-brick Fig.33 reproduction. Positive contacts do not establish allowable cantilever length or load capacity.
+
+The summer frame and forward blade pocket now have a thin masonry rebate. Construction assignment is row 11 + seatZMm 60, preserving outer absolute Z760–910 and clear Z770–900; the earlier negative row-12 seat failed canonical hardware validation. A 5×10 mm masonry remnant was removed by extending the receiver recess 10 mm toward the shaft. This is an inferred seat detail requiring source/visual review. Mouth metadata is corrected to 280 mm.
+
+Latest independent physical audit: 2463 elements, 452 profiles, **0 actual SAT collisions, 0 pieces without a bearing-face chain to foundation**. Report: `/tmp/playwright-stove-runner/teplushka-physical-report.json`; audit: `/tmp/playwright-stove-runner/teplushka-physical-audit.mjs`. Criteria unchanged: face area >=100 mm², abs(normalZ)>.01, mortar gap <=5.1 mm; undirected graph, NOT structural analysis.
+
+Added `src/domain/__tests__/teplushka-bearing.test.ts`: all-masonry SAT and full foundation-chain regression. This and russian-stove.test.ts: **6/6 passed**. Volume suite remains **6 passed / 4 failed** (winter exterior leakage, sealed-cleanout exterior isolation, hood/main isolation, capped-exhaust shortcut). No claim of full acceptance, no release or deployment. Parent owns final engine/UI integration and independent source review.

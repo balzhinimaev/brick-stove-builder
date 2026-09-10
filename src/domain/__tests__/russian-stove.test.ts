@@ -34,6 +34,28 @@ describe("source-selected small Teplushka-15", () => {
     expect(new Set(Object.values(TEPLUSHKA_DAMPER_IDS)).size).toBe(4);
     for (const id of Object.values(TEPLUSHKA_DAMPER_IDS)) expect(bricks.filter((b) => b.id === id)).toHaveLength(1);
   });
+  it("keeps four physical controls, a vertical closed mouth and hood above the main closure", () => {
+    const gate = (key: keyof typeof TEPLUSHKA_DAMPER_IDS) => bricks.find((b) => b.id === TEPLUSHKA_DAMPER_IDS[key])!;
+    for (const key of ["main", "summer", "hood", "mouth"] as const) expect(gate(key).kind).toBe("damper");
+    expect(gate("mouth").custom?.damperPlane).toBe("vertical");
+    expect(gate("mouth").custom?.heightMm).toBe(280);
+    expect(gate("mouth").custom!.h * 125).toBe(5);
+    expect([
+      gate("main").damperOpen,
+      gate("summer").damperOpen,
+      gate("hood").damperOpen,
+      gate("mouth").damperOpen
+    ]).toEqual([1, 0, 0, 0]);
+    expect(gate("summer").custom).toMatchObject({
+      seatZMm: 60,
+      damperPlane: "vertical",
+      damperSlide: "y-negative",
+      heightMm: 150,
+      damperFrameMm: 10
+    });
+    expect(gate("main").row).toBe(22);
+    expect(gate("hood").row).toBe(24);
+  });
   it("uses validated radial profiles, with a positive-face chain to both skewbacks in every barrel bay", () => {
     const profiled = bricks.filter((b) => b.custom?.profileXZ);
     expect(profiled.length).toBeGreaterThan(102);

@@ -1,4 +1,5 @@
 import { TEPLUSHKA_DAMPERS } from "./teplushkaControls";
+export { TEPLUSHKA_DAMPERS } from "./teplushkaControls";
 /** Podgorodnikov 1992, Fig.30/31/33; small wood-fired LEFT chimney variant only. */
 export const TEPLUSHKA_SOURCE = {
   url: "https://kirpichiki.pro/assets/files/books/podgorodnikov_1992.pdf",
@@ -15,7 +16,11 @@ export const TEPLUSHKA_SOURCE = {
     { id: "left", x: 130, y: 770, w: 130, h: 130 },
     { id: "right", x: 1040, y: 910, w: 130, h: 130 }
   ],
-  rows: Array.from({ length: 33 }, (_, i) => ({ row: i + 1, pdfPage: i < 12 ? 41 : i < 26 ? 42 : 43, figure: 33 })),
+  rows: Array.from({ length: 33 }, (_, i) => ({
+    row: i + 1,
+    pdfPage: i < 12 ? 41 : i < 26 ? 42 : 43,
+    figure: 33
+  })),
   /** Coordinates other than printed dimensions are drawing transcriptions, not surveyed measurements. */
   uncertainties: [
     "Radial brick joint angles are reconstructed from the published R880 vault section; individual cuts are not dimensioned in the scan.",
@@ -42,7 +47,39 @@ export const TEPLUSHKA_OPENINGS = {
     { id: "cleanout-left-1", x: 0, y: 770, w: 120, h: 130, row: 2 },
     { id: "cleanout-left-2", x: 0, y: 1040, w: 120, h: 130, row: 2 }
   ],
-  mouth: { id: TEPLUSHKA_DAMPER_IDS.mouth, x: 440, y: 480, w: 350, h: 120, row: 12, height: 345 },
+  mouth: {
+    id: TEPLUSHKA_DAMPER_IDS.mouth,
+    x: 440,
+    y: 480,
+    w: 350,
+    h: 120,
+    row: 12,
+    height: 280
+  },
+  gates: {
+    summer: {
+      plane: "YZ",
+      clearWidthMm: 130,
+      clearHeightMm: 130,
+      frameMm: 10,
+      outerWidthMm: 150,
+      outerHeightMm: 150,
+      xMm: 350,
+      inferredClearYMm: [530, 660],
+      clearZMm: [770, 900],
+      slide: "y-negative",
+      coordinatesInferred: true
+    },
+    main: { clearWidthMm: 140, clearHeightMm: 260, frameMm: 10, outerWidthMm: 160, outerHeightMm: 280 },
+    hood: {
+      clearWidthMm: 260,
+      clearHeightMm: 260,
+      frameMm: 10,
+      outerWidthMm: 280,
+      outerHeightMm: 280,
+      dimensionsInterpolated: true
+    }
+  },
   offsetMm: 125
 } as const;
 /** Explanatory branches, not simulated flow or guaranteed direction/draft. */
@@ -107,9 +144,9 @@ export const TEPLUSHKA_ROUTE_POINTS_MM = {
   ],
   summer: [
     [650, 900, 950],
-    [185, 800, 800],
-    [185, 565, 800],
-    [185, 565, 880],
+    [470, 650, 820],
+    [352.5, 595, 820],
+    [185, 595, 820],
     [185, 200, 880],
     [200, 200, 1400],
     [200, 200, 1900],

@@ -133,7 +133,11 @@ export function useStudioState() {
     editor.loadProject(project);
     setSceneRevision((revision) => revision + 1);
     setTeplushkaInspection({ section: "whole", fraction: 0.4 });
-    if (project.id === "russian-stove-hob" || project.id === "classic-russian-stove-hob")
+    if (
+      project.id === "russian-stove-hob" ||
+      project.id === "classic-russian-stove-hob" ||
+      project.id === "shkolnik-pov-3500"
+    )
       editor.setCurrentRow(project.rowCount);
     setDemoProjectId(project.ownerLogin ? null : project.id);
     // Свой сохранённый проект открываем «на редактирование»; чужой/демо — как шаблон нового.

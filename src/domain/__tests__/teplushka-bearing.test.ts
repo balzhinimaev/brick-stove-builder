@@ -27,10 +27,15 @@ it("has no masonry overlaps and a positive bearing-face chain to the foundation 
     for (let j = i + 1; j < world.length; j++) {
       const a = world[i],
         b = world[j];
-      if (a.bounds.some(([lo, hi], k) => Math.max(lo, b.bounds[k][0]) - Math.min(hi, b.bounds[k][1]) > 5.1)) continue;
+      if (a.bounds.some(([lo, hi], k) => Math.max(lo, b.bounds[k][0]) - Math.min(hi, b.bounds[k][1]) > 5.1))
+        continue;
       if (a.bounds.every(([lo, hi], k) => Math.min(hi, b.bounds[k][1]) - Math.max(lo, b.bounds[k][0]) > 1e-5))
         expect(convexIntersects(a.shape, b.shape), `${a.id}/${b.id}`).toBe(false);
-      if (convexFaceContacts(a.shape, b.shape, 5.1).some((c) => c.areaMm2 >= 100 && Math.abs(c.normalA.z) > 0.01)) {
+      if (
+        convexFaceContacts(a.shape, b.shape, 5.1).some(
+          (c) => c.areaMm2 >= 100 && Math.abs(c.normalA.z) > 0.01
+        )
+      ) {
         graph[i].add(j);
         graph[j].add(i);
       }
@@ -43,5 +48,5 @@ it("has no masonry overlaps and a positive bearing-face chain to the foundation 
         founded.add(j);
         queue.push(j);
       }
-  expect(world.filter((_, i) => !founded.has(i)).map((s) => s.id)).toEqual([]);
+  expect(world.filter((_, i) => !founded.has(i)).map((s) => ({ id: s.id, bounds: s.bounds }))).toEqual([]);
 }, 30000);

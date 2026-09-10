@@ -8,6 +8,11 @@ export const TEPLUSHKA_SOURCE = {
   hobMm: [710, 410],
   chimneyTopMm: [140, 260],
   bells: ["upper-cooking", "lower-heating"],
+  sourceSteel: [
+    { row: 11, count: 1, legMm: 30, lengthMm: 1030, thicknessMm: 4, thicknessAssumed: true },
+    { row: 17, count: 2, legMm: 40, lengthMm: 920, thicknessMm: 4, thicknessAssumed: true },
+    { row: 31, count: 1, widthMm: 50, lengthMm: 400, thicknessMm: 5, thicknessAssumed: false }
+  ],
   downports: [
     { id: "rear-1", x: 130, y: 1040, w: 130, h: 130 },
     { id: "rear-2", x: 390, y: 1040, w: 130, h: 130 },

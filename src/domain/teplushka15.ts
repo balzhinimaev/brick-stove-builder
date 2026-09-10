@@ -102,7 +102,7 @@ export function makeTeplushka15(): ReadyProject {
       rect(1170, 120, 120, 1050)
     ];
     const supports = [
-      rect(260, 910, 250, 130),
+      rect(260, 910, row === 9 ? 790 : 250, 130),
       rect(260, 650, 250, 130),
       rect(320, 390, 190, 190),
       rect(260, 120, 290, 130),
@@ -120,7 +120,7 @@ export function makeTeplushka15(): ReadyProject {
     ];
     // Source service openings 26 in the left wall, sealed by independently removable covers.
     if (row <= 3) holes.push(rect(0, 770, 120, 130), rect(0, 1040, 120, 130));
-    if (row <= 3) holes.push(rect(840, 0, 260, 120));
+    if (row <= 4) holes.push(rect(840, 0, 260, 120));
     if (row >= 5 && row <= 7) holes.push(rect(840, 0, 260, 120));
     if (row >= 6 && row <= 7) holes.push(rect(460, 0, 260, 120));
     masonry(
@@ -130,8 +130,6 @@ export function makeTeplushka15(): ReadyProject {
       row >= 6,
       row === 4
         ? [
-            rect(720, 0, 250, 120),
-            rect(970, 0, 200, 120),
             ...[120, 245, 370, 495].flatMap((y) => [
               rect(460, y, 250, Math.min(125, 530 - y)),
               rect(710, y, 130, Math.min(125, 530 - y))
@@ -142,13 +140,15 @@ export function makeTeplushka15(): ReadyProject {
   }
   // Hearth, including all six physical descents, common firing node and removable grate throat.
   for (const row of [10, 11])
-    masonry(
-      row,
-      [body],
-      [pipe(row), ...down, rect(390, 120, 710, 410), rect(840, 530, 260, 260)],
-      true,
-      [260, 520, 780].map((x) => rect(x, 1040, 130, 250))
-    );
+    masonry(row, [body], [pipe(row), ...down, rect(390, 120, 710, 410), rect(840, 530, 260, 260)], true, [
+      ...[260, 520, 780].map((x) => rect(x, 1040, 130, 250)),
+      ...[380, 510, 640, 770, 900].map((x) => rect(x, 890, x === 900 ? 140 : 130, 150)),
+      rect(0, 900, 130, 140),
+      rect(130, 900, 250, 140),
+      rect(260, 650, 120, 250),
+      rect(1040, 790, 125, 120),
+      rect(1165, 790, 125, 120)
+    ]);
   // Source upper bell and mouth. The mouth is closed during lower-firebox firing.
   for (let row = 12; row <= 15; row++) {
     const walls = [
@@ -170,7 +170,11 @@ export function makeTeplushka15(): ReadyProject {
       walls,
       holes,
       true,
-      row === 12 ? [rect(355, 380, 85, 100), rect(355, 480, 85, 50)] : row === 14 ? [rect(350, 480, 90, 120)] : []
+      row === 12
+        ? [rect(355, 380, 85, 100), rect(355, 480, 85, 50)]
+        : row === 14
+          ? [rect(350, 480, 90, 120)]
+          : []
     );
   }
   // Close the 5 mm course-joint space above the 130 mm lateral aperture.
@@ -211,7 +215,11 @@ export function makeTeplushka15(): ReadyProject {
     if (points.length < 3) return;
     const xmin = Math.min(...points.map((p) => p.x)),
       xmax = Math.max(...points.map((p) => p.x));
-    if (xmax - xmin < 1e-6 || Math.max(...points.map((p) => p.z)) - Math.min(...points.map((p) => p.z)) < 1e-6) return;
+    if (
+      xmax - xmin < 1e-6 ||
+      Math.max(...points.map((p) => p.z)) - Math.min(...points.map((p) => p.z)) < 1e-6
+    )
+      return;
     emit(row, rect(xmin, y, xmax - xmin, depth), name, {
       custom: {
         name,
@@ -257,7 +265,9 @@ export function makeTeplushka15(): ReadyProject {
     [{ x: 1140, z: 1050 }, { x: 1290, z: 1050 }, { x: 1290, z: outer[count].z }, outer[count]],
     [{ x: 0, z: outer[0].z }, outer[0], { x: outer[0].x, z: 1400 }, { x: 0, z: 1400 }],
     [outer[count], { x: 1290, z: outer[count].z }, { x: 1290, z: 1400 }, { x: outer[count].x, z: 1400 }],
-    ...outer.slice(0, -1).map((p, i) => [p, outer[i + 1], { x: outer[i + 1].x, z: 1400 }, { x: p.x, z: 1400 }])
+    ...outer
+      .slice(0, -1)
+      .map((p, i) => [p, outer[i + 1], { x: outer[i + 1].x, z: 1400 }, { x: p.x, z: 1400 }])
   ];
   for (let row = 16; row <= 20; row++)
     for (const polygon of fill) {
@@ -266,15 +276,24 @@ export function makeTeplushka15(): ReadyProject {
         profile(row, 600 + bay * 95, 95, slab, `Р${row} · пята/заполнение над сводом · рис.30`);
     }
   for (let row = 16; row <= 20; row++) {
-    masonry(row, [rect(0, 1170, 1290, 120), rect(0, 0, 1290, 600)], [pipe(row), rect(350, 120, 820, 360)]);
+    // Fig.33 row20: 300 mm right cheek; row21 increases it to 380 mm.
+    masonry(
+      row,
+      [rect(0, 1170, 1290, 120), rect(0, 0, 1290, 600)],
+      [pipe(row), rect(350, 120, row === 20 ? 640 : row === 19 ? 715 : row === 18 ? 740 : 820, 360)]
+    );
   }
   masonry(21, [body], [pipe(21), rect(380, 120, 530, 260)]);
   for (let row = 22; row <= 33; row++) {
-    // Fig.33: 102,89,76,63,50 cm shoulders; top remains 14×26 cm.
-    const width = row <= 24 ? 1020 : row <= 26 ? 890 : row <= 28 ? 760 : row <= 30 ? 630 : row <= 32 ? 500 : 380;
+    // Fig.33: external width remains 890 mm in courses25–32.
+    // 24/31/37/44/50 cm denote the RIGHT CHEEK, not outside widths.
+    const width = row <= 24 ? 1020 : row <= 32 ? 890 : 380;
     const holes = [pipe(row)];
     if (row <= 24) holes.push(rect(380, 120, row === 24 ? 260 : width - 500, 260));
-    if (row >= 25 && row <= 32) holes[0] = rect(120, 120, width - 240, 260);
+    if (row >= 25 && row <= 32) {
+      const cheek = [120, 180, 240, 310, 370, 440, 500, 500][row - 25];
+      holes[0] = rect(120, 120, width - cheek - 120, 260);
+    }
     const rightInner = Math.max(...holes.map((h) => h.x + h.w));
     // Through-bonded headers tie the right cheek to front/back masonry;
     // do not partition this bearing across the unsupported void edge.
@@ -327,6 +346,70 @@ export function makeTeplushka15(): ReadyProject {
       }
     }
   }
+  // Source steel stock: Fig.33 courses11/17. Thickness4 mm is an
+  // explicit reconstruction assumption; axial seating positions are inferred.
+  // Each L has two non-overlapping solids, never brick-labelled door supports.
+  const steelPart = (row: number, r: Rect, bottom: number, top: number, name: string) => {
+    for (const b of [...rows[row]]) {
+      if (b.custom?.profileXZ || b.custom?.material === "steel") continue;
+      const area = rect(b.x * 125 - 125, b.y * 125 - 125, b.custom!.w * 125, b.custom!.h * 125);
+      const x = Math.max(area.x, r.x),
+        y = Math.max(area.y, r.y);
+      const right = Math.min(area.x + area.w, r.x + r.w),
+        back = Math.min(area.y + area.h, r.y + r.h);
+      if (right <= x || back <= y) continue;
+      rows[row] = rows[row].filter((p) => p.id !== b.id);
+      for (const piece of subtract(area, r)) emit(row, piece, `Р${row} · посадка исходного уголка`);
+      for (const [lo, hi] of [
+        [0, bottom],
+        [top, 65]
+      ]) {
+        if (hi <= lo) continue;
+        profile(
+          row,
+          y,
+          back - y,
+          [
+            { x, z: (row - 1) * 70 + lo },
+            { x: right, z: (row - 1) * 70 + lo },
+            { x: right, z: (row - 1) * 70 + hi },
+            { x, z: (row - 1) * 70 + hi }
+          ],
+          `Р${row} · подрезка под исходное железо`
+        );
+      }
+    }
+    emit(row, r, name, {
+      custom: {
+        name,
+        w: r.w / 125,
+        h: r.h / 125,
+        material: "steel",
+        profileXZ: [
+          { x: 0, z: bottom },
+          { x: r.w, z: bottom },
+          { x: r.w, z: top },
+          { x: 0, z: top }
+        ]
+      }
+    });
+  };
+  const angleSteel = (row: number, x: number, y: number, length: number, leg: number) => {
+    const label = `Р${row} · стальной уголок ${leg}×${leg}×${length} мм · толщина4 мм предположение`;
+    steelPart(row, rect(x, y, length, leg - 4), 0, 4, label + " · полка");
+    steelPart(row, rect(x, y + leg - 4, length, 4), 0, leg, label + " · стенка");
+  };
+  angleSteel(11, 140, 90, 1030, 30);
+  angleSteel(17, 285, 0, 920, 40);
+  angleSteel(17, 285, 80, 920, 40);
+  // Fig.33 course31 explicitly dimensions this flat strip, including thickness.
+  steelPart(
+    31,
+    rect(390, 55, 50, 400),
+    0,
+    5,
+    "Р31 · стальная полоса 50×5×400 мм · положение интерполировано"
+  );
   // Source controls are individual elements; named IDs survive editable copies.
   const hardware = (row: number, r: Rect, id: string, kind: PlacedBrick["kind"], heightMm: number) =>
     emit(row, r, id, {
@@ -342,7 +425,7 @@ export function makeTeplushka15(): ReadyProject {
     });
   hardware(2, rect(0, 770, 120, 130), "cleanout-left-1", "cleanout", 135);
   hardware(2, rect(0, 1040, 120, 130), "cleanout-left-2", "cleanout", 135);
-  hardware(2, rect(840, 0, 260, 120), "main-ash-door", "cleanout", 135);
+  hardware(2, rect(840, 0, 260, 120), "main-ash-door", "cleanout", 205);
   hardware(5, rect(840, 0, 260, 120), "main-fire-door", "cleanout", 205);
   hardware(6, rect(460, 0, 260, 120), "hob-fire-door", "cleanout", 135);
   // Removable vertical mouth plate: thin XY footprint, actual XZ closure.

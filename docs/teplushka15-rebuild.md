@@ -193,3 +193,15 @@ The summer frame and forward blade pocket now have a thin masonry rebate. Constr
 Latest independent physical audit: 2463 elements, 452 profiles, **0 actual SAT collisions, 0 pieces without a bearing-face chain to foundation**. Report: `/tmp/playwright-stove-runner/teplushka-physical-report.json`; audit: `/tmp/playwright-stove-runner/teplushka-physical-audit.mjs`. Criteria unchanged: face area >=100 mm², abs(normalZ)>.01, mortar gap <=5.1 mm; undirected graph, NOT structural analysis.
 
 Added `src/domain/__tests__/teplushka-bearing.test.ts`: all-masonry SAT and full foundation-chain regression. This and russian-stove.test.ts: **6/6 passed**. Volume suite remains **6 passed / 4 failed** (winter exterior leakage, sealed-cleanout exterior isolation, hood/main isolation, capped-exhaust shortcut). No claim of full acceptance, no release or deployment. Parent owns final engine/UI integration and independent source review.
+
+## Source-bearing review follow-up (supersedes earlier course simplifications)
+
+Read `/tmp/stove-source-research/bearing-and-chimney-review.md` and inspected original PDF41–42 and enlarged courses27–33. Row9 now joins the existing rear pier heads; no new lower-bell columns. Rear hearth separators retain whole 130×250 mm Y-oriented units into the rear wall. Repartitioned the port-adjacent fields to eliminate the 10 mm y900–910 subdivision artifacts without changing aperture bounds. Row4 front-right masonry remains open; its removable ash closure now extends through that course (205 mm, inferred hardware height).
+
+Hood right cheeks: row18 200 mm, row20 300 mm, row21 380 mm; row19 225 mm is explicitly interpolated, not a reading of the ambiguous glyph. Courses25–32 retain external890 mm and corbel internally; right cheeks in courses26–32 are180,240,310,370,440,500,500 mm. Previously shrinking external widths were a source-reading error.
+
+Modeled source steel: one30×30×1030 angle in row11, two40×40×920 angles in row17, plus50×5×400 strip in row31. Angles use **assumed4 mm thickness**; seat coordinates are inferred. Each angle is two nonoverlapping `custom.material: steel` pieces, with physical rebates in existing masonry. They are not counted as bricks. Bearing regression includes these explicit structural parts, not door hardware. Contact connectivity remains NOT a strength calculation.
+
+Remaining source-fidelity limitation: the separate 350×280 mouth arch is still not reconstructed as individual source voussoirs; the large cooking-chamber barrel does not substitute for it. Individual joint patterns, angle seats, and row19 interpolation need parent visual review. No release claim; earlier screenshots/counts are stale.
+
+Final bounded follow-up verification: **22/22 tests passed across six model suites**, including physical intersections, steel-inclusive foundation contact graph, all12 whole-volume route/leak checks, gate apertures/travel, and source-width/header regressions. `npx tsc -b` passed during this follow-up; no engine/UI edits. No fresh browser capture or full release CI in this bounded model pass; parent owns those. No deployment/merge.

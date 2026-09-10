@@ -1,0 +1,276 @@
+{
+  "projectId": "classic-russian-stove-hob",
+  "modelSourceSha256": "d97221d98978c5d037edbad2515a41cf30a36d64f3827a8f966bbf6a551cbd8f",
+  "projectJsonSha256": "9cb05797071f8464bbbd2eb5f57a2936d542f092a1412f9ad0d788a84e1a0d18",
+  "teplushkaJsonSha256": "eff9e34b1865b4a4a22ea4a9a2692b07b43d4310fc6ed43e2857a2c512f4fb12",
+  "stage": "design-basis-not-for-construction",
+  "constructionApproved": false,
+  "totalModelParts": 4506,
+  "courses": 35,
+  "rectangularMasonryPartsChecked": 2037,
+  "orthogonalStockFitFailures": 878,
+  "planDimensionsUnder25Mm": 124,
+  "zeroPlanJointPairs": 2996,
+  "coordinateNote": "mm from editor origin; z=0 is bottom of first course, not finished floor",
+  "overallBoundsMm": {
+    "x": [125, 1825],
+    "y": [125, 2125],
+    "z": [0, 2445]
+  },
+  "bodyBoundsMm": {
+    "x": [625, 1825],
+    "y": [125, 2125],
+    "z": [0, 2305]
+  },
+  "upperRightDuctSample": {
+    "pointMm": {
+      "x": 1605,
+      "y": 1125,
+      "z": 2000
+    },
+    "clearWidthMm": 200,
+    "clearHeightMm": 215,
+    "floorMm": 1885,
+    "soffitMm": 2100,
+    "note": "Single straight section of current physical model, not a whole-path minimum or a drawing instruction"
+  },
+  "ceilingScenario": {
+    "confirmedByUser": false,
+    "ceilingAboveFloorMm": 2500,
+    "firstCourseAboveFloorMm": 0,
+    "bodyTopAboveFirstCourseMm": 2305,
+    "gapAboveBodyMm": 195,
+    "note": "A hypothetical placement, not an assessment of the user's actual ceiling or chimney penetration"
+  },
+  "limitations": [
+    "Orthogonal stock fit only; not an arbitrary 3D nesting calculation",
+    "Profile parts excluded from the rectangular audit",
+    "25 mm is a reporting threshold, not a minimum permitted cut size",
+    "Visual mortar gaps do not change these physical solids or exported dimensions",
+    "No strength, bond completeness, draft, thermal output, airtightness or site compliance certification"
+  ],
+  "partFindingExamples": [
+    {
+      "id": "classic-0",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-1",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-2",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-3",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-4",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [200, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-5",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-6",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-7",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-8",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [250, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    },
+    {
+      "id": "classic-9",
+      "row": 1,
+      "name": "Кладка · интерполированная перевязка",
+      "dimensionsMm": [200, 125, 65],
+      "orthogonalStockFit": false,
+      "planDimensionUnder25Mm": false
+    }
+  ],
+  "zeroPlanJointExamples": [
+    {
+      "first": "classic-0",
+      "second": "classic-1",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-0",
+      "second": "classic-5",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-1",
+      "second": "classic-2",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-1",
+      "second": "classic-6",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-2",
+      "second": "classic-3",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-2",
+      "second": "classic-7",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-3",
+      "second": "classic-4",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-3",
+      "second": "classic-8",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-4",
+      "second": "classic-9",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-5",
+      "second": "classic-6",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-5",
+      "second": "classic-10",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-5",
+      "second": "classic-81",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-6",
+      "second": "classic-7",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-6",
+      "second": "classic-11",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-7",
+      "second": "classic-8",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-7",
+      "second": "classic-12",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-8",
+      "second": "classic-9",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-8",
+      "second": "classic-13",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-9",
+      "second": "classic-14",
+      "row": 1,
+      "axis": "y",
+      "gapMm": 0
+    },
+    {
+      "first": "classic-10",
+      "second": "classic-11",
+      "row": 1,
+      "axis": "x",
+      "gapMm": 0
+    }
+  ]
+}

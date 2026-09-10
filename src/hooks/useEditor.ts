@@ -148,6 +148,10 @@ export function useEditor() {
       []
     ),
     toggleDamper: useCallback((id: string) => dispatch({ type: "toggleDamper", id }), []),
+    setDamperOpenings: useCallback(
+      (openings: Record<string, number>) => dispatch({ type: "setDamperOpenings", openings }),
+      []
+    ),
     updateParameter: useCallback(
       (key: keyof Parameters, value: number) => dispatch({ type: "updateParameter", key, value }),
       []

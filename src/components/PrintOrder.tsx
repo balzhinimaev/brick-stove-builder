@@ -74,6 +74,7 @@ export function PrintOrder({
             [t("doors"), materials.doors],
             [t("dampers"), materials.dampers],
             [t("vents"), materials.vents],
+            ...((materials.steelKg ?? 0) > 0 ? [[t("steelApproxKg"), (materials.steelKg ?? 0).toFixed(2)]] : []),
             [t("mortarEstimate"), formatM3(materials.mortarM3)],
             [t("foundationConcrete"), formatM3(materials.concreteVolumeM3)]
           ].map(([label, value]) => (

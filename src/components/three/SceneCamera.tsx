@@ -11,26 +11,30 @@ export function SceneCamera({
   width,
   depth,
   height,
+  centerX = 0,
   centerY,
+  centerZ = 0,
   inspect,
+  frontSign = 1,
   command
 }: {
   width: number;
   depth: number;
   height: number;
+  centerX?: number;
   centerY: number;
+  centerZ?: number;
   inspect: boolean;
+  frontSign?: 1 | -1;
   command: CameraCommand;
 }) {
   const { camera, gl, size, invalidate } = useThree();
   const controls = useRef<OrbitControls | null>(null);
-  const previousCenter = useRef(centerY);
-  const currentHeight = useRef(height);
-  const currentCenter = useRef(centerY);
+  const previousCenter = useRef(new Vector3(centerX, centerY, centerZ));
+  const currentCenter = useRef(new Vector3(centerX, centerY, centerZ));
   const previousCommand = useRef(-1);
   const previousFit = useRef(0);
-  currentHeight.current = height;
-  currentCenter.current = centerY;
+  currentCenter.current.set(centerX, centerY, centerZ);
   useEffect(() => {
     const orbit = new OrbitControls(camera, gl.domElement);
     orbit.enableDamping = true;
@@ -57,17 +61,17 @@ export function SceneCamera({
   useEffect(() => {
     const orbit = controls.current;
     if (!orbit) return;
-    const delta = centerY - previousCenter.current;
-    orbit.target.y += delta;
-    camera.position.y += delta;
-    previousCenter.current = centerY;
+    const delta = new Vector3(centerX, centerY, centerZ).sub(previousCenter.current);
+    orbit.target.add(delta);
+    camera.position.add(delta);
+    previousCenter.current.copy(currentCenter.current);
     orbit.update();
     invalidate();
-  }, [centerY, camera, invalidate]);
+  }, [centerX, centerY, centerZ, camera, invalidate]);
   useEffect(() => {
     const orbit = controls.current;
     if (!orbit || !(camera instanceof PerspectiveCamera)) return;
-    const distance = fittedDistance(width, depth, currentHeight.current, size.width / size.height, camera.fov);
+    const distance = fittedDistance(width, depth, height, size.width / size.height, camera.fov);
     const kind = previousCommand.current === command.id ? "resize" : command.kind;
     const damping = orbit.enableDamping;
     orbit.enableDamping = false;
@@ -80,11 +84,11 @@ export function SceneCamera({
     } else if (["fit", "iso", "front", "top"].includes(kind)) {
       const direction =
         kind === "top"
-          ? new Vector3(0, 1, 0.025)
+          ? new Vector3(0, 1, 0.025 * frontSign)
           : kind === "front"
-            ? new Vector3(0, 0.045, 1)
-            : new Vector3(1, 0.85, 1);
-      orbit.target.set(0, currentCenter.current, 0);
+            ? new Vector3(0, 0.045, frontSign)
+            : new Vector3(frontSign, 0.85, frontSign);
+      orbit.target.copy(currentCenter.current);
       camera.position.copy(orbit.target).addScaledVector(direction.normalize(), distance);
     } else {
       const offset = camera.position.clone().sub(orbit.target);
@@ -97,7 +101,7 @@ export function SceneCamera({
     orbit.update();
     orbit.enableDamping = damping;
     invalidate();
-  }, [command, width, depth, size.width, size.height, camera, invalidate]);
+  }, [command, width, depth, height, size.width, size.height, camera, invalidate, frontSign]);
   useFrame(() => controls.current?.update());
   return null;
 }

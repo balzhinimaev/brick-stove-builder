@@ -1,7 +1,8 @@
-import { COLORS } from "../theme/colors";
-import type { GridSpec, PlacedBrick } from "../domain/types";
-import { brickBoxes, isOverlayKind, notchBox } from "../domain/geometry";
+import { type BrickBox, brickBoxes, isOverlayKind, notchBox } from "../domain/geometry";
+import { isSteelPart } from "../domain/materials";
 import { getToolColor } from "../domain/tools";
+import type { GridSpec, PlacedBrick } from "../domain/types";
+import { COLORS } from "../theme/colors";
 
 /**
  * Мини-карта одного ряда кладки: сетка + занятые боксы кирпичей.
@@ -36,6 +37,23 @@ const STYLES: Record<"print" | "screen", RowMapStyle> = {
     className: "mx-auto block"
   }
 };
+
+function mapRect(box: BrickBox, cell: number, style: RowMapStyle, strokeWidth = style.brick.strokeWidth) {
+  const width = (box.x2 - box.x1) * cell;
+  const height = (box.y2 - box.y1) * cell;
+  // Thin steel and masonry cuts can be subpixel-sized. Keep at least half of
+  // each real span filled, and keep the centered outline inside its footprint.
+  const insetX = Math.min(style.brick.inset, width / 4);
+  const insetY = Math.min(style.brick.inset, height / 4);
+  return {
+    x: style.pad + box.x1 * cell + insetX,
+    y: style.pad + box.y1 * cell + insetY,
+    width: width - insetX * 2,
+    height: height - insetY * 2,
+    rx: Math.min(style.brick.rx, (width - insetX * 2) / 2, (height - insetY * 2) / 2),
+    strokeWidth: Math.min(strokeWidth, insetX * 2, insetY * 2)
+  };
+}
 
 export function RowMap({
   grid,
@@ -91,18 +109,17 @@ export function RowMap({
         .sort((a, b) => Number(isOverlayKind(a.kind)) - Number(isOverlayKind(b.kind)))
         .flatMap((brick) => {
           // автоподрез из шамота остаётся шамотного цвета
-          const fill = brick.custom?.cutFrom === "firebrick" ? COLORS.firebrick : getToolColor(brick.kind);
+          const fill = isSteelPart(brick)
+            ? "#535c62"
+            : brick.custom?.cutFrom === "firebrick"
+              ? COLORS.firebrick
+              : getToolColor(brick.kind);
           const body = brickBoxes(brick).map((box) => (
             <rect
               key={`${brick.id}-${box.x1}-${box.y1}-${box.x2}-${box.y2}`}
-              x={s.pad + box.x1 * cell + s.brick.inset}
-              y={s.pad + box.y1 * cell + s.brick.inset}
-              width={(box.x2 - box.x1) * cell - s.brick.inset * 2}
-              height={(box.y2 - box.y1) * cell - s.brick.inset * 2}
-              rx={s.brick.rx}
+              {...mapRect(box, cell, s)}
               fill={fill}
               stroke={s.brick.stroke}
-              strokeWidth={s.brick.strokeWidth}
             />
           ));
           // полка выреза (в т.ч. полностью срезанный кирпич, у которого тела нет) —
@@ -112,15 +129,10 @@ export function RowMap({
             notch && brick.custom?.ledge !== false ? (
               <rect
                 key={`${brick.id}-ledge`}
-                x={s.pad + notch.x1 * cell + s.brick.inset}
-                y={s.pad + notch.y1 * cell + s.brick.inset}
-                width={(notch.x2 - notch.x1) * cell - s.brick.inset * 2}
-                height={(notch.y2 - notch.y1) * cell - s.brick.inset * 2}
-                rx={s.brick.rx}
+                {...mapRect(notch, cell, s, s.brick.strokeWidth * 0.8)}
                 fill={fill}
                 opacity={0.38}
                 stroke={s.brick.stroke}
-                strokeWidth={s.brick.strokeWidth * 0.8}
                 strokeDasharray="3 2"
               />
             ) : null;

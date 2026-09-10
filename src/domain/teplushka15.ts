@@ -170,11 +170,7 @@ export function makeTeplushka15(): ReadyProject {
       walls,
       holes,
       true,
-      row === 12
-        ? [rect(355, 380, 85, 100), rect(355, 480, 85, 50)]
-        : row === 14
-          ? [rect(350, 480, 90, 120)]
-          : []
+      row === 12 ? [rect(355, 380, 85, 100), rect(355, 480, 85, 50)] : row === 14 ? [rect(350, 480, 90, 120)] : []
     );
   }
   // Close the 5 mm course-joint space above the 130 mm lateral aperture.
@@ -215,11 +211,7 @@ export function makeTeplushka15(): ReadyProject {
     if (points.length < 3) return;
     const xmin = Math.min(...points.map((p) => p.x)),
       xmax = Math.max(...points.map((p) => p.x));
-    if (
-      xmax - xmin < 1e-6 ||
-      Math.max(...points.map((p) => p.z)) - Math.min(...points.map((p) => p.z)) < 1e-6
-    )
-      return;
+    if (xmax - xmin < 1e-6 || Math.max(...points.map((p) => p.z)) - Math.min(...points.map((p) => p.z)) < 1e-6) return;
     emit(row, rect(xmin, y, xmax - xmin, depth), name, {
       custom: {
         name,
@@ -265,9 +257,7 @@ export function makeTeplushka15(): ReadyProject {
     [{ x: 1140, z: 1050 }, { x: 1290, z: 1050 }, { x: 1290, z: outer[count].z }, outer[count]],
     [{ x: 0, z: outer[0].z }, outer[0], { x: outer[0].x, z: 1400 }, { x: 0, z: 1400 }],
     [outer[count], { x: 1290, z: outer[count].z }, { x: 1290, z: 1400 }, { x: outer[count].x, z: 1400 }],
-    ...outer
-      .slice(0, -1)
-      .map((p, i) => [p, outer[i + 1], { x: outer[i + 1].x, z: 1400 }, { x: p.x, z: 1400 }])
+    ...outer.slice(0, -1).map((p, i) => [p, outer[i + 1], { x: outer[i + 1].x, z: 1400 }, { x: p.x, z: 1400 }])
   ];
   for (let row = 16; row <= 20; row++)
     for (const polygon of fill) {
@@ -280,9 +270,57 @@ export function makeTeplushka15(): ReadyProject {
     masonry(
       row,
       [rect(0, 1170, 1290, 120), rect(0, 0, 1290, 600)],
-      [pipe(row), rect(350, 120, row === 20 ? 640 : row === 19 ? 715 : row === 18 ? 740 : 820, 360)]
+      [
+        pipe(row),
+        rect(350, 120, row === 20 ? 640 : row === 19 ? 715 : row === 18 ? 740 : 820, 360),
+        ...(row <= 17 ? [rect(350, 480, 530, 120)] : [])
+      ]
     );
   }
+  // Fig.30 Б–Б shows a separate fan/jack arch over the 350×280 mouth,
+  // with a nearly flat intrados, not another curved barrel. Keep the printed
+  // clear opening. Nine joints, 135 mm head height and 470 mm top width are
+  // reconstruction choices: the scan does not dimension individual cuts.
+  // Replace only the former horizontal head in courses16–17, y480..600.
+  const mouthIntrados = { left: 440, right: 790, z: 1050 };
+  const mouthExtrados = { left: 380, right: 850, z: 1185 };
+  const mouthWedges = 9;
+  for (let i = 0; i < mouthWedges; i++) {
+    const lower = (j: number) => ({
+      x: mouthIntrados.left + ((mouthIntrados.right - mouthIntrados.left) * j) / mouthWedges,
+      z: mouthIntrados.z
+    });
+    const upper = (j: number) => ({
+      x: mouthExtrados.left + ((mouthExtrados.right - mouthExtrados.left) * j) / mouthWedges,
+      z: mouthExtrados.z
+    });
+    profile(
+      16,
+      480,
+      120,
+      [lower(i), lower(i + 1), upper(i + 1), upper(i)],
+      `Устье · клинчатая перемычка · клин ${i + 1}`
+    );
+  }
+  const mouthSkewbacks: Point[][] = [
+    [
+      { x: 350, z: 1050 },
+      { x: 440, z: 1050 },
+      { x: 380, z: 1185 },
+      { x: 350, z: 1185 }
+    ],
+    [
+      { x: 790, z: 1050 },
+      { x: 880, z: 1050 },
+      { x: 880, z: 1185 },
+      { x: 850, z: 1185 }
+    ]
+  ];
+  for (const row of [16, 17])
+    for (const side of mouthSkewbacks) {
+      const slab = clip(clip(side, "z", (row - 1) * 70, true), "z", (row - 1) * 70 + 65, false);
+      profile(row, 480, 120, slab, `Устье · наклонная пята · ряд ${row}`);
+    }
   masonry(21, [body], [pipe(21), rect(380, 120, 530, 260)]);
   for (let row = 22; row <= 33; row++) {
     // Fig.33: external width remains 890 mm in courses25–32.
@@ -403,13 +441,7 @@ export function makeTeplushka15(): ReadyProject {
   angleSteel(17, 285, 0, 920, 40);
   angleSteel(17, 285, 80, 920, 40);
   // Fig.33 course31 explicitly dimensions this flat strip, including thickness.
-  steelPart(
-    31,
-    rect(390, 55, 50, 400),
-    0,
-    5,
-    "Р31 · стальная полоса 50×5×400 мм · положение интерполировано"
-  );
+  steelPart(31, rect(390, 55, 50, 400), 0, 5, "Р31 · стальная полоса 50×5×400 мм · положение интерполировано");
   // Source controls are individual elements; named IDs survive editable copies.
   const hardware = (row: number, r: Rect, id: string, kind: PlacedBrick["kind"], heightMm: number) =>
     emit(row, r, id, {
@@ -464,9 +496,9 @@ export function makeTeplushka15(): ReadyProject {
       lt: "Tepluška-15 · rusiška krosnis su virykle"
     },
     subtitle: {
-      ru: "И. С. Подгородников, 1992. 129×129 см, 33 ряда. Два колпака: верхний варочный и нижний отопительный; шесть параллельных опусков. Реконструкция на проверке.",
-      en: "I. S. Podgorodnikov, 1992. 129×129 cm, 33 courses. Upper cooking and lower heating bells; six parallel descents. Reconstruction under review.",
-      lt: "I. S. Podgorodnikovas, 1992. 129×129 cm, 33 eilės. Viršutinė virimo ir apatinė šildymo kameros; šeši lygiagretūs kanalai. Rekonstrukcija tikrinama."
+      ru: "И. С. Подгородников, 1992. 129×129 см, 33 ряда. Два колпака: верхний варочный и нижний отопительный; шесть параллельных опусков. Редактируемая реконструкция по авторской схеме.",
+      en: "I. S. Podgorodnikov, 1992. 129×129 cm, 33 courses. Upper cooking and lower heating bells; six parallel descents. Editable reconstruction of the original design.",
+      lt: "I. S. Podgorodnikovas, 1992. 129×129 cm, 33 eilės. Viršutinė virimo ir apatinė šildymo kameros; šeši lygiagretūs kanalai. Redaguojama rekonstrukcija pagal originalią schemą."
     },
     parameters: {
       foundationWidth: 162.5,

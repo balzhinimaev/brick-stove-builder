@@ -16,6 +16,9 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
       <MaterialRow label={t("doors")} value={materials.doors} />
       <MaterialRow label={t("dampers")} value={materials.dampers} />
       <MaterialRow label={t("vents")} value={materials.vents} />
+      {(materials.steelKg ?? 0) > 0 && (
+        <MaterialRow label={t("steelApproxKg")} value={(materials.steelKg ?? 0).toFixed(2)} />
+      )}
       <MaterialRow label={t("mortarEstimate")} value={formatM3(materials.mortarM3)} />
       <MaterialRow label={t("foundationConcrete")} value={formatM3(materials.concreteVolumeM3)} />
     </div>

@@ -48,6 +48,26 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
     case "setGrateSize":
       return { ...state, grateSpec: grateSpecFromMm(action.lengthMm, action.widthMm, action.thicknessMm) };
 
+    case "setDamperOpenings": {
+      let changed = false;
+      const rows = Object.fromEntries(
+        Object.entries(state.rows).map(([key, bricks]) => {
+          let rowChanged = false;
+          const next = bricks.map((brick) => {
+            const value = action.openings[brick.id];
+            if (brick.kind !== "damper" || !Number.isFinite(value)) return brick;
+            const opening = clamp(value, 0, 1);
+            if ((brick.damperOpen ?? 0) === opening) return brick;
+            changed = true;
+            rowChanged = true;
+            return { ...brick, damperOpen: opening };
+          });
+          return [key, rowChanged ? next : bricks];
+        })
+      );
+      return changed ? { ...state, rows } : state;
+    }
+
     case "toggleDamper": {
       const row = Object.entries(state.rows).find(([, bricks]) =>
         bricks.some((brick) => brick.id === action.id && brick.kind === "damper")

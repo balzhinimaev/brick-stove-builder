@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { profileXZError, damperGeometryError } from "../../shared/profileXZ.js";
 
 const localizedTextSchema = new mongoose.Schema(
   {
@@ -52,8 +53,24 @@ export const brickSchema = new mongoose.Schema(
       type: new mongoose.Schema(
         {
           name: { type: String, default: "" },
-          w: { type: Number, required: true, min: 0.1 },
-          h: { type: Number, required: true, min: 0.1 },
+          material: { type: String, enum: ["steel"], required: false },
+          w: { type: Number, required: true, min: 0.0001 },
+          h: { type: Number, required: true, min: 0.0001 },
+          profileXZ: {
+            type: [
+              new mongoose.Schema(
+                { x: { type: Number, required: true }, z: { type: Number, required: true } },
+                { _id: false }
+              )
+            ],
+            default: undefined,
+            validate: {
+              validator() {
+                return profileXZError(this) === null;
+              },
+              message: "Invalid convex vertical profile or incompatible seat/notch"
+            }
+          },
           notch: {
             type: new mongoose.Schema({ x1: Number, y1: Number, x2: Number, y2: Number }, { _id: false }),
             required: false
@@ -63,6 +80,13 @@ export const brickSchema = new mongoose.Schema(
           notchDepthMm: { type: Number, min: 0, required: false },
           // высота проёма дверцы, мм (вертикальный размер)
           heightMm: { type: Number, min: 0, required: false },
+          damperPlane: { type: String, enum: ["horizontal", "vertical"], required: false },
+          damperSlide: {
+            type: String,
+            enum: ["up", "x-positive", "x-negative", "y-positive", "y-negative"],
+            required: false
+          },
+          damperFrameMm: { type: Number, min: 0, required: false },
           // толщина плиты, мм; flush — утоплена заподлицо в вырезы
           thicknessMm: { type: Number, min: 0, required: false },
           flush: { type: Boolean, required: false },
@@ -78,6 +102,15 @@ export const brickSchema = new mongoose.Schema(
   },
   { _id: false }
 );
+
+brickSchema.path("custom").validate(function (custom) {
+  return (
+    (!custom?.profileXZ || this.kind === "custom") &&
+    (!custom?.material || this.kind === "custom") &&
+    (!custom?.damperPlane || this.kind === "damper") &&
+    damperGeometryError(custom) === null
+  );
+}, "Profiles and steel require custom solids; damper geometry requires a damper");
 
 const showcaseSchema = new mongoose.Schema(
   {

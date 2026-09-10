@@ -2,6 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { COLORS } from "../theme/colors";
 import { cloneRows } from "../domain/geometry";
 import { READY_PROJECTS } from "../domain/projects";
+import { TEPLUSHKA_DAMPERS } from "../domain/teplushkaControls";
+import {
+  inspectTeplushkaMode,
+  teplushkaModeOpenings,
+  type TeplushkaInspection,
+  type TeplushkaMode
+} from "../components/builder/teplushkaInspection";
 import { uniqueId } from "../lib/id";
 import { useI18n, type Locale } from "../i18n";
 import {
@@ -31,6 +38,13 @@ export function useStudioState() {
 
   const editor = useEditor();
   const [demoProjectId, setDemoProjectId] = useState<string | null>(null);
+  const [teplushkaInspection, setTeplushkaInspection] = useState<TeplushkaInspection>({
+    section: "whole",
+    fraction: 0.4
+  });
+  const teplushkaState = useMemo(() => inspectTeplushkaMode(editor.rows, TEPLUSHKA_DAMPERS), [editor.rows]);
+  // Recognise restored editable copies by their hardware IDs, not by a claim that their geometry is unchanged.
+  const showTeplushkaGuide = demoProjectId === "russian-stove-hob" || Object.values(teplushkaState.gates).some(Boolean);
   const session = useSession(t);
   /**
    * Какой СВОЙ сохранённый проект сейчас открыт в редакторе. Пока он задан,
@@ -104,12 +118,14 @@ export function useStudioState() {
   const reset = () => {
     editor.reset();
     setDemoProjectId(null);
+    setTeplushkaInspection({ section: "whole", fraction: 0.4 });
     setCurrentProjectId(null);
     setScreen("builder");
   };
 
   const loadProject = (project: ReadyProject) => {
     editor.loadProject(project);
+    setTeplushkaInspection({ section: "whole", fraction: 0.4 });
     if (project.id === "russian-stove-hob") editor.setCurrentRow(project.rowCount);
     setDemoProjectId(project.ownerLogin ? null : project.id);
     // Свой сохранённый проект открываем «на редактирование»; чужой/демо — как шаблон нового.
@@ -194,6 +210,22 @@ export function useStudioState() {
 
   return {
     demoProjectId,
+    showTeplushkaGuide,
+    teplushkaInspection,
+    teplushkaControls: {
+      ...teplushkaState,
+      onMode: (mode: TeplushkaMode) => {
+        if (teplushkaState.complete) editor.setDamperOpenings(teplushkaModeOpenings(mode, TEPLUSHKA_DAMPERS));
+      },
+      inspection: teplushkaInspection,
+      onInspection: (value: TeplushkaInspection) => setTeplushkaInspection({ ...value, courseOnly: false }),
+      currentRow: editor.currentRow,
+      onCourse: (row: number) => {
+        editor.setCurrentRow(Math.min(row, editor.rowCount));
+        setTeplushkaInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+      }
+    },
+    exitTeplushkaSection: () => setTeplushkaInspection({ section: "whole", fraction: 0.4, courseOnly: true }),
     // navigation + i18n
     locale,
     setLocale,

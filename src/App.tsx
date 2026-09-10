@@ -41,8 +41,8 @@ export default function App() {
           autosaveState={studio.autosaveState}
           pendingCount={studio.pendingCount}
         />
-        {screen === "builder" && studio.demoProjectId === "russian-stove-hob" ? (
-          <RussianStoveGuide locale={locale} />
+        {screen === "builder" && studio.showTeplushkaGuide ? (
+          <RussianStoveGuide locale={locale} controls={studio.teplushkaControls} />
         ) : null}
         <MobileTabs screen={screen} setScreen={studio.setScreen} t={t} />
         {screen === "showcase" ? (
@@ -82,6 +82,8 @@ export default function App() {
           />
         ) : (
           <BuilderScreen
+            inspection={studio.showTeplushkaGuide ? studio.teplushkaInspection : undefined}
+            onExitSection={studio.exitTeplushkaSection}
             t={t}
             grid={studio.grid}
             rows={studio.rows}

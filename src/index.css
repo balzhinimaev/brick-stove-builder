@@ -530,6 +530,62 @@ body {
     transition: none;
   }
 }
+
+.teplushka-guide {
+  line-height: 1.55;
+}
+.teplushka-controls {
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid #d7d7bd;
+  border-radius: 8px;
+}
+.teplushka-controls legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+.teplushka-buttons,
+.teplushka-gates,
+.teplushka-depth {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.teplushka-buttons button {
+  flex: 1 1 110px;
+}
+.teplushka-gates {
+  margin-top: 8px;
+}
+.teplushka-gates span {
+  background: #eee9dc;
+  border-radius: 5px;
+  padding: 3px 6px;
+}
+.teplushka-depth + .teplushka-depth {
+  margin-top: 7px;
+}
+.teplushka-depth input {
+  flex: 1;
+  min-width: 80px;
+  accent-color: #326856;
+  min-height: 36px;
+}
+.teplushka-route {
+  margin: 8px 0;
+  border-left: 3px solid #b96e3a;
+  padding: 6px 10px;
+  background: #f6eddd;
+}
+.teplushka-course {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.teplushka-course > :first-child {
+  flex: 0 0 60px;
+}
 @media print {
   .studio-shell {
     height: auto;

@@ -1,6 +1,14 @@
-# Teplushka-15 reconstruction — work in progress
+# Teplushka-15 reconstruction
 
-## Current model handoff — 2026-09-10, canonical engine integrated
+## Consolidated release review — 2026-09-10
+
+This section supersedes all intermediate handoffs below. The integrated model has 2544 elements in 33 courses, canonical convex geometry, moving physical gates, source steel supports, a separate wedge mouth lintel and non-destructive section controls. Physical collision, bearing and route assertions pass; these are geometric checks, not structural or thermal certification.
+
+`VITE_API_BASE=/api npm run check` passed: formatting, lint (warnings only), TypeScript, production build and 340 tests across 37 files. Final browser verification is intentionally left to the user at their explicit request; no further browser checks are a release gate. Earlier screenshots and browser results describe intermediate snapshots only.
+
+Publication uses the existing guest example URL and server configuration. The remainder of this file is the historical reconstruction journal, not a list of outstanding release blockers.
+
+## Historical model handoff — 2026-09-10, canonical engine integrated
 
 This section supersedes historical intermediate failures and horizontal-summer interpretations below. **Model ready for independent parent review, not deployment approval.**
 
@@ -214,3 +222,8 @@ Stable final source review rechecked after canonical steel integration: bearing 
 Current source at `f64e767` emits **2539 elements**, not the parent-reported 2469-piece snapshot. The source-coordinate x437.5–440/y380–400 fragment is already contained within one **85×100 mm** shoulder unit at x355/y380; ID teplushka-1136 now refers to unrelated masonry because sequential IDs change after transcription. Match review findings by coordinates as well as revision, not sequential IDs alone. No additional geometry mutation was needed for these reported corrections.
 
 Added direct source regressions for the open course4 front-right masonry aperture, 200/300/380 mm cheeks in courses18/20/21, constant890 mm upper footprint with course-specific inner cheeks, and the full summer shoulder unit. Six model suites now pass **23/23** tests, including actual physical gates at0/.5/1, volume isolation/leaks and steel-inclusive foundation chains. Source corrections are consolidated in7078bf4 and support inclusion inf64e767. The separate mouth-voussoir limitation above remains unresolved; these tests are not release acceptance or structural certification. Engine/UI and parent preview untouched.
+
+
+## Integrated mouth correction
+
+The previously unmodeled mouth head is replaced by a separate nine-voussoir fan/jack lintel based on Fig.30 Б–Б, preserving the printed350×280 opening. Intrados stays flat; head height135/topwidth470 and joint allocation are explicitly inferred. No second curved barrel is invented. Fresh physical audit:2544 elements/504 profiles,zero actual intersections and zero unfounded pieces. Sixteen mouth/bearing/whole-volume tests pass in the independent patch review. The numerical volume helper uses1e-7mm face tolerance for exactly shared inclined boundaries, covered by a regression; physical solids and voxel resolution are unchanged. This supersedes the earlier missing-mouth-head limitation, not the structural/draft-calculation caveats.

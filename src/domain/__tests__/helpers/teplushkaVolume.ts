@@ -48,8 +48,10 @@ export function teplushkaVolume(bricks: PlacedBrick[], removedIds: string[] = []
             if (
               faces &&
               !faces.every(
+                // Shared inclined faces must not become numerical pinhole leaks.
                 (f) =>
-                  f.normal.x * (p.x - f.point.x) + f.normal.y * (p.y - f.point.y) + f.normal.z * (p.z - f.point.z) <= 0
+                  f.normal.x * (p.x - f.point.x) + f.normal.y * (p.y - f.point.y) + f.normal.z * (p.z - f.point.z) <=
+                  1e-7
               )
             )
               continue;

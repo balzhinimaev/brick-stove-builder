@@ -6,6 +6,8 @@
     "indoorTemperatureC": 20,
     "outdoorTemperatureC": -30,
     "fuel": "firewood",
+    "wallMaterial": "wood",
+    "wallDescriptionOriginal": "стены из дерева, чисто дерево",
     "ceilingMaterial": "timber",
     "aboveCeilingDescriptionOriginal": "над ним просто мешки обсыпанные опилкой с углем",
     "foundationScope": "design from scratch",
@@ -31,6 +33,7 @@
       "externalDoorAreaM2": 2,
       "exposedCeilingAreaM2": 60,
       "exposedFloorAreaM2": 60,
+      "walls": "Wood confirmed; no separate insulation reported. Log/timber type, thickness and joints are unknown. Treat adjacent walls as unprotected combustible construction until their protection is established.",
       "ceiling": "Timber confirmed; no protective construction evidenced, treated as unprotected. Bags with sawdust/coal around or above them are reported; exact composition and layer thickness unknown. Cold ventilated space above remains a thermal assumption, not a confirmed attic survey.",
       "floor": "Floor above a cold ventilated crawlspace, not a ground-bearing slab",
       "geometryNote": "6x10 m is an equivalent simplified thermal perimeter, not a measured room or wall plan."
@@ -49,6 +52,7 @@
       "foundation": "Selected concept: one new reinforced-concrete foundation supporting stove plus rooted masonry chimney, structurally separated from the house foundation. Soil bearing, depth, dimensions and reinforcement are engineering outputs.",
       "chimney": "Selected concept: new vertical rooted clay-brick chimney with accessible cleaning, carried by the stove/chimney foundation. Bore, terminal height, stability and penetration details remain engineering outputs.",
       "combustibleFillAtPenetration": "No bags, sawdust or coal retained within the designed noncombustible penetration zone; remaining loose fill must be restrained from spilling into it. A coal/slag substitution is not inferred from the user's wording.",
+      "wallInterface": "Stove-to-wood clearances and wall protection require a separate placement detail; do not reuse the ceiling gap or chimney penetration distance as a universal side clearance.",
       "structuralDimensionsAssigned": false
     },
     "thermalMethod": {
@@ -56,7 +60,7 @@
       "boundaryTemperature": "Outdoor temperature applied to walls, ceiling and exposed floor in all three scenarios; no ground-temperature model",
       "gains": "No credit for sun, occupants or appliances",
       "airExchange": "Equivalent outdoor air rate without heat recovery; includes the scenario's ventilation/infiltration, not a prescribed ventilation design. Combustion air and extractor operation are not sized.",
-      "uValues": "Chosen whole-element U-values W/(m2 K), not inferred actual wall materials or code compliance. The reported sawdust/coal does NOT establish the assumed ceiling U=0.30 or verify the 6.93 kW scenario.",
+      "uValues": "Chosen whole-element U-values W/(m2 K), not inferred actual wall materials or code compliance. Neither the reported wooden walls nor the sawdust/coal establish the assumed wall U=0.60 or ceiling U=0.30; the 6.93 kW scenario is NOT verified house demand.",
       "thermalBridges": "Explicit scenario allowance W/K, not a measured value, normative percentage or hidden output margin"
     },
     "selectedThermalScenario": "reference",
@@ -88,6 +92,7 @@
     "location": null,
     "roomPlanAndDimensions": null,
     "wallFloorRoofLayersAndInsulation": null,
+    "wallThicknessTimberTypeAndJointCondition": null,
     "windowAndDoorAreasAndTypes": null,
     "ceilingLayerThicknessesBeamPositionsAndAboveCeilingGeometry": null,
     "ventilationAndAirSupply": null,

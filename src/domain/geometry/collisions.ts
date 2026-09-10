@@ -1,4 +1,14 @@
 import type { BrickFootprint, PlacedBrick } from "../types";
+import { MM_PER_CELL } from "../constants";
+import { damperParts, grateParts } from "./hardware";
+import {
+  convexIntersects,
+  pointInPolyhedron,
+  profilePolyhedron,
+  translatedPolyhedron,
+  type ConvexPolyhedron,
+  type Point3Mm
+} from "./convex";
 import { brickBounds, brickBoxes, notchBox, type BrickBox } from "./bounds";
 
 export const GEOMETRY_EPS = 1e-6;
@@ -36,7 +46,7 @@ export function isOverlayKind(kind: BrickFootprint["kind"]): boolean {
  * задвижка накладная всегда.
  */
 export function isOverlayBrick(brick: BrickFootprint): boolean {
-  if (brick.kind === "damper") return true;
+  if (brick.kind === "damper") return brick.custom?.damperPlane !== "vertical";
   return brick.kind === "plate" && brick.custom?.flush !== true;
 }
 
@@ -52,7 +62,8 @@ const DAMPER_MM = 20;
 /** Подрезка колосникового узла лежит на посадочной полке — верхняя половина. */
 const TRIM_SEAT_MM = BRICK_MM / 2;
 
-export type BrickSolid = { box: BrickBox; z1: number; z2: number };
+/** box/z1/z2 are bounds only when polyhedron is present. Use solidsIntersect3D for physical tests. */
+export type BrickSolid = { box: BrickBox; z1: number; z2: number; polyhedron?: ConvexPolyhedron };
 
 /** A through-cut stays empty even if an older document also stores a shallow depth. */
 export function notchDepthMm(brick: BrickFootprint): number {
@@ -68,6 +79,16 @@ export function notchDepthMm(brick: BrickFootprint): number {
  */
 export function brickSolids(brick: BrickFootprint): BrickSolid[] {
   const bounds = brickBounds(brick);
+  const polyhedron = profilePolyhedron(brick);
+  if (polyhedron)
+    return [
+      {
+        box: bounds,
+        z1: Math.min(...polyhedron.vertices.map((p) => p.z)),
+        z2: Math.max(...polyhedron.vertices.map((p) => p.z)),
+        polyhedron
+      }
+    ];
   if (brick.kind === "plate") {
     const t = brick.custom?.thicknessMm ?? PLATE_THICKNESS_MM;
     if (brick.custom?.flush === true) {
@@ -80,9 +101,15 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
     return [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
   }
   if (brick.kind === "damper") {
+    if (brick.custom?.damperPlane === "vertical") {
+      const seat = brick.custom.seatZMm ?? 0;
+      const height = brick.custom.heightMm ?? BRICK_MM;
+      return [{ box: bounds, z1: seat, z2: seat + height }];
+    }
     // рамка в шве над своим рядом: конфликтует только с другими накладными
     const t = brick.custom?.thicknessMm ?? DAMPER_MM;
-    return [{ box: bounds, z1: BRICK_MM, z2: BRICK_MM + t }];
+    const seat = brick.custom?.seatZMm ?? BRICK_MM;
+    return [{ box: bounds, z1: seat, z2: seat + t }];
   }
   if (brick.kind === "grate") {
     // как flush-плита: лежит на посадке из полок (автоподрез при установке);
@@ -103,15 +130,74 @@ export function brickSolids(brick: BrickFootprint): BrickSolid[] {
   return solids;
 }
 
+/** Canonical convex solid in millimetres, with an optional absolute course elevation. */
+export function solidPolyhedron(solid: BrickSolid, baseMm = 0): ConvexPolyhedron {
+  if (solid.polyhedron) return translatedPolyhedron(solid.polyhedron, baseMm);
+  const { box, z1, z2 } = solid;
+  const vertices = [z1, z2].flatMap((z) => [
+    { x: box.x1 * MM_PER_CELL, y: box.y1 * MM_PER_CELL, z: z + baseMm },
+    { x: box.x2 * MM_PER_CELL, y: box.y1 * MM_PER_CELL, z: z + baseMm },
+    { x: box.x2 * MM_PER_CELL, y: box.y2 * MM_PER_CELL, z: z + baseMm },
+    { x: box.x1 * MM_PER_CELL, y: box.y2 * MM_PER_CELL, z: z + baseMm }
+  ]);
+  return {
+    vertices,
+    faces: [
+      [0, 3, 2, 1],
+      [4, 5, 6, 7],
+      [0, 1, 5, 4],
+      [1, 2, 6, 5],
+      [2, 3, 7, 6],
+      [3, 0, 4, 7]
+    ]
+  };
+}
+
+export function solidsIntersect3D(a: BrickSolid, b: BrickSolid, aBaseMm = 0, bBaseMm = 0): boolean {
+  if (
+    !boxesIntersect(a.box, b.box) ||
+    Math.min(aBaseMm + a.z2, bBaseMm + b.z2) - Math.max(aBaseMm + a.z1, bBaseMm + b.z1) <= GEOMETRY_EPS
+  )
+    return false;
+  if (!a.polyhedron && !b.polyhedron) return true;
+  return convexIntersects(solidPolyhedron(a, aBaseMm), solidPolyhedron(b, bBaseMm));
+}
+
+export function pointInSolid(solid: BrickSolid, pointMm: Point3Mm, baseMm = 0, toleranceMm = GEOMETRY_EPS): boolean {
+  if (!solid.polyhedron)
+    return (
+      pointMm.x >= solid.box.x1 * MM_PER_CELL - toleranceMm &&
+      pointMm.x <= solid.box.x2 * MM_PER_CELL + toleranceMm &&
+      pointMm.y >= solid.box.y1 * MM_PER_CELL - toleranceMm &&
+      pointMm.y <= solid.box.y2 * MM_PER_CELL + toleranceMm &&
+      pointMm.z >= baseMm + solid.z1 - toleranceMm &&
+      pointMm.z <= baseMm + solid.z2 + toleranceMm
+    );
+  return pointInPolyhedron(solidPolyhedron(solid, baseMm), pointMm, toleranceMm);
+}
+
+/** Actual occupied geometry, including moving blades, their retained frames and grate slots.
+ * brickSolids deliberately remains the backwards-compatible mounting envelope used by editor placement.
+ */
+export function brickPhysicalSolids(brick: BrickFootprint & Partial<Pick<PlacedBrick, "damperOpen">>): BrickSolid[] {
+  if (brick.kind === "vent") return [];
+  if (brick.kind === "damper") return damperParts(brick).map((part) => part.solid);
+  if (brick.kind === "grate") return grateParts(brick).map((part) => part.solid);
+  return brickSolids(brick);
+}
+
+/** Physical audit API. Deliberately has no editor overlay exemption. */
+export function brickPhysicalOverlap(a: PlacedBrick, b: PlacedBrick): boolean {
+  const aBase = (a.row - 1) * COURSE_MM;
+  const bBase = (b.row - 1) * COURSE_MM;
+  return brickPhysicalSolids(a).some((sa) =>
+    brickPhysicalSolids(b).some((sb) => solidsIntersect3D(sa, sb, aBase, bBase))
+  );
+}
+
 export function overlaps3D(a: PlacedBrick, b: PlacedBrick): boolean {
   if (isOverlayBrick(a) !== isOverlayBrick(b)) return false;
   const aBase = (a.row - 1) * COURSE_MM;
   const bBase = (b.row - 1) * COURSE_MM;
-  return brickSolids(a).some((sa) =>
-    brickSolids(b).some(
-      (sb) =>
-        boxesIntersect(sa.box, sb.box) &&
-        Math.min(aBase + sa.z2, bBase + sb.z2) - Math.max(aBase + sa.z1, bBase + sb.z1) > GEOMETRY_EPS
-    )
-  );
+  return brickSolids(a).some((sa) => brickSolids(b).some((sb) => solidsIntersect3D(sa, sb, aBase, bBase)));
 }

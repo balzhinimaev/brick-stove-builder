@@ -50,9 +50,18 @@ export type GridSpec = { cols: number; rows: number; widthCm: number; lengthCm: 
  */
 export type CustomBrickSpec = {
   name: string;
+  /** Explicit structural steel part; omitted keeps legacy masonry material. */
+  material?: "steel";
   /** габарит после резов, в ячейках */
   w: number;
   h: number;
+  /**
+   * Convex vertical section of an individual wedge, in millimetres. Local X
+   * spans 0..w*125; local Z is relative to the course base (not limited to 65).
+   * Extruded along local plan Y by h*125, then rotated by orientation.
+   * Only custom solids; incompatible with notches, seats and height overrides.
+   */
+  profileXZ?: { x: number; z: number }[];
   /** вырез, привязанный к углу заготовки: бокс в координатах заготовки */
   notch?: { x1: number; y1: number; x2: number; y2: number } | null;
   /** true — в вырезе остаётся полка на посадку; false — вырез сквозной */
@@ -61,6 +70,12 @@ export type CustomBrickSpec = {
   notchDepthMm?: number;
   /** вертикальный размер (дверцы): высота проёма в мм, ~70 мм на ряд кладки */
   heightMm?: number;
+  /** Damper mounting plane. Vertical means a removable mouth plate lifted by damperOpen × heightMm. */
+  damperPlane?: "horizontal" | "vertical";
+  /** Direction of a vertical sliding blade in the unrotated local plan, or upward. */
+  damperSlide?: "up" | "x-positive" | "x-negative" | "y-positive" | "y-negative";
+  /** Vertical default 0 (removable mouth plate); horizontal default 10 mm. Rim lies outside clear aperture. */
+  damperFrameMm?: number;
   /** толщина плиты, мм */
   thicknessMm?: number;
   /** плита утоплена заподлицо с верхом ряда (ложится в вырезы кирпичей) */
@@ -107,6 +122,10 @@ export type MaterialsEstimate = {
   dampers: number;
   /** Вентканалы — размеченные пустоты, материалов не расходуют. */
   vents: number;
+  /** Geometric steel parts, not purchased angle-stock quantity. */
+  steelPieces?: number;
+  /** Approximate mass from actual solid volume and nominal 7850 kg/m³ density. */
+  steelKg?: number;
   mortarM3: number;
   concreteVolumeM3: number;
   total: number;

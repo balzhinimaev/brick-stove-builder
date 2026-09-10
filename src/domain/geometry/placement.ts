@@ -1,4 +1,8 @@
 import type { BrickFootprint, GridSpec, PlacedBrick } from "../types";
+import { profileXZError } from "./convex";
+import { damperGeometryError } from "./hardware";
+import { cloneCustomBrick } from "./rows";
+import { isSteelPart } from "../materials";
 import { brickBounds, footprintSizeOf, isInsideGrid, notchBox, type BrickBox } from "./bounds";
 import { BRICK_MM, boxesIntersect, brickSolids, isOverlayKind, notchDepthMm, overlaps, overlaps3D } from "./collisions";
 
@@ -33,6 +37,7 @@ export function cutBrickForPlate(
   const bounds = brickBounds(brick);
   const inter = intersectBox(bounds, brickBounds(plate));
   if (!inter) return brick;
+  if (brick.custom?.profileXZ || isSteelPart(brick)) return null;
 
   // локальный вырез, заякоренный в грань/угол (контракт brickBoxes):
   // «плавающую» сторону дотягиваем до ближайшей грани — рез с небольшим запасом
@@ -101,7 +106,7 @@ export function plateSeatZ(rowBricks: BrickFootprint[], plate: BrickFootprint): 
   const bounds = brickBounds(plate);
   let top = 0;
   for (const brick of rowBricks) {
-    if (!MASONRY_KINDS.has(brick.kind)) continue;
+    if (!MASONRY_KINDS.has(brick.kind) || brick.custom?.profileXZ) continue;
     for (const solid of brickSolids(brick)) {
       if (boxesIntersect(solid.box, bounds)) top = Math.max(top, solid.z2);
     }
@@ -152,6 +157,17 @@ export function planPlacement(
   grid: GridSpec
 ): PlacementPlan {
   if (!rawDrafts.length) return { rows: null, conflicts: [] };
+  if (
+    rawDrafts.some(
+      (draft) =>
+        profileXZError(draft.custom) ||
+        damperGeometryError(draft.custom) ||
+        (draft.custom?.profileXZ && draft.kind !== "custom") ||
+        (draft.custom?.material && draft.kind !== "custom") ||
+        (draft.custom?.damperPlane && draft.kind !== "damper")
+    )
+  )
+    return { rows: null, conflicts: [] };
   if (rawDrafts.some((draft) => !isInsideGrid(draft, grid))) return { rows: null, conflicts: [] };
 
   if (rawDrafts.some((draft) => draft.row !== row)) return { rows: null, conflicts: [] };
@@ -199,7 +215,7 @@ export function planPlacement(
   // New elements always use the flush elevation. Never silently drop to the
   // course base when the ledge is too deep or there is no support.
   const drafts = rawDrafts.map((draft) => {
-    if (!isSeated(draft)) return draft;
+    if (!isSeated(draft)) return { ...draft, ...(draft.custom ? { custom: cloneCustomBrick(draft.custom) } : {}) };
     return {
       ...draft,
       custom: {

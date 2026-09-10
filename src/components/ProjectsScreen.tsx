@@ -66,15 +66,7 @@ export function ProjectsScreen({
           </div>
         </div>
         {project.id === "russian-stove-hob" ? <RussianStoveGuide locale={locale} /> : null}
-        {project.id === "russian-stove-hob" ? (
-          <img
-            src={`${import.meta.env.BASE_URL}russian-stove-demo.png`}
-            alt={project.title[locale]}
-            width={511}
-            height={388}
-            className="mx-auto max-h-96 w-full object-contain bg-[#E2E5DF]"
-          />
-        ) : null}
+
         <ProjectOrderPreview grid={projectGrid} rows={project.rows} rowCount={project.rowCount} t={t} />
         <div className="space-y-2 p-3 pt-0">
           {project.ownerLogin ? null : (

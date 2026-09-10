@@ -10,20 +10,18 @@ import {
   RGBAFormat
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { brickBounds, footprintSizeOf } from "../../domain/geometry";
+import { brickBounds, footprintSizeOf, damperParts, grateParts, brickPhysicalSolids } from "../../domain/geometry";
 import { MM_PER_CELL } from "../../domain/constants";
 import { plateBurnerCenters } from "../../domain/plate";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
-import { solidBoxes, type SceneBox } from "./sceneMath";
+import { solidBoxes, solidSceneBox, type SceneBox } from "./sceneMath";
 
-const METAL = new Set(["plate", "grate", "damper", "cleanout"]);
-export const isMasonry = (brick: PlacedBrick) => !METAL.has(brick.kind) && brick.kind !== "vent";
+import { profileSceneGeometry } from "./profileGeometry";
 
-function brickColor(brick: PlacedBrick) {
-  const seed = [...brick.id].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
-  const fire = brick.kind === "firebrick" || brick.custom?.cutFrom === "firebrick";
-  return new Color(fire ? "#c8ad79" : "#a95b40").multiplyScalar(0.88 + (seed % 100) / 420);
-}
+import { isSteelPart } from "../../domain/materials";
+import { brickAppearance, isMasonry } from "./brickAppearance";
+export { isMasonry } from "./brickAppearance";
+const brickColor = (brick: PlacedBrick) => brickAppearance(brick).color;
 
 /** Small, deterministic mineral bump field. No network texture or font dependency. */
 function mineralTexture() {
@@ -49,7 +47,7 @@ export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedB
   const { bodies, beds } = useMemo(() => {
     const bodies: Instance[] = [];
     const beds: Instance[] = [];
-    for (const brick of bricks.filter(isMasonry)) {
+    for (const brick of bricks.filter((b) => isMasonry(b) && !b.custom?.profileXZ)) {
       for (const box of solidBoxes(brick, grid)) bodies.push({ ...box, color: brickColor(brick) });
       // Beds follow the occupied shape, preserving shafts and through-cuts.
       if (brick.row > 1) {
@@ -68,6 +66,11 @@ export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedB
   }, [bricks, grid]);
   return (
     <>
+      {bricks
+        .filter((b) => isMasonry(b) && b.custom?.profileXZ)
+        .map((brick) => (
+          <ProfileMesh key={brick.id} brick={brick} grid={grid} />
+        ))}
       <InstanceBoxes instances={beds} />
       <InstanceBoxes instances={bodies} textured />
     </>
@@ -127,9 +130,13 @@ function InstanceBoxes({ instances, textured = false }: { instances: Instance[];
 
 /** Collision-aligned wire ghost; never lies about an element's true height or seat. */
 export function BrickHighlight({ brick, grid, color }: { brick: PlacedBrick; grid: GridSpec; color: string }) {
+  if (brick.custom?.profileXZ) return <ProfileMesh brick={brick} grid={grid} color={color} highlight />;
   return (
     <group>
-      {solidBoxes(brick, grid, 0).map((box) => (
+      {(brick.kind === "damper" || brick.kind === "grate"
+        ? brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid))
+        : solidBoxes(brick, grid, 0)
+      ).map((box) => (
         <group key={box.position.join(":")} position={box.position}>
           <mesh>
             <boxGeometry args={box.scale} />
@@ -145,14 +152,23 @@ export function BrickHighlight({ brick, grid, color }: { brick: PlacedBrick; gri
   );
 }
 
-const MetalBox = ({ position, scale, color = "#353a3c" }: SceneBox & { color?: string }) => (
+const MetalBox = ({
+  position,
+  scale,
+  color = "#353a3c",
+  roughness = 0.62,
+  metalness = 0.65
+}: SceneBox & { color?: string | Color; roughness?: number; metalness?: number }) => (
   <mesh position={position} castShadow receiveShadow>
     <boxGeometry args={scale} />
-    <meshStandardMaterial color={color} roughness={0.62} metalness={0.65} />
+    <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
   </mesh>
 );
 
 export const ThreeBrick = memo(function ThreeBrick({ brick, grid }: { brick: PlacedBrick; grid: GridSpec }) {
+  if (brick.custom?.profileXZ) return <ProfileMesh brick={brick} grid={grid} />;
+  if (isSteelPart(brick)) return <CustomSteelMesh brick={brick} grid={grid} />;
+  if (brick.kind === "damper" || brick.kind === "grate") return <HardwareMesh brick={brick} grid={grid} />;
   const box = solidBoxes(brick, grid, 0.025)[0];
   if (!box) return null;
   const size = footprintSizeOf(brick);
@@ -211,45 +227,6 @@ export const ThreeBrick = memo(function ThreeBrick({ brick, grid }: { brick: Pla
       </group>
     );
   }
-  if (brick.kind === "grate" || brick.kind === "damper") {
-    const alongX = size.w >= size.h;
-    const long = Math.max(size.w, size.h) - 0.04;
-    const short = Math.min(size.w, size.h) - 0.04;
-    const height = box.scale[1];
-    const open = brick.damperOpen ?? 0;
-    return (
-      <group position={box.position} rotation={[0, alongX ? 0 : Math.PI / 2, 0]}>
-        {[-1, 1].map((s) => (
-          <group key={s}>
-            <MetalBox position={[s * (long / 2 - 0.045), 0, 0]} scale={[0.09, height, short]} />
-            <MetalBox position={[0, 0, s * (short / 2 - 0.045)]} scale={[long, height, 0.09]} />
-          </group>
-        ))}
-        {brick.kind === "grate" ? (
-          [-3, -2, -1, 0, 1, 2, 3].map((bar) => (
-            <MetalBox
-              key={bar}
-              position={[0, 0, (bar * (short - 0.22)) / 7]}
-              scale={[long - 0.12, height * 0.85, (short - 0.22) / 12]}
-            />
-          ))
-        ) : (
-          <>
-            <MetalBox
-              position={[open * long * 0.7, 0, 0]}
-              scale={[long - 0.12, height * 0.35, short - 0.14]}
-              color="#45494a"
-            />
-            <MetalBox
-              position={[open * long * 0.7 + long / 2 + 0.12, 0, 0]}
-              scale={[0.3, 0.055, 0.09]}
-              color="#222627"
-            />
-          </>
-        )}
-      </group>
-    );
-  }
   // Only used for a single prospective brick. The permanent model is instanced.
   const outer = brickBounds(brick);
   return (
@@ -264,3 +241,61 @@ export const ThreeBrick = memo(function ThreeBrick({ brick, grid }: { brick: Pla
     </group>
   );
 });
+
+/** Same canonical faces as SAT and physical sections, including ghost/highlight. */
+export function ProfileMesh({
+  brick,
+  grid,
+  color,
+  highlight = false
+}: {
+  brick: PlacedBrick;
+  grid: GridSpec;
+  color?: string;
+  highlight?: boolean;
+}) {
+  const geometry = useMemo(() => profileSceneGeometry(brick, grid), [brick, grid]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh geometry={geometry} userData={{ brickId: brick.id }} castShadow receiveShadow>
+      <meshStandardMaterial
+        color={color ?? brickColor(brick)}
+        roughness={brickAppearance(brick).roughness}
+        metalness={brickAppearance(brick).metalness}
+        transparent={highlight}
+        opacity={highlight ? 0.5 : 1}
+        depthWrite={!highlight}
+      />
+    </mesh>
+  );
+}
+
+function HardwareMesh({ brick, grid }: { brick: PlacedBrick; grid: GridSpec }) {
+  const parts = brick.kind === "damper" ? damperParts(brick) : grateParts(brick);
+  return (
+    <group name={`hardware-${brick.id}`} userData={{ brickId: brick.id }}>
+      {parts.map(({ solid, role }) => (
+        <MetalBox
+          key={`${role}-${solid.box.x1}-${solid.box.y1}-${solid.box.x2}-${solid.box.y2}-${solid.z1}-${solid.z2}`}
+          {...solidSceneBox(solid, brick.row, grid)}
+          color={role === "blade" ? "#45494a" : "#353a3c"}
+        />
+      ))}
+    </group>
+  );
+}
+
+function CustomSteelMesh({ brick, grid }: { brick: PlacedBrick; grid: GridSpec }) {
+  const appearance = brickAppearance(brick);
+  return (
+    <group name={`steel-${brick.id}`} userData={{ brickId: brick.id }}>
+      {brickPhysicalSolids(brick).map((solid) => (
+        <MetalBox
+          key={`${solid.box.x1}-${solid.box.y1}-${solid.z1}`}
+          {...solidSceneBox(solid, brick.row, grid)}
+          {...appearance}
+        />
+      ))}
+    </group>
+  );
+}

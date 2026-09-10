@@ -20,6 +20,7 @@ import { MaterialsSummary } from "./MaterialsSummary";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { PrintOrder } from "./PrintOrder";
 import { Toolbox } from "./builder/Toolbox";
+import type { TeplushkaInspection } from "./builder/teplushkaInspection";
 
 const ThreeStack = lazy(() => import("./three/ThreeStack").then((module) => ({ default: module.ThreeStack })));
 
@@ -68,6 +69,8 @@ export type BuilderScreenProps = {
   parameters: Parameters;
   materials: MaterialsEstimate;
   saveCurrentProject: () => void;
+  inspection?: TeplushkaInspection;
+  onExitSection?: () => void;
 };
 
 export function BuilderScreen(props: BuilderScreenProps) {
@@ -213,6 +216,8 @@ export function BuilderScreen(props: BuilderScreenProps) {
                 previewAt={props.previewAt}
                 placeAt={props.placeAt}
                 rotateBrick={() => setOrientation(orientation === "h" ? "v" : "h")}
+                inspection={props.inspection}
+                onExitSection={props.onExitSection}
               />
             </Suspense>
           </ErrorBoundary>

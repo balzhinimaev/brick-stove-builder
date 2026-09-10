@@ -1,4 +1,4 @@
-import type { GridSpec, PlacedBrick } from "../types";
+import type { CustomBrickSpec, GridSpec, PlacedBrick } from "../types";
 import { brickBounds, brickBoxes, isInsideGrid } from "./bounds";
 import { isOverlayKind } from "./collisions";
 
@@ -26,16 +26,19 @@ export function removeBrickAt(rowBricks: PlacedBrick[], x: number, y: number): P
   return rowBricks.filter((brick) => !covers(brick));
 }
 
+export function cloneCustomBrick(spec: CustomBrickSpec): CustomBrickSpec {
+  return {
+    ...spec,
+    ...(spec.notch ? { notch: { ...spec.notch } } : {}),
+    ...(spec.profileXZ ? { profileXZ: spec.profileXZ.map((point) => ({ ...point })) } : {})
+  };
+}
+
 export function cloneRows(rows: Record<number, PlacedBrick[]>): Record<number, PlacedBrick[]> {
   return Object.fromEntries(
     Object.entries(rows).map(([row, bricks]) => [
       row,
-      bricks.map((brick) => ({
-        ...brick,
-        ...(brick.custom
-          ? { custom: { ...brick.custom, ...(brick.custom.notch ? { notch: { ...brick.custom.notch } } : {}) } }
-          : {})
-      }))
+      bricks.map((brick) => ({ ...brick, ...(brick.custom ? { custom: cloneCustomBrick(brick.custom) } : {}) }))
     ])
   ) as Record<number, PlacedBrick[]>;
 }

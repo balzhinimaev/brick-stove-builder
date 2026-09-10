@@ -127,15 +127,7 @@ function ShowcaseCard({
           </Pill>
         </div>
       </div>
-      {project.id === "russian-stove-hob" ? (
-        <img
-          src={`${import.meta.env.BASE_URL}russian-stove-demo.png`}
-          alt={project.title[locale]}
-          width={511}
-          height={388}
-          className="mx-auto max-h-96 w-full object-contain bg-[#E2E5DF]"
-        />
-      ) : null}
+
       <ProjectOrderPreview grid={grid} rows={project.rows} rowCount={project.rowCount} t={t} />
       <div className="mt-auto space-y-2 p-3">
         {typeof showcase?.price === "number" ? (

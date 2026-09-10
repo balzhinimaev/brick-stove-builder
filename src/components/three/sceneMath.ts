@@ -1,5 +1,5 @@
 import { BRICK_GAP, MM_PER_CELL } from "../../domain/constants";
-import { brickBounds, brickSolids, cellToWorld } from "../../domain/geometry";
+import { brickBounds, brickSolids, brickPhysicalSolids, cellToWorld, type BrickSolid } from "../../domain/geometry";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 import type { PlacementPoint, PlacementPreview } from "../../domain/editor/preview";
 
@@ -19,6 +19,8 @@ export function withPlacementAdjustments(bricks: PlacedBrick[], preview: Placeme
 /** Render the same occupied solids as collision detection, including ledges and metal seats. */
 export function solidBoxes(brick: PlacedBrick, grid: GridSpec, mortarGap = BRICK_GAP): SceneBox[] {
   const outer = brickBounds(brick);
+  if (brick.custom?.damperPlane === "vertical")
+    return brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid));
   return brickSolids(brick).map(({ box, z1, z2 }) => {
     // Shave external faces only; never split an L-shaped brick with a fake joint.
     const x1 = box.x1 + (box.x1 === outer.x1 ? mortarGap / 2 : 0);
@@ -87,4 +89,13 @@ export class PlacementGesture {
     this.start = null;
     this.cancelled = true;
   }
+}
+
+/** Exact physical part box, no cosmetic mortar shaving. Profiles must use their mesh, not this bound. */
+export function solidSceneBox({ box, z1, z2 }: BrickSolid, row: number, grid: GridSpec): SceneBox {
+  const center = cellToWorld((box.x1 + box.x2) / 2, (box.y1 + box.y2) / 2, grid);
+  return {
+    position: [center.x, ((row - 1) * 70 + (z1 + z2) / 2) / MM_PER_CELL, center.z],
+    scale: [box.x2 - box.x1, (z2 - z1) / MM_PER_CELL, box.y2 - box.y1]
+  };
 }

@@ -1,5 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { Edges, OrbitControls, Text } from "@react-three/drei";
+import { ProfileMesh } from "./ThreeBrick";
 import { COLORS } from "../../theme/colors";
 import { brickSolids, notchBox, notchDepthMm, type BrickBox } from "../../domain/geometry";
 import type { CustomBrickSpec, PlacedBrick } from "../../domain/types";
@@ -78,8 +79,12 @@ export default function CutterPreview3D({ spec }: { spec: CustomBrickSpec }) {
       </mesh>
 
       {/* Тот же объём тела и полки, что в кладке и проверке столкновений. */}
-      {solids.map(({ box, z1, z2 }, index) =>
-        boxMesh(box, (z2 - z1) / 125, z1 / 125, z2 < 65 ? COLORS.cutBrick : COLORS.customBrick, index)
+      {spec.profileXZ ? (
+        <ProfileMesh brick={brick} grid={{ cols: BLANK_W, rows: BLANK_D, widthCm: 25, lengthCm: 12 }} />
+      ) : (
+        solids.map(({ box, z1, z2 }, index) =>
+          boxMesh(box, (z2 - z1) / 125, z1 / 125, z2 < 65 ? COLORS.cutBrick : COLORS.customBrick, index)
+        )
       )}
 
       {/* размеры, мм */}

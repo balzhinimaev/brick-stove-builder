@@ -7,3 +7,8 @@ export * from "./collisions";
 export * from "./placement";
 export * from "./fill";
 export * from "./rows";
+export * from "./prisms";
+
+export * from "./convex";
+
+export * from "./hardware";

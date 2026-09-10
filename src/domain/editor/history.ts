@@ -27,6 +27,7 @@ const TRACKED_ACTIONS: ReadonlySet<EditorAction["type"]> = new Set([
   "place",
   "erase",
   "toggleDamper",
+  "setDamperOpenings",
   "addRow",
   "deleteRow",
   "copyRow",

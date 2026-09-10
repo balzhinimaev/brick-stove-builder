@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Plane, Vector3 } from "three";
 import type { Translate } from "../../i18n";
 import type { GridSpec, PlacedBrick, SnapStep } from "../../domain/types";
@@ -7,6 +7,8 @@ import { BRICK_LAYER_HEIGHT, MM_PER_CELL } from "../../domain/constants";
 import { canConfirmPlacement, type PlacementPoint, type PlacementPreview } from "../../domain/editor/preview";
 import { BrickHighlight, isMasonry, Masonry, ThreeBrick } from "./ThreeBrick";
 import { SceneCamera, type CameraCommand } from "./SceneCamera";
+import { inspectionPlane, sectionScene } from "./sectionGeometry";
+import type { TeplushkaInspection } from "../builder/teplushkaInspection";
 import {
   nudgePoint,
   placementPoint,
@@ -27,6 +29,8 @@ export type ThreeStackProps = {
   previewAt: (point: PlacementPoint) => PlacementPreview;
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   rotateBrick: () => void;
+  inspection?: TeplushkaInspection;
+  onExitSection?: () => void;
 };
 
 export function ThreeStack({
@@ -39,7 +43,9 @@ export function ThreeStack({
   t,
   previewAt,
   placeAt,
-  rotateBrick
+  rotateBrick,
+  inspection,
+  onExitSection
 }: ThreeStackProps) {
   const [inspect, setInspect] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
@@ -48,6 +54,7 @@ export function ThreeStack({
   const gesture = useRef(new PlacementGesture());
   const tap = useRef(false);
   const viewport = useRef<HTMLDivElement>(null);
+  const sectionActive = !!inspection && inspection.section !== "whole";
   const selectionContext = useRef({ currentRow, grid, inspect });
   const visible = useMemo(
     () => bricks.filter((brick) => inspect || brick.row <= currentRow),
@@ -67,7 +74,30 @@ export function ThreeStack({
     () => withPlacementAdjustments(visible, valid ? preview : null),
     [visible, preview, valid]
   );
+  const clipPlane = useMemo(() => inspectionPlane(inspection, bricks, grid), [inspection, bricks, grid]);
+  const section = useMemo(
+    () => (clipPlane ? sectionScene(sceneBricks, grid, clipPlane, foundationHeight) : null),
+    [sceneBricks, grid, clipPlane, foundationHeight]
+  );
+  useEffect(() => () => section?.geometry.dispose(), [section]);
+  // Omit fully removed draws as well as their caps. GPU clipping is still needed
+  // for intersected bricks, but must not leave raster fragments of a removed chimney.
+  const renderedBricks = useMemo(
+    () => (section ? sceneBricks.filter((brick) => section.retainedBrickIds.has(brick.id)) : sceneBricks),
+    [sceneBricks, section]
+  );
+  const sectionSize = section?.bounds.getSize(new Vector3());
+  const sectionCenter = section?.bounds.getCenter(new Vector3());
   const act = (kind: CameraCommand["kind"]) => setCommand((previous) => ({ id: previous.id + 1, kind }));
+  const inspectionSection = inspection?.section;
+  const inspectionCourseOnly = inspection?.courseOnly;
+  useEffect(() => {
+    setInspect(inspectionSection !== undefined && !inspectionCourseOnly);
+    setPoint(null);
+    gesture.current.cancel();
+    tap.current = false;
+    setCommand((previous) => ({ id: previous.id + 1, kind: "iso" }));
+  }, [inspectionSection, inspectionCourseOnly]);
   const confirm = () => {
     if (!point || !valid) return;
     placeAt(point.x, point.y, point.rawX, point.rawY);
@@ -136,7 +166,14 @@ export function ThreeStack({
     <div className="scene-workspace">
       <div className="scene-toolbar">
         <fieldset className="studio-segment" aria-label={t("interactionMode")}>
-          <button type="button" aria-pressed={!inspect} onClick={() => setInspect(false)}>
+          <button
+            type="button"
+            aria-pressed={!inspect}
+            onClick={() => {
+              onExitSection?.();
+              setInspect(false);
+            }}
+          >
             {t("buildMode")}
           </button>
           <button type="button" aria-pressed={inspect} onClick={() => setInspect(true)}>
@@ -189,26 +226,27 @@ export function ThreeStack({
         }}
       >
         <div className="scene-badge">
-          {inspect ? t("wholeModel") : `${t("currentRow")} ${currentRow}`}{" "}
+          {sectionActive ? t("sectionView") : inspect ? t("wholeModel") : `${t("currentRow")} ${currentRow}`}{" "}
           <span>
             · {grid.widthCm} × {grid.lengthCm} {t("unitCm")}
           </span>
         </div>
         <Canvas
           frameloop="demand"
-          shadows
+          shadows={!sectionActive}
           dpr={[1, 1.5]}
           camera={{ position: [16, 14, 16], fov: 38, near: 0.05, far: 1000 }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           aria-label={t("aria3d")}
         >
           <color attach="background" args={["#e8e9e5"]} />
+          <SectionClipping plane={clipPlane} />
           <ambientLight intensity={0.45} />
           <hemisphereLight args={["#fffaf0", "#666b65", 1.2]} />
           <directionalLight
             position={[grid.cols * 0.5, height + 14, grid.rows * 0.7]}
             intensity={2.6}
-            castShadow
+            castShadow={!sectionActive}
             shadow-mapSize={[1024, 1024]}
             shadow-normalBias={0.015}
             shadow-bias={-0.0001}
@@ -220,16 +258,24 @@ export function ThreeStack({
           />
           <directionalLight position={[-10, 6, -8]} intensity={0.65} />
           <SceneCamera
-            width={grid.cols + 1}
-            depth={grid.rows + 1}
-            height={height + foundationHeight}
-            centerY={(height - foundationHeight) / 2}
+            width={sectionSize?.x ?? grid.cols + 1}
+            depth={sectionSize?.z ?? grid.rows + 1}
+            height={sectionSize?.y ?? height + foundationHeight}
+            centerX={sectionCenter?.x ?? 0}
+            centerY={sectionCenter?.y ?? (height - foundationHeight) / 2}
+            centerZ={sectionCenter?.z ?? 0}
             inspect={inspect}
+            frontSign={inspection ? -1 : 1}
             command={command}
           />
-          <Foundation grid={grid} thickness={foundationHeight} />
-          <Masonry bricks={sceneBricks} grid={grid} />
-          {visible
+          <Foundation grid={grid} thickness={foundationHeight} sectionActive={sectionActive} />
+          {section && (
+            <mesh geometry={section.geometry}>
+              <meshStandardMaterial vertexColors roughness={0.94} />
+            </mesh>
+          )}
+          <Masonry bricks={renderedBricks} grid={grid} />
+          {renderedBricks
             .filter((brick) => !isMasonry(brick))
             .map((brick) => (
               <ThreeBrick key={brick.id} grid={grid} brick={brick} />
@@ -364,17 +410,43 @@ export function ThreeStack({
   );
 }
 
-const Foundation = memo(function Foundation({ grid, thickness }: { grid: GridSpec; thickness: number }) {
+/** A real rendering plane, including wedge faces. The editor document is never filtered or changed. */
+function SectionClipping({ plane }: { plane: Plane | null }) {
+  const { gl, invalidate } = useThree();
+  const planes = useMemo(() => (plane ? [plane] : []), [plane]);
+  useEffect(() => {
+    const previous = gl.clippingPlanes;
+    gl.clippingPlanes = planes;
+    invalidate();
+    return () => {
+      gl.clippingPlanes = previous;
+      invalidate();
+    };
+  }, [gl, planes, invalidate]);
+  return null;
+}
+
+const Foundation = memo(function Foundation({
+  grid,
+  thickness,
+  sectionActive
+}: {
+  grid: GridSpec;
+  thickness: number;
+  sectionActive: boolean;
+}) {
   return (
     <group>
       <mesh position={[0, -thickness / 2, 0]} receiveShadow>
         <boxGeometry args={[grid.cols + 0.25, thickness, grid.rows + 0.25]} />
         <meshStandardMaterial color="#bcbeb5" roughness={0.96} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -thickness - 0.01, 0]} receiveShadow>
-        <planeGeometry args={[250, 250]} />
-        <meshStandardMaterial color="#dfe1db" roughness={1} />
-      </mesh>
+      {!sectionActive && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -thickness - 0.01, 0]} receiveShadow>
+          <planeGeometry args={[250, 250]} />
+          <meshStandardMaterial color="#dfe1db" roughness={1} />
+        </mesh>
+      )}
     </group>
   );
 });

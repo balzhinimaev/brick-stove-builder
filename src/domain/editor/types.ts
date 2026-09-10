@@ -59,6 +59,7 @@ export type EditorAction =
   | { type: "setDamperSize"; lengthMm: number; widthMm: number }
   | { type: "setGrateSize"; lengthMm: number; widthMm: number; thicknessMm: number }
   | { type: "toggleDamper"; id: string }
+  | { type: "setDamperOpenings"; openings: Record<string, number> }
   | { type: "updateParameter"; key: keyof Parameters; value: number }
   | { type: "reset" }
   | { type: "loadProject"; project: ReadyProject }

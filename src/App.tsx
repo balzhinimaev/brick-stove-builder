@@ -1,3 +1,4 @@
+import { RussianStoveGuide } from "./components/RussianStoveGuide";
 import { useStudioState } from "./hooks/useStudioState";
 import { Header } from "./components/Header";
 import { MobileTabs } from "./components/MobileTabs";
@@ -40,10 +41,13 @@ export default function App() {
           autosaveState={studio.autosaveState}
           pendingCount={studio.pendingCount}
         />
+        {screen === "builder" && studio.demoProjectId === "russian-stove-hob" ? (
+          <RussianStoveGuide locale={locale} />
+        ) : null}
         <MobileTabs screen={screen} setScreen={studio.setScreen} t={t} />
         {screen === "showcase" ? (
           // Витрина публичная: заказчики смотрят печи без регистрации.
-          <ShowcaseScreen locale={locale} t={t} />
+          <ShowcaseScreen locale={locale} t={t} onLoad={studio.loadProject} />
         ) : screen === "auth" ? (
           // Редактор гостевой (печь строится и без сети, и без аккаунта);
           // вход нужен только для синка между устройствами и витрины.

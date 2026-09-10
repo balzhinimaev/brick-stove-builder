@@ -1,3 +1,5 @@
+import { RUSSIAN_STOVE } from "../domain/russianStove";
+import { RussianStoveGuide } from "./RussianStoveGuide";
 import { useEffect, useState } from "react";
 import type { Locale, Translate } from "../i18n";
 import type { ReadyProject } from "../domain/types";
@@ -7,7 +9,16 @@ import { estimateMaterials } from "../domain/materials";
 import { Pill, SectionTitle } from "./ui";
 import { ProjectOrderPreview } from "./ProjectsScreen";
 
-export function ShowcaseScreen({ locale, t }: { locale: Locale; t: Translate }) {
+export function ShowcaseScreen({
+  locale,
+  t,
+  onLoad
+}: {
+  locale: Locale;
+  t: Translate;
+  onLoad: (project: ReadyProject) => void;
+}) {
+  const [unavailable, setUnavailable] = useState(false);
   const [projects, setProjects] = useState<ReadyProject[] | null>(null);
 
   useEffect(() => {
@@ -17,7 +28,10 @@ export function ShowcaseScreen({ locale, t }: { locale: Locale; t: Translate }) 
         if (active) setProjects(items);
       })
       .catch(() => {
-        if (active) setProjects([]);
+        if (active) {
+          setProjects([]);
+          setUnavailable(true);
+        }
       });
     return () => {
       active = false;
@@ -27,13 +41,20 @@ export function ShowcaseScreen({ locale, t }: { locale: Locale; t: Translate }) 
   return (
     <main className="mt-4 space-y-3 xl:space-y-4">
       <SectionTitle title={t("showcaseTitle")} subtitle={t("showcaseSubtitle")} />
+      <ShowcaseCard project={RUSSIAN_STOVE} locale={locale} t={t} onLoad={onLoad} />
       {projects === null ? (
         <p className="rounded-[20px] bg-[#F5E6C8] px-4 py-6 text-center text-sm font-bold text-[#3D2B1F]/70">
           {t("showcaseLoading")}
         </p>
       ) : projects.length === 0 ? (
         <p className="rounded-[20px] bg-[#F5E6C8] px-4 py-6 text-center text-sm font-bold text-[#3D2B1F]/70">
-          {t("showcaseEmpty")}
+          {unavailable
+            ? locale === "ru"
+              ? "Работы пользователей временно недоступны. Встроенный пример выше доступен без входа."
+              : locale === "en"
+                ? "Community projects are temporarily unavailable. The built-in example above needs no account."
+                : "Naudotojų projektai laikinai nepasiekiami. Demo veikia be paskyros."
+            : t("showcaseEmpty")}
         </p>
       ) : (
         <div className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0 xl:grid-cols-3">
@@ -46,17 +67,31 @@ export function ShowcaseScreen({ locale, t }: { locale: Locale; t: Translate }) 
   );
 }
 
-function ShowcaseCard({ project, locale, t }: { project: ReadyProject; locale: Locale; t: Translate }) {
+function ShowcaseCard({
+  project,
+  locale,
+  t,
+  onLoad
+}: {
+  project: ReadyProject;
+  locale: Locale;
+  t: Translate;
+  onLoad?: (project: ReadyProject) => void;
+}) {
   const grid = gridFromParameters(project.parameters);
   const materials = estimateMaterials(Object.values(project.rows).flat(), project.parameters);
   const showcase = project.showcase;
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] shadow-md shadow-[#3D2B1F]/10">
+    <article
+      id={project.id}
+      className="flex flex-col overflow-hidden rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] shadow-md shadow-[#3D2B1F]/10"
+    >
       <div className="p-3">
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-xl font-black leading-6">{project.title[locale]}</h3>
+            {project.id === RUSSIAN_STOVE.id ? <p className="mt-2 text-sm">{project.subtitle[locale]}</p> : null}
             {showcase?.description ? (
               <p className="mt-1 text-sm font-bold leading-5 text-[#3D2B1F]/70">{showcase.description}</p>
             ) : null}
@@ -92,6 +127,15 @@ function ShowcaseCard({ project, locale, t }: { project: ReadyProject; locale: L
           </Pill>
         </div>
       </div>
+      {project.id === "russian-stove-hob" ? (
+        <img
+          src={`${import.meta.env.BASE_URL}russian-stove-demo.webp`}
+          alt={project.title[locale]}
+          width={520}
+          height={610}
+          className="mx-auto max-h-96 w-full object-contain bg-[#E2E5DF]"
+        />
+      ) : null}
       <ProjectOrderPreview grid={grid} rows={project.rows} rowCount={project.rowCount} t={t} />
       <div className="mt-auto space-y-2 p-3">
         {typeof showcase?.price === "number" ? (
@@ -99,7 +143,20 @@ function ShowcaseCard({ project, locale, t }: { project: ReadyProject; locale: L
             {t("showcasePrice")}: {showcase.price.toLocaleString("ru-RU")} ₽
           </p>
         ) : null}
-        <LeadForm project={project} locale={locale} t={t} />
+        {project.id === RUSSIAN_STOVE.id ? (
+          <>
+            <RussianStoveGuide locale={locale} />
+            <button
+              type="button"
+              onClick={() => onLoad?.(project)}
+              className="min-h-13 w-full rounded-[20px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8]"
+            >
+              {t("loadProject")}
+            </button>
+          </>
+        ) : (
+          <LeadForm project={project} locale={locale} t={t} />
+        )}
       </div>
     </article>
   );

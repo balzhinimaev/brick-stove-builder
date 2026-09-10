@@ -1,3 +1,4 @@
+import { RussianStoveGuide } from "./RussianStoveGuide";
 import { useState } from "react";
 import type { Locale, Translate } from "../i18n";
 import type { GridSpec, PlacedBrick, ReadyProject } from "../domain/types";
@@ -64,6 +65,16 @@ export function ProjectsScreen({
             </Pill>
           </div>
         </div>
+        {project.id === "russian-stove-hob" ? <RussianStoveGuide locale={locale} /> : null}
+        {project.id === "russian-stove-hob" ? (
+          <img
+            src={`${import.meta.env.BASE_URL}russian-stove-demo.webp`}
+            alt={project.title[locale]}
+            width={520}
+            height={610}
+            className="mx-auto max-h-96 w-full object-contain bg-[#E2E5DF]"
+          />
+        ) : null}
         <ProjectOrderPreview grid={projectGrid} rows={project.rows} rowCount={project.rowCount} t={t} />
         <div className="space-y-2 p-3 pt-0">
           {project.ownerLogin ? null : (

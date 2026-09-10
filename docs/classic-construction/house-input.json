@@ -1,0 +1,33 @@
+{
+  "stage": "incomplete-site-input",
+  "source": "User message, 2026-09-10 21:02 UTC",
+  "confirmed": {
+    "houseAreaM2": 60,
+    "indoorTemperatureC": 20,
+    "outdoorTemperatureC": -30,
+    "fuel": "firewood"
+  },
+  "derived": {
+    "temperatureDifferenceK": 50,
+    "requiredHeatOutputKw": null
+  },
+  "previouslyInterpreted": {
+    "ceilingHeightMm": 2500,
+    "note": "Earlier floor-to-ceiling value interpreted as 2.50 m; not a site measurement."
+  },
+  "missing": {
+    "location": null,
+    "roomPlanAndDimensions": null,
+    "wallFloorRoofLayersAndInsulation": null,
+    "windowAndDoorAreasAndTypes": null,
+    "ceilingStructureAndSpaceAbove": null,
+    "ventilationAndAirSupply": null,
+    "primaryOrSupplementaryHeating": null,
+    "occupancyAndFiringSchedule": null,
+    "foundation": null,
+    "chimney": null,
+    "availableStoveFootprint": null,
+    "firstCourseAboveFinishedFloorMm": null
+  },
+  "note": "House area and temperature difference alone do not determine design heat loss. No assumed W/m2 coefficient or construction approval."
+}

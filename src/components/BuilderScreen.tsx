@@ -25,6 +25,7 @@ import type { TeplushkaInspection } from "./builder/teplushkaInspection";
 const ThreeStack = lazy(() => import("./three/ThreeStack").then((module) => ({ default: module.ThreeStack })));
 
 export type BuilderScreenProps = {
+  sceneRevision?: number;
   t: Translate;
   grid: GridSpec;
   rows: Record<number, PlacedBrick[]>;
@@ -206,6 +207,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
           >
             <Suspense fallback={<div className="studio-fallback">{t("loadingScene")}</div>}>
               <ThreeStack
+                key={props.sceneRevision}
                 foundationHeight={(props.parameters.foundationThickness * 10) / 125}
                 grid={grid}
                 bricks={visibleDocument}

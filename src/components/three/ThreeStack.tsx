@@ -88,19 +88,23 @@ export function ThreeStack({
     () => bricks.filter((brick) => inspect || brick.row <= currentRow),
     [bricks, inspect, currentRow]
   );
+  const preview = useMemo(
+    () => (!assembly && !inspect && point ? previewAt(point) : null),
+    [assembly, inspect, point, previewAt]
+  );
+  const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect && !assembly;
+  // Inspection is a render-only projection, before bounds and section calculations.
+  const sceneBricks = useMemo(
+    () => frame?.parts ?? withPlacementAdjustments(visible, valid ? preview : null),
+    [frame, visible, preview, valid]
+  );
   const height = useMemo(
     () =>
       Math.max(
-        BRICK_LAYER_HEIGHT * currentRow,
-        ...visible.flatMap((brick) => solidBoxes(brick, grid).map((box) => box.position[1] + box.scale[1] / 2))
+        assembly ? 0 : BRICK_LAYER_HEIGHT * currentRow,
+        ...sceneBricks.flatMap((brick) => solidBoxes(brick, grid).map((box) => box.position[1] + box.scale[1] / 2))
       ),
-    [visible, grid, currentRow]
-  );
-  const preview = useMemo(() => (point ? previewAt(point) : null), [point, previewAt]);
-  const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect && !assembly;
-  const sceneBricks = useMemo(
-    () => withPlacementAdjustments(visible, valid ? preview : null),
-    [visible, preview, valid]
+    [assembly, sceneBricks, grid, currentRow]
   );
   const clipPlane = useMemo(
     () => inspectionPlane(assembly ? undefined : inspection, bricks, grid),
@@ -114,9 +118,8 @@ export function ThreeStack({
   // Omit fully removed draws as well as their caps. GPU clipping is still needed
   // for intersected bricks, but must not leave raster fragments of a removed chimney.
   const renderedBricks = useMemo(
-    () =>
-      frame?.parts ?? (section ? sceneBricks.filter((brick) => section.retainedBrickIds.has(brick.id)) : sceneBricks),
-    [frame, sceneBricks, section]
+    () => (section ? sceneBricks.filter((brick) => section.retainedBrickIds.has(brick.id)) : sceneBricks),
+    [sceneBricks, section]
   );
   const sectionSize = section?.bounds.getSize(new Vector3());
   const sectionCenter = section?.bounds.getCenter(new Vector3());
@@ -130,6 +133,16 @@ export function ThreeStack({
     tap.current = false;
     setCommand((previous) => ({ id: previous.id + 1, kind: "iso" }));
   }, [inspectionSection, inspectionCourseOnly]);
+  useEffect(() => {
+    setPoint(null);
+    gesture.current.cancel();
+    tap.current = false;
+    setArchSelected(null);
+    if (!assembly) {
+      setArchName(null);
+      setArchStep(0);
+    }
+  }, [assembly]);
   const confirm = () => {
     if (!point || !valid) return;
     placeAt(point.x, point.y, point.rawX, point.rawY);
@@ -146,6 +159,7 @@ export function ThreeStack({
   }, [currentRow, grid, inspect]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (assembly || inspect) return;
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || target?.closest("input,textarea,select,button,dialog,[role=dialog]")) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -208,6 +222,7 @@ export function ThreeStack({
                 setArchSelected(null);
                 setPoint(null);
                 gesture.current.cancel();
+                tap.current = false;
                 act("fit");
               }}
             >

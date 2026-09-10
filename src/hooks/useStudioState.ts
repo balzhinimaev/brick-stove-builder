@@ -37,6 +37,8 @@ export function useStudioState() {
   const t = useI18n(locale);
 
   const editor = useEditor();
+  // View-only identity: replacing even an identical document resets scene inspectors and gestures.
+  const [sceneRevision, setSceneRevision] = useState(0);
   const [demoProjectId, setDemoProjectId] = useState<string | null>(null);
   const [teplushkaInspection, setTeplushkaInspection] = useState<TeplushkaInspection>({
     section: "whole",
@@ -74,6 +76,9 @@ export function useStudioState() {
     (draft) => {
       if (editor.canUndo && !window.confirm(t("draftReplaceConfirm"))) return false;
       editor.loadDraft(draft);
+      setSceneRevision((revision) => revision + 1);
+      setDemoProjectId(null);
+      setTeplushkaInspection({ section: "whole", fraction: 0.4 });
       return true;
     }
   );
@@ -117,6 +122,7 @@ export function useStudioState() {
 
   const reset = () => {
     editor.reset();
+    setSceneRevision((revision) => revision + 1);
     setDemoProjectId(null);
     setTeplushkaInspection({ section: "whole", fraction: 0.4 });
     setCurrentProjectId(null);
@@ -125,6 +131,7 @@ export function useStudioState() {
 
   const loadProject = (project: ReadyProject) => {
     editor.loadProject(project);
+    setSceneRevision((revision) => revision + 1);
     setTeplushkaInspection({ section: "whole", fraction: 0.4 });
     if (project.id === "russian-stove-hob" || project.id === "classic-russian-stove-hob")
       editor.setCurrentRow(project.rowCount);
@@ -210,6 +217,7 @@ export function useStudioState() {
   };
 
   return {
+    sceneRevision,
     demoProjectId,
     showTeplushkaGuide,
     teplushkaInspection,

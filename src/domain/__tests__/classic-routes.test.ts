@@ -59,6 +59,17 @@ it("the separate hob route bypasses the gorniło, and its gate physically closes
     }).toEqual({ pipe: !!open, oven: false, under: false });
   }
 });
+it("feeds the hob fire through the R6 grate from the R3 ash cavity, not around its rear or through the front header", () => {
+  for (const capped of [false, true]) {
+    const f = volume({ "classic-hob-gate": 1 }, capped ? [plug(790, 120, 230, 280, 6)] : []).flood(900, 300, 180);
+    expect({
+      fire: f.reaches(900, 300, 500),
+      pipe: f.reaches(-250, 400, 2200),
+      under: f.reaches(700, 1200, 150),
+      room: f.reaches(900, -60, 180)
+    }).toEqual({ fire: !capped, pipe: !capped, under: false, room: false });
+  }
+});
 it("the direct gate bypasses a plugged upper loop; closed means disconnected", () => {
   for (const open of [0, 1])
     expect(volume({ "classic-direct-gate": open }).flood(600, 1200, 900).reaches(-250, 400, 2200)).toBe(!!open);

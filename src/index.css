@@ -446,7 +446,12 @@ body {
   }
   .studio-layout {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(400px, 1fr) minmax(160px, 25dvh);
+    grid-template-rows: minmax(min-content, 1fr) minmax(160px, 25dvh);
+    overflow-y: auto;
+  }
+  .studio-viewport,
+  .scene-workspace {
+    min-height: min-content;
   }
   .studio-inspector {
     border-left: 0;

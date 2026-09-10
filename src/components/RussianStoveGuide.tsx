@@ -21,7 +21,7 @@ export const RUSSIAN_COURSES = [
 export function RussianStoveGuide({ locale }: { locale: Locale }) {
   const column = locale === "ru" ? 2 : locale === "en" ? 3 : 4;
   return (
-    <details className="rounded-xl border border-[#A6472A]/20 bg-[#FFF7E8] p-3 text-xs text-[#3D2B1F]">
+    <details className="max-h-[30dvh] shrink-0 overflow-y-auto rounded-xl border border-[#A6472A]/20 bg-[#FFF7E8] p-3 text-xs text-[#3D2B1F]">
       <summary className="cursor-pointer font-bold">
         {locale === "ru"
           ? "Демо · Русская печь: устройство и ряды"

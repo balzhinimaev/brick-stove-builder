@@ -18,7 +18,15 @@ const seatBrick = (id: string, x: number, y: number, corner: NotchCorner, depthM
   custom: { name: "", w: 2, h: 1, notch: null, notchDepthMm: depthMm }
 });
 
-const flushPlate = (id: string, x: number, y: number, wCells: number, hCells: number, thicknessMm: number, row = 3): PlacedBrick => ({
+const flushPlate = (
+  id: string,
+  x: number,
+  y: number,
+  wCells: number,
+  hCells: number,
+  thicknessMm: number,
+  row = 3
+): PlacedBrick => ({
   id,
   row,
   x,
@@ -31,10 +39,7 @@ const flushPlate = (id: string, x: number, y: number, wCells: number, hCells: nu
 describe("плита заподлицо в вырезы кирпичей", () => {
   // посадочное гнездо: два кирпича пазами навстречу, между ними просвет 1 ячейка;
   // плита 2×1 краями входит в оба паза по 0.5 ячейки
-  const seat = (depthMm: number) => [
-    seatBrick("west", 0, 1, "e", depthMm),
-    seatBrick("east", 3, 1, "w", depthMm)
-  ];
+  const seat = (depthMm: number) => [seatBrick("west", 0, 1, "e", depthMm), seatBrick("east", 3, 1, "w", depthMm)];
 
   it("ложится, когда вырез глубиной ровно в толщину плиты (плита ЛЕЖИТ на полке)", () => {
     const rows = { 3: seat(14) };
@@ -42,19 +47,19 @@ describe("плита заподлицо в вырезы кирпичей", () =>
     expect(plan.rows).not.toBeNull();
 
     // низ плиты совпадает с верхом полки — контакт без зазора и без пересечения
-    const ledgeTop = Math.max(...brickSolids(seat(14)[0]).map((solid) => solid.z2 !== 65 ? solid.z2 : 0));
+    const ledgeTop = Math.max(...brickSolids(seat(14)[0]).map((solid) => (solid.z2 !== 65 ? solid.z2 : 0)));
     const plateBottom = brickSolids(flushPlate("p", 1.5, 1, 2, 1, 14))[0].z1;
     expect(plateBottom).toBe(51);
     expect(ledgeTop).toBe(51);
   });
 
-  it("глубокий вырез пере-резается на толщину плиты — плита заподлицо", () => {
-    const plan = planPlacement({ 3: seat(DEFAULT_REBATE_DEPTH_MM) }, 3, [flushPlate("p", 1.5, 1, 2, 1, 14)], grid);
-    expect(plan.rows).not.toBeNull();
-    for (const id of ["west", "east"]) {
-      expect(plan.rows![3].find((b) => b.id === id)?.custom?.notchDepthMm).toBe(14);
-    }
-    expect(plan.rows![3].find((b) => b.kind === "plate")?.custom?.seatZMm).toBe(51);
+  it("глубокий вырез не восстанавливает материал: без контакта посадка отклонена", () => {
+    const rows = { 3: seat(DEFAULT_REBATE_DEPTH_MM) };
+    const before = JSON.stringify(rows);
+    const plan = planPlacement(rows, 3, [flushPlate("p", 1.5, 1, 2, 1, 14)], grid);
+    expect(plan.rows).toBeNull();
+    expect(plan.reason).toBe("unsupported");
+    expect(JSON.stringify(rows)).toBe(before);
   });
 
   it("вырез МЕЛЬЧЕ толщины плиты: автоподрез углубляет полку, плита заподлицо", () => {
@@ -91,7 +96,10 @@ describe("плита заподлицо в вырезы кирпичей", () =>
   });
 
   it("накладная плита (не заподлицо) ложится ПОВЕРХ того же гнезда без конфликтов", () => {
-    const onTop: PlacedBrick = { ...flushPlate("p", 1.5, 1, 2, 1, 14), custom: { name: "", w: 2, h: 1, notch: null, thicknessMm: 14, flush: false } };
+    const onTop: PlacedBrick = {
+      ...flushPlate("p", 1.5, 1, 2, 1, 14),
+      custom: { name: "", w: 2, h: 1, notch: null, thicknessMm: 14, flush: false }
+    };
     const plan = planPlacement({ 3: seat(10) }, 3, [onTop], grid);
     expect(plan.rows).not.toBeNull();
   });
@@ -113,7 +121,12 @@ describe("buildPlacementDrafts — превью и установка видят
   });
 
   it("четверть уносит выбранную глубину реза на элемент (спека в h-ориентации)", () => {
-    const drafts = buildPlacementDrafts(selection({ activeTool: "rebate", orientation: "v", rebateDepthMm: 15 }), 1, 1, () => 0);
+    const drafts = buildPlacementDrafts(
+      selection({ activeTool: "rebate", orientation: "v", rebateDepthMm: 15 }),
+      1,
+      1,
+      () => 0
+    );
     expect(drafts).toHaveLength(1);
     expect(drafts![0].custom).toMatchObject({ w: 2, h: 1, notchDepthMm: 15 });
     expect(drafts![0].notchCorner).toBe("ne");
@@ -125,7 +138,15 @@ describe("buildPlacementDrafts — превью и установка видят
   });
 
   it("колосник — одиночный элемент со своей спекой (опора — автоподрез при установке)", () => {
-    const drafts = buildPlacementDrafts(selection({ activeTool: "grate" }), 2, 2, (() => { let i = 0; return () => i++; })());
+    const drafts = buildPlacementDrafts(
+      selection({ activeTool: "grate" }),
+      2,
+      2,
+      (() => {
+        let i = 0;
+        return () => i++;
+      })()
+    );
     expect(drafts).toHaveLength(1);
     expect(drafts![0].kind).toBe("grate");
     expect(drafts![0].custom?.name).toContain("Колосник");

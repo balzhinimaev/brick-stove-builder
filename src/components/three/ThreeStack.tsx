@@ -7,7 +7,14 @@ import { BRICK_LAYER_HEIGHT, MM_PER_CELL } from "../../domain/constants";
 import { canConfirmPlacement, type PlacementPoint, type PlacementPreview } from "../../domain/editor/preview";
 import { BrickHighlight, isMasonry, Masonry, ThreeBrick } from "./ThreeBrick";
 import { SceneCamera, type CameraCommand } from "./SceneCamera";
-import { nudgePoint, placementPoint, PlacementGesture, solidBoxes } from "./sceneMath";
+import {
+  nudgePoint,
+  placementPoint,
+  PlacementGesture,
+  setPointCoordinateMm,
+  solidBoxes,
+  withPlacementAdjustments
+} from "./sceneMath";
 
 export type ThreeStackProps = {
   grid: GridSpec;
@@ -56,6 +63,10 @@ export function ThreeStack({
   );
   const preview = useMemo(() => (point ? previewAt(point) : null), [point, previewAt]);
   const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect;
+  const sceneBricks = useMemo(
+    () => withPlacementAdjustments(visible, valid ? preview : null),
+    [visible, preview, valid]
+  );
   const act = (kind: CameraCommand["kind"]) => setCommand((previous) => ({ id: previous.id + 1, kind }));
   const confirm = () => {
     if (!point || !valid) return;
@@ -106,19 +117,21 @@ export function ThreeStack({
     if (hit) setPoint(placementPoint(hit.x, hit.z, grid, snapStep));
   };
   const statusKey =
-    preview?.status === "blocked"
-      ? "placementBlocked"
-      : preview?.status === "outside"
-        ? "placementOutside"
-        : preview?.status === "empty"
-          ? "placementEmpty"
-          : preview?.status === "locked" || locked
-            ? "placementLocked"
-            : preview?.status === "erase"
-              ? "placementErase"
-              : preview?.status === "toggle"
-                ? "placementToggle"
-                : "placementReady";
+    preview?.status === "unsupported"
+      ? "placementUnsupported"
+      : preview?.status === "blocked"
+        ? "placementBlocked"
+        : preview?.status === "outside"
+          ? "placementOutside"
+          : preview?.status === "empty"
+            ? "placementEmpty"
+            : preview?.status === "locked" || locked
+              ? "placementLocked"
+              : preview?.status === "erase"
+                ? "placementErase"
+                : preview?.status === "toggle"
+                  ? "placementToggle"
+                  : "placementReady";
   return (
     <div className="scene-workspace">
       <div className="scene-toolbar">
@@ -215,7 +228,7 @@ export function ThreeStack({
             command={command}
           />
           <Foundation grid={grid} thickness={foundationHeight} />
-          <Masonry bricks={visible} grid={grid} />
+          <Masonry bricks={sceneBricks} grid={grid} />
           {visible
             .filter((brick) => !isMasonry(brick))
             .map((brick) => (
@@ -293,10 +306,20 @@ export function ThreeStack({
               </button>
               {point && (
                 <>
-                  <span className="position-readout">
-                    X {Number((point.x * MM_PER_CELL).toFixed(1))} · Z {Number((point.y * MM_PER_CELL).toFixed(1))}{" "}
-                    {t("unitMm")}
-                  </span>
+                  {(["x", "y"] as const).map((axis) => (
+                    <label className="position-coordinate" key={axis}>
+                      {axis === "x" ? "X" : "Z"}, {t("unitMm")}
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.5"
+                        value={Number((point[axis] * MM_PER_CELL).toFixed(1))}
+                        onChange={(event) =>
+                          setPoint(setPointCoordinateMm(point, axis, event.currentTarget.valueAsNumber))
+                        }
+                      />
+                    </label>
+                  ))}
                   {(
                     [
                       [-1, 0, "X−"],

@@ -1,11 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { brickBoxes, brickBounds, notchBox, overlaps, placeBricksInRow, removeBrickAt, gridFromParameters } from "../geometry";
+import {
+  brickBoxes,
+  brickBounds,
+  notchBox,
+  overlaps,
+  placeBricksInRow,
+  removeBrickAt,
+  gridFromParameters
+} from "../geometry";
 import { DEFAULT_PARAMETERS } from "../constants";
 import type { PlacedBrick } from "../types";
 
 const grid = gridFromParameters(DEFAULT_PARAMETERS);
 
-const rebate = (x: number, y: number, corner: PlacedBrick["notchCorner"], orientation: "h" | "v" = "h"): PlacedBrick => ({
+const rebate = (
+  x: number,
+  y: number,
+  corner: PlacedBrick["notchCorner"],
+  orientation: "h" | "v" = "h"
+): PlacedBrick => ({
   id: `reb-${x}-${y}-${corner}`,
   row: 1,
   x,
@@ -15,7 +28,14 @@ const rebate = (x: number, y: number, corner: PlacedBrick["notchCorner"], orient
   notchCorner: corner
 });
 
-const standard = (x: number, y: number): PlacedBrick => ({ id: `std-${x}-${y}`, row: 1, x, y, kind: "standard", orientation: "h" });
+const standard = (x: number, y: number): PlacedBrick => ({
+  id: `std-${x}-${y}`,
+  row: 1,
+  x,
+  y,
+  kind: "standard",
+  orientation: "h"
+});
 
 describe("brickBoxes / notchBox", () => {
   it("decomposes a rebate brick into an L covering 3/4 of the footprint", () => {
@@ -39,7 +59,7 @@ describe("brickBoxes / notchBox", () => {
 
 describe("collision with the notch", () => {
   it("lets a grate rest half a cell deep in a facing rebate notch", () => {
-    const brick = rebate(2, 4, "ne"); // габарит x:2..4, y:4..5; вырез x:3..4, y:4..4.5
+    const brick = { ...rebate(2, 4, "ne"), custom: { name: "", w: 2, h: 1, notchDepthMm: 22 } }; // габарит x:2..4, y:4..5; вырез x:3..4, y:4..4.5
     const grate: PlacedBrick = { id: "g", row: 1, x: 3, y: 1.5, kind: "grate", orientation: "v" }; // 2×3: x:3..5, y:1.5..4.5
     // край колосника заходит на 0.5 ячейки ровно в вырез — коллизии нет
     expect(overlaps(grate, brick)).toBe(false);
@@ -70,7 +90,7 @@ describe("eraser vs notch", () => {
   it("clicking inside the notch does not delete the rebate brick, solid part does", () => {
     const brick = rebate(2, 2, "ne");
     expect(removeBrickAt([brick], 3.5, 2.25)).toHaveLength(1); // клик в вырез — мимо
-    expect(removeBrickAt([brick], 2.5, 2.5)).toHaveLength(0);  // клик в тело — удалил
+    expect(removeBrickAt([brick], 2.5, 2.5)).toHaveLength(0); // клик в тело — удалил
   });
 });
 
@@ -81,7 +101,7 @@ describe("edge rebate (паз вдоль грани)", () => {
     expect(notchBox(brick)).toEqual({ x1: 1.5, y1: 4, x2: 2, y2: 5 });
   });
 
-  it("seats a full grate assembly: trims land exactly in facing edge notches", () => {
+  it("rejects a legacy grate assembly whose trims only touch the sides without support below", () => {
     // кирпичи слева и справа от проёма, пазы навстречу колоснику
     const left = [rebate(0, 4, "e"), rebate(0, 5, "e")];
     const right = [rebate(5, 4, "w"), rebate(5, 5, "w")];
@@ -99,15 +119,15 @@ describe("edge rebate (паз вдоль грани)", () => {
       for (const brick of existing) expect(overlaps(piece, brick)).toBe(false);
     }
     const next = placeBricksInRow(existing, assembly, grid);
-    expect(next).toHaveLength(existing.length + assembly.length); // никто никого не вытеснил
+    expect(next).toBe(existing); // боковое касание не является вертикальной опорой
   });
 });
 
 describe("plate (варочная плита)", () => {
   it("has a 5×3 footprint and rests in facing edge notches like the grate", () => {
     // проём 4 ячейки шириной (x:3..7), по бокам кирпичи с пазами навстречу
-    const left = rebate(1, 4, "e");   // занято 1..2.5, паз 2.5..3
-    const right = rebate(7, 4, "w");  // занято 7.5..9, паз 7..7.5
+    const left = rebate(1, 4, "e"); // занято 1..2.5, паз 2.5..3
+    const right = rebate(7, 4, "w"); // занято 7.5..9, паз 7..7.5
     const plate: PlacedBrick = { id: "p", row: 1, x: 2.5, y: 4, kind: "plate", orientation: "h" }; // 5×3: x:2.5..7.5
     // плита краями заходит ровно в пазы обоих кирпичей
     expect(overlaps(plate, left)).toBe(false);
@@ -166,8 +186,15 @@ describe("правила размещения (не стираем молча)",
 
 describe("custom brick (резак)", () => {
   const spec = { name: "тест", w: 1.6, h: 0.8, notch: { x1: 0.8, y1: 0, x2: 1.6, y2: 0.4 }, ledge: true };
-  const custom = (x: number, y: number, orientation: "h" | "v" = "h"): PlacedBrick =>
-    ({ id: "c1", row: 1, x, y, kind: "custom", orientation, custom: spec });
+  const custom = (x: number, y: number, orientation: "h" | "v" = "h"): PlacedBrick => ({
+    id: "c1",
+    row: 1,
+    x,
+    y,
+    kind: "custom",
+    orientation,
+    custom: spec
+  });
 
   it("bounds учитывают размер из резака и ориентацию", () => {
     expect(brickBounds(custom(2, 3))).toEqual({ x1: 2, y1: 3, x2: 3.6, y2: 3.8 });
@@ -187,7 +214,15 @@ describe("custom brick (резак)", () => {
     expect(area).toBeCloseTo(1.6 * 0.8 - 0.8 * 0.4);
     const seat: PlacedBrick = { id: "s", row: 1, x: 0.8, y: 0, kind: "trim", orientation: "v" }; // 1×0.5... x:0.8..1.8? trim v = w1 h0.5
     // элемент ровно в вырезе (0.8..1.6 × 0..0.4): возьмём кастомную вставку
-    const insert: PlacedBrick = { id: "i", row: 1, x: 0.8, y: 0, kind: "custom", orientation: "h", custom: { name: "вставка", w: 0.8, h: 0.4, notch: null } };
+    const insert: PlacedBrick = {
+      id: "i",
+      row: 1,
+      x: 0.8,
+      y: 0,
+      kind: "custom",
+      orientation: "h",
+      custom: { name: "вставка", w: 0.8, h: 0.4, notch: null }
+    };
     expect(overlaps(brick, insert)).toBe(false);
     expect(overlaps(brick, { ...insert, x: 0.4 })).toBe(true); // сдвинут на тело — конфликт
     void seat;
@@ -223,36 +258,62 @@ describe("door size (дверцы с размерами)", () => {
 describe("честные 3D-коллизии по высоте", () => {
   it("дверца из нижнего ряда блокирует объём над собой через ряды", async () => {
     const { placeBricksInRows, overlaps3D } = await import("../geometry");
-    const door: PlacedBrick = { id: "door", row: 1, x: 2, y: 4, kind: "cleanout", orientation: "h", custom: { name: "ДТ", w: 2, h: 1, notch: null, heightMm: 210 } };
+    const door: PlacedBrick = {
+      id: "door",
+      row: 1,
+      x: 2,
+      y: 4,
+      kind: "cleanout",
+      orientation: "h",
+      custom: { name: "ДТ", w: 2, h: 1, notch: null, heightMm: 210 }
+    };
     const over = (row: number): PlacedBrick => ({ id: `b${row}`, row, x: 2, y: 4, kind: "standard", orientation: "h" });
-    expect(overlaps3D(over(2), door)).toBe(true);  // 70..135 ∩ 0..210
-    expect(overlaps3D(over(3), door)).toBe(true);  // 140..205 ∩ 0..210
+    expect(overlaps3D(over(2), door)).toBe(true); // 70..135 ∩ 0..210
+    expect(overlaps3D(over(3), door)).toBe(true); // 140..205 ∩ 0..210
     expect(overlaps3D(over(4), door)).toBe(false); // 210..275 — касание, свободно
     const rows = { 1: [door] };
-    expect(placeBricksInRows(rows, 2, [over(2)], grid)).toBeNull();   // чужой ряд не трогаем — отказ
+    expect(placeBricksInRows(rows, 2, [over(2)], grid)).toBeNull(); // чужой ряд не трогаем — отказ
     expect(placeBricksInRows(rows, 4, [over(4)], grid)).not.toBeNull();
   });
 
   it("колосник садится только в достаточно глубокий вырез", async () => {
     const { overlaps3D } = await import("../geometry");
     const shelf = (depth: number): PlacedBrick => ({
-      id: `r${depth}`, row: 1, x: 2, y: 4, kind: "custom", orientation: "h",
+      id: `r${depth}`,
+      row: 1,
+      x: 2,
+      y: 4,
+      kind: "custom",
+      orientation: "h",
       custom: { name: "паз", w: 2, h: 1, notch: { x1: 1.5, y1: 0, x2: 2, y2: 1 }, ledge: true, notchDepthMm: depth }
     });
     // колосник краем в пазу: x 3.5..5.5 → зона выреза 3.5..4
     const grate: PlacedBrick = { id: "g", row: 1, x: 3.5, y: 4, kind: "grate", orientation: "h" };
-    expect(overlaps3D(grate, shelf(15))).toBe(true);  // полка 0..50, колосник 43..65 — мелко!
+    expect(overlaps3D(grate, shelf(15))).toBe(true); // полка 0..50, колосник 43..65 — мелко!
     expect(overlaps3D(grate, shelf(25))).toBe(false); // полка 0..40 — сел
   });
 
   it("кирпич полной высоты проходит только в сквозной вырез", async () => {
     const { overlaps3D } = await import("../geometry");
     const cut = (depth: number): PlacedBrick => ({
-      id: `c${depth}`, row: 1, x: 2, y: 4, kind: "custom", orientation: "h",
+      id: `c${depth}`,
+      row: 1,
+      x: 2,
+      y: 4,
+      kind: "custom",
+      orientation: "h",
       custom: { name: "в", w: 2, h: 1, notch: { x1: 1, y1: 0, x2: 2, y2: 0.5 }, notchDepthMm: depth }
     });
-    const insert: PlacedBrick = { id: "i", row: 1, x: 3, y: 4, kind: "custom", orientation: "h", custom: { name: "вст", w: 1, h: 0.5, notch: null } };
-    expect(overlaps3D(insert, cut(35))).toBe(true);  // полка мешает
+    const insert: PlacedBrick = {
+      id: "i",
+      row: 1,
+      x: 3,
+      y: 4,
+      kind: "custom",
+      orientation: "h",
+      custom: { name: "вст", w: 1, h: 0.5, notch: null }
+    };
+    expect(overlaps3D(insert, cut(35))).toBe(true); // полка мешает
     expect(overlaps3D(insert, cut(65))).toBe(false); // насквозь — влезает
   });
 
@@ -267,12 +328,29 @@ describe("честные 3D-коллизии по высоте", () => {
 
 describe("плита заподлицо (flush) ложится в вырезы", () => {
   const flushPlate = (t: number): PlacedBrick => ({
-    id: "fp", row: 1, x: 2.5, y: 4, kind: "plate", orientation: "h",
+    id: "fp",
+    row: 1,
+    x: 2.5,
+    y: 4,
+    kind: "plate",
+    orientation: "h",
     custom: { name: "Плита", w: 5, h: 3, notch: null, thicknessMm: t, flush: true }
   });
   const shelf = (depth: number, x: number, corner: "e" | "w"): PlacedBrick => ({
-    id: `sh${x}`, row: 1, x, y: 4, kind: "custom", orientation: "h",
-    custom: { name: "паз", w: 2, h: 1, notch: corner === "e" ? { x1: 1.5, y1: 0, x2: 2, y2: 1 } : { x1: 0, y1: 0, x2: 0.5, y2: 1 }, ledge: true, notchDepthMm: depth }
+    id: `sh${x}`,
+    row: 1,
+    x,
+    y: 4,
+    kind: "custom",
+    orientation: "h",
+    custom: {
+      name: "паз",
+      w: 2,
+      h: 1,
+      notch: corner === "e" ? { x1: 1.5, y1: 0, x2: 2, y2: 1 } : { x1: 0, y1: 0, x2: 0.5, y2: 1 },
+      ledge: true,
+      notchDepthMm: depth
+    }
   });
 
   it("садится в достаточно глубокие вырезы, мелкие — отказ", async () => {
@@ -299,7 +377,7 @@ describe("плита заподлицо (flush) ложится в вырезы",
     const kept = placed![1].find((b) => b.id === standard(3, 4).id || b.x === 3);
     expect(kept?.kind).toBe("custom"); // тот же кирпич, но с полкой под плиту
     expect(kept?.custom?.notchDepthMm).toBe(15);
-    const seated = { 1: [shelf(20, 0.5, "e"), shelf(20, 7.5, "w")] };
+    const seated = { 1: [shelf(15, 1, "e"), shelf(15, 7, "w")] };
     expect(placeBricksInRows(seated, 1, [flushPlate(15)], grid)).not.toBeNull();
   });
 });
@@ -307,7 +385,15 @@ describe("плита заподлицо (flush) ложится в вырезы",
 describe("плита защищена от тапа-замены", () => {
   it("одиночный кирпич на утопленную плиту — отказ, плита цела", async () => {
     const { placeBricksInRows } = await import("../geometry");
-    const flush: PlacedBrick = { id: "fp", row: 1, x: 2, y: 4, kind: "plate", orientation: "h", custom: { name: "П", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true } };
+    const flush: PlacedBrick = {
+      id: "fp",
+      row: 1,
+      x: 2,
+      y: 4,
+      kind: "plate",
+      orientation: "h",
+      custom: { name: "П", w: 5, h: 3, notch: null, thicknessMm: 15, flush: true }
+    };
     const rows = { 1: [flush] };
     expect(placeBricksInRows(rows, 1, [{ ...standard(3, 5), id: "tap" }], grid)).toBeNull();
   });
@@ -333,7 +419,9 @@ describe("шаблон «Варочная печь с плитой заподл�
     // ничего не было молчаливо заменено
     expect(Object.values(rows).flat()).toHaveLength(placedCount);
 
-    const plate = Object.values(rows).flat().find((b) => b.kind === "plate")!;
+    const plate = Object.values(rows)
+      .flat()
+      .find((b) => b.kind === "plate")!;
     expect(plate.custom?.flush).toBe(true);
     expect(plate.custom?.thicknessMm).toBe(15);
     // все девять кирпичей посадочного ряда — с четвертями

@@ -5,7 +5,7 @@ import type { PlacedBrick } from "../types";
 
 export type PlacementPoint = { x: number; y: number; rawX: number; rawY: number };
 export type PlacementPreview = {
-  status: "ready" | "blocked" | "outside" | "locked" | "empty" | "erase" | "toggle";
+  status: "ready" | "blocked" | "unsupported" | "outside" | "locked" | "empty" | "erase" | "toggle";
   bricks: PlacedBrick[];
   affected: PlacedBrick[];
   adjustments: PlacedBrick[];
@@ -34,7 +34,7 @@ export function previewPlacement(state: EditorState, point: PlacementPoint): Pla
   if (!drafts) return { ...empty, status: "empty" };
   if (drafts.some((brick) => !isInsideGrid(brick, state.grid))) return { ...empty, bricks: drafts, status: "outside" };
   const plan = planPlacement(state.rows, state.currentRow, drafts, state.grid);
-  if (!plan.rows) return { ...empty, bricks: drafts, affected: plan.conflicts, status: "blocked" };
+  if (!plan.rows) return { ...empty, bricks: drafts, affected: plan.conflicts, status: plan.reason ?? "blocked" };
   // Interactive placement never silently replaces existing elements. Auto-cuts keep identity.
   const planned = plan.rows[state.currentRow];
   const remaining = new Set(planned.map((brick) => brick.id));

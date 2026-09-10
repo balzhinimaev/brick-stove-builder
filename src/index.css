@@ -283,9 +283,21 @@ body {
   font-size: 11px;
   padding: 6px 9px;
 }
-.position-readout {
-  font-size: 11px;
+.position-coordinate {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
+}
+.position-coordinate input {
+  width: 78px;
+  min-height: 40px;
+  border: 1px solid var(--studio-line);
+  border-radius: 8px;
+  background: white;
+  padding: 4px 6px;
+  font: inherit;
 }
 .studio-inspector {
   min-width: 0;

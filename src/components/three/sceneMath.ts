@@ -1,9 +1,20 @@
 import { BRICK_GAP, MM_PER_CELL } from "../../domain/constants";
 import { brickBounds, brickSolids, cellToWorld } from "../../domain/geometry";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
-import type { PlacementPoint } from "../../domain/editor/preview";
+import type { PlacementPoint, PlacementPreview } from "../../domain/editor/preview";
 
 export type SceneBox = { position: [number, number, number]; scale: [number, number, number] };
+
+/** Show the planned cut instead of drawing its ghost inside the original solid brick. */
+export function withPlacementAdjustments(bricks: PlacedBrick[], preview: PlacementPreview | null): PlacedBrick[] {
+  if (preview?.status !== "ready" || !preview.adjustments.length) return bricks;
+  const adjustments = new Map(preview.adjustments.map((brick) => [brick.id, brick]));
+  const existing = new Set(bricks.map((brick) => brick.id));
+  return [
+    ...bricks.map((brick) => adjustments.get(brick.id) ?? brick),
+    ...preview.adjustments.filter((brick) => !existing.has(brick.id))
+  ];
+}
 
 /** Render the same occupied solids as collision detection, including ledges and metal seats. */
 export function solidBoxes(brick: PlacedBrick, grid: GridSpec, mortarGap = BRICK_GAP): SceneBox[] {
@@ -32,6 +43,13 @@ export function placementPoint(worldX: number, worldZ: number, grid: GridSpec, s
 
 export function nudgePoint(point: PlacementPoint, dx: number, dy: number): PlacementPoint {
   return { x: point.x + dx, y: point.y + dy, rawX: point.rawX + dx, rawY: point.rawY + dy };
+}
+
+/** Cutter dimensions are in millimetres and need not land on the coarse placement grid. */
+export function setPointCoordinateMm(point: PlacementPoint, axis: "x" | "y", mm: number): PlacementPoint {
+  if (!Number.isFinite(mm)) return point;
+  const value = mm / MM_PER_CELL;
+  return axis === "x" ? { ...point, x: value, rawX: value } : { ...point, y: value, rawY: value };
 }
 
 /** Sphere fitting works for tall models and narrow portrait canvases at every orbit angle. */

@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { PerspectiveCamera, Vector3 } from "three";
 import { BRICK_BODY_HEIGHT, BRICK_LAYER_HEIGHT, DEFAULT_PARAMETERS, MM_PER_CELL } from "../../../domain/constants";
-import { brickSolids, gridFromParameters } from "../../../domain/geometry";
+import { brickSolids, gridFromParameters, planPlacement } from "../../../domain/geometry";
 import type { PlacedBrick } from "../../../domain/types";
-import { fittedDistance, nudgePoint, placementPoint, PlacementGesture, solidBoxes } from "../sceneMath";
+import {
+  fittedDistance,
+  nudgePoint,
+  placementPoint,
+  PlacementGesture,
+  setPointCoordinateMm,
+  solidBoxes,
+  withPlacementAdjustments
+} from "../sceneMath";
 
 const grid = gridFromParameters(DEFAULT_PARAMETERS);
 const brick: PlacedBrick = { id: "a", row: 3, x: 2, y: 3, kind: "standard", orientation: "h" };
@@ -58,6 +66,13 @@ describe("uniform physical scale", () => {
 });
 
 describe("placement coordinates", () => {
+  it("places a 60 mm cutter edge exactly, independently of the 62.5 mm grid", () => {
+    const point = { x: 1, y: 1, rawX: 1.1, rawY: 1.1 };
+    const precise = setPointCoordinateMm(point, "y", 60);
+    expect(precise).toEqual({ ...point, y: 0.48, rawY: 0.48 });
+    expect(nudgePoint(precise, 0.5, 0).y).toBe(0.48);
+    expect(setPointCoordinateMm(precise, "x", Number.NaN)).toBe(precise);
+  });
   it("snaps on the fixed model axes with precise half steps", () => {
     const point = placementPoint(-3.6, -3.3, grid, 0.5);
     if (!point) throw new Error("Expected an in-bounds placement");
@@ -72,6 +87,41 @@ describe("placement coordinates", () => {
     expect(placementPoint(-grid.cols / 2 - 0.01, 0, grid, 1)).toBeNull();
     expect(placementPoint(grid.cols / 2, 0, grid, 1)).toBeNull();
     expect(placementPoint(0, grid.rows / 2, grid, 1)).toBeNull();
+  });
+});
+
+describe("seated preview geometry", () => {
+  it.each(["h", "v"] as const)("shows the actual ledge and plate contact before confirmation (%s)", (orientation) => {
+    const base = { ...brick, orientation };
+    const plate: PlacedBrick = {
+      ...base,
+      id: "plate",
+      kind: "plate",
+      custom: {
+        name: "Plate",
+        w: 2,
+        h: 1,
+        thicknessMm: 14,
+        flush: true
+      }
+    };
+    const rows = planPlacement({ 3: [base] }, 3, [plate], grid).rows;
+    if (!rows) throw new Error("Expected valid cut");
+    const cut = rows[3].find((b) => b.id === base.id);
+    const fitted = rows[3].find((b) => b.id === plate.id);
+    if (!cut || !fitted) throw new Error("Expected cut and plate");
+    const preview = { status: "ready" as const, adjustments: [cut], affected: [], bricks: [fitted] };
+    const scene = withPlacementAdjustments([base], preview);
+    expect(scene).toEqual([cut]);
+    const ledgeBox = solidBoxes(scene[0], grid)[0];
+    const plateBox = solidBoxes(fitted, grid, 0)[0];
+    const ledgeTop = ledgeBox.position[1] + ledgeBox.scale[1] / 2;
+    const plateBottom = plateBox.position[1] - plateBox.scale[1] / 2;
+    expect(ledgeTop).toBeCloseTo(plateBottom, 10);
+    expect((plateBox.position[1] + plateBox.scale[1] / 2) * 125).toBeCloseTo(205);
+    expect(withPlacementAdjustments([base], null)).toEqual([base]);
+    expect(withPlacementAdjustments([base], { ...preview, status: "blocked" })).toEqual([base]);
+    expect(base.kind).toBe("standard");
   });
 });
 

@@ -1,16 +1,15 @@
 import type { BrickFootprint, GridSpec, PlacedBrick } from "../types";
-import { brickBounds, brickBoxes, isInsideGrid, notchBox, type BrickBox } from "./bounds";
-import { BRICK_MM, isOverlayKind, overlaps, overlaps3D } from "./collisions";
+import { brickBounds, footprintSizeOf, isInsideGrid, notchBox, type BrickBox } from "./bounds";
+import { BRICK_MM, boxesIntersect, brickSolids, isOverlayKind, notchDepthMm, overlaps, overlaps3D } from "./collisions";
 
 const EPS = 1e-6;
 const GRATE_THICKNESS_MM = 22;
 const PLATE_THICKNESS_MM = 14;
 
-function boxesIntersect(a: BrickBox, b: BrickBox): boolean {
-  return a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
-}
-
-const PLATE_CUTTABLE_KINDS = new Set<BrickFootprint["kind"]>(["standard", "cut", "firebrick"]);
+const MASONRY_KINDS = new Set<BrickFootprint["kind"]>(["standard", "cut", "firebrick", "rebate", "custom", "trim"]);
+const isSeated = (b: BrickFootprint) => b.kind === "grate" || (b.kind === "plate" && b.custom?.flush === true);
+const seatedThickness = (b: BrickFootprint) =>
+  b.custom?.thicknessMm ?? (b.kind === "grate" ? GRATE_THICKNESS_MM : PLATE_THICKNESS_MM);
 
 function intersectBox(a: BrickBox, b: BrickBox): BrickBox | null {
   const x1 = Math.max(a.x1, b.x1);
@@ -21,15 +20,9 @@ function intersectBox(a: BrickBox, b: BrickBox): BrickBox | null {
 }
 
 /**
- * Автоподрез кирпича под садящийся элемент (flush-плита, колосник): верх
- * кирпича в зоне следа срезается на толщину элемента — остаётся полка, на
- * которую элемент ложится заподлицо с верхом ряда. Целый кирпич превращается
- * в «резаный» (kind custom с вырезом); уже подрезанный ПЕРЕ-РЕЗАЕТСЯ под
- * посадку: вырез расширяется до зоны следа, глубина полки выравнивается на
- * толщину элемента (и мелкая, и слишком глубокая) — иначе элемент либо
- * упирался в тело кирпича, либо проваливался ниже ряда.
- * Возвращает кирпич без изменений, когда резать нечего, и null, когда подрез
- * невозможен (элемент не режется — останется честный конфликт).
+ * Cut a ledge under the element. A cut may only remove material: existing
+ * deeper notches and through-cuts cannot become shallower. The single-notch
+ * format can widen a cut, but cannot represent two different ledge heights.
  */
 export function cutBrickForPlate(
   brick: PlacedBrick,
@@ -49,93 +42,76 @@ export function cutBrickForPlate(
   let nx2 = inter.x2 - bounds.x1;
   let ny1 = inter.y1 - bounds.y1;
   let ny2 = inter.y2 - bounds.y1;
-  if (nx1 > EPS && nx2 < w - EPS) { if (nx1 <= w - nx2) nx1 = 0; else nx2 = w; }
-  if (ny1 > EPS && ny2 < h - EPS) { if (ny1 <= h - ny2) ny1 = 0; else ny2 = h; }
-
-  if (PLATE_CUTTABLE_KINDS.has(brick.kind)) {
-    return {
-      ...brick,
-      kind: "custom",
-      orientation: "h", // форма описана прямо в координатах следа
-      notchCorner: undefined,
-      custom: {
-        name: label,
-        w,
-        h,
-        notch: { x1: nx1, y1: ny1, x2: nx2, y2: ny2 },
-        ledge: true,
-        notchDepthMm: plateThicknessMm,
-        // шамот остаётся шамотом в смете и цвете
-        cutFrom: brick.kind as "standard" | "cut" | "firebrick"
-      }
-    };
+  if (nx1 > EPS && nx2 < w - EPS) {
+    if (nx1 <= w - nx2) nx1 = 0;
+    else nx2 = w;
+  }
+  if (ny1 > EPS && ny2 < h - EPS) {
+    if (ny1 <= h - ny2) ny1 = 0;
+    else ny2 = h;
   }
 
-  // Уже подрезанный кирпич (четверть/резак с полкой). Сквозной вырез
-  // (ledge: false) не пере-резаем: полку из дыры не вернуть — честный конфликт,
-  // если элемент заходит на тело.
+  if (!MASONRY_KINDS.has(brick.kind) || brick.kind === "trim") return null;
   const notch = notchBox(brick);
-  if ((brick.kind === "rebate" || brick.kind === "custom") && notch && brick.custom?.ledge !== false) {
-    const depth = brick.custom?.notchDepthMm ?? BRICK_MM / 2;
+  const depth = notch ? notchDepthMm(brick) : 0;
+  if (notch) {
     const covers =
       notch.x1 <= inter.x1 + EPS &&
       notch.y1 <= inter.y1 + EPS &&
       notch.x2 >= inter.x2 - EPS &&
       notch.y2 >= inter.y2 - EPS;
-    if (covers && Math.abs(depth - plateThicknessMm) < EPS) return brick;
-    if (covers) {
-      // вырез уже накрывает след — только выравниваем глубину полки под толщину
+    if (covers && depth >= plateThicknessMm - EPS) return brick;
+    if (covers)
       return {
         ...brick,
-        custom: { ...(brick.custom ?? { name: "", w, h, notch: null }), notchDepthMm: plateThicknessMm }
+        custom: {
+          ...(brick.custom ?? { name: label, ...footprintSizeOf({ ...brick, orientation: "h" }), notch: null }),
+          notchDepthMm: plateThicknessMm
+        }
       };
-    }
-    // вырез не накрывает след — расширяем: bbox-объединение старого выреза с
-    // зоной следа (обе части заякорены в грани, объединение тоже — контракт
-    // brickBoxes сохраняется; возможный лишний запас между ними уходит в рез)
-    return {
-      ...brick,
-      kind: "custom",
-      orientation: "h",
-      notchCorner: undefined,
-      custom: {
-        name: label,
-        w,
-        h,
-        notch: {
-          x1: Math.min(nx1, notch.x1 - bounds.x1),
-          y1: Math.min(ny1, notch.y1 - bounds.y1),
-          x2: Math.max(nx2, notch.x2 - bounds.x1),
-          y2: Math.max(ny2, notch.y2 - bounds.y1)
-        },
-        ledge: true,
-        notchDepthMm: plateThicknessMm,
-        cutFrom: brick.custom?.cutFrom
-      }
-    };
+    // Cutting more of a through-cut block would require a second notch depth.
+    // Keep its shape and report a collision if the plate enters remaining body.
+    if (depth >= BRICK_MM - EPS) return null;
+    nx1 = Math.min(nx1, notch.x1 - bounds.x1);
+    ny1 = Math.min(ny1, notch.y1 - bounds.y1);
+    nx2 = Math.max(nx2, notch.x2 - bounds.x1);
+    ny2 = Math.max(ny2, notch.y2 - bounds.y1);
   }
-
-  return null;
+  return {
+    ...brick,
+    kind: "custom",
+    orientation: "h",
+    notchCorner: undefined,
+    custom: {
+      name: label,
+      w,
+      h,
+      notch: { x1: nx1, y1: ny1, x2: nx2, y2: ny2 },
+      ledge: true,
+      notchDepthMm: Math.max(depth, plateThicknessMm),
+      cutFrom:
+        brick.custom?.cutFrom ??
+        (brick.kind === "standard" || brick.kind === "cut" || brick.kind === "firebrick" ? brick.kind : undefined)
+    }
+  };
 }
 
-/**
- * Посадка садящегося элемента (flush-плита, колосник): высота низа от низа
- * ряда, мм. Есть ОПОРА под следом (кирпич телом или полкой — пере-рез при
- * установке выравнивает полку на толщину элемента) — верх элемента ложится
- * заподлицо с верхом ряда (65 − t). Опоры нет — элемент НЕ висит в воздухе,
- * а ложится на низ своего ряда (на кладку ряда ниже). Сквозной вырез
- * (ledge: false) опорой не считается — там дыра; накладные (плита поверх,
- * задвижка) и другой колосник тоже не опора.
- */
+/** Actual highest masonry surface beneath the footprint, measured from the course base. */
 export function plateSeatZ(rowBricks: BrickFootprint[], plate: BrickFootprint): number {
-  const t = plate.custom?.thicknessMm ?? (plate.kind === "grate" ? GRATE_THICKNESS_MM : PLATE_THICKNESS_MM);
   const bounds = brickBounds(plate);
-  const supported = rowBricks.some((brick) => {
-    if (isOverlayKind(brick.kind) || brick.kind === "grate") return false;
-    if (brick.custom?.ledge === false) return brickBoxes(brick).some((box) => boxesIntersect(box, bounds));
-    return boxesIntersect(brickBounds(brick), bounds);
-  });
-  return supported ? BRICK_MM - t : 0;
+  let top = 0;
+  for (const brick of rowBricks) {
+    if (!MASONRY_KINDS.has(brick.kind)) continue;
+    for (const solid of brickSolids(brick)) {
+      if (boxesIntersect(solid.box, bounds)) top = Math.max(top, solid.z2);
+    }
+  }
+  return top;
+}
+
+function hasSeat(rowBricks: BrickFootprint[], element: BrickFootprint): boolean {
+  const seat = element.custom?.seatZMm ?? BRICK_MM - seatedThickness(element);
+  return seat > EPS && Math.abs(plateSeatZ(rowBricks, element) - seat) <= EPS;
 }
 
 /** Совместимая обёртка для сценариев в пределах одного ряда (тесты, утилиты). */
@@ -154,6 +130,7 @@ export type PlacementPlan = {
   rows: Record<number, PlacedBrick[]> | null;
   /** Кто помешал (для подсветки отказа); пуст при выходе за сетку. */
   conflicts: PlacedBrick[];
+  reason?: "unsupported";
 };
 
 /**
@@ -177,15 +154,17 @@ export function planPlacement(
   if (!rawDrafts.length) return { rows: null, conflicts: [] };
   if (rawDrafts.some((draft) => !isInsideGrid(draft, grid))) return { rows: null, conflicts: [] };
 
-  // «Садящиеся» элементы (flush-плита, колосник) при одиночной установке САМИ
-  // подрезают кирпичи своего ряда под след: полновысотные получают полку
-  // глубиной в толщину элемента, уже вырезанные пере-резаются под посадку
-  // (вырез расширяется до следа, глубина выравнивается) — элемент всегда
-  // ложится заподлицо с верхом ряда. Нережимое (дверца, обвязка…) остаётся
-  // честным конфликтом.
-  const isSeated = (b: PlacedBrick) => b.kind === "grate" || (b.kind === "plate" && b.custom?.flush === true);
-  const seatedThickness = (b: PlacedBrick) =>
-    b.custom?.thicknessMm ?? (b.kind === "grate" ? GRATE_THICKNESS_MM : PLATE_THICKNESS_MM);
+  if (rawDrafts.some((draft) => draft.row !== row)) return { rows: null, conflicts: [] };
+  if (
+    rawDrafts.some(
+      (draft) =>
+        isSeated(draft) &&
+        (!Number.isFinite(seatedThickness(draft)) || seatedThickness(draft) <= 0 || seatedThickness(draft) >= BRICK_MM)
+    )
+  ) {
+    return { rows: null, conflicts: [], reason: "unsupported" };
+  }
+  // A single seated element may cut its course. Assemblies already carry their cuts.
   const singleSeated = rawDrafts.length === 1 && isSeated(rawDrafts[0]) ? rawDrafts[0] : null;
   let baseRow = rows[row] ?? [];
   if (singleSeated) {
@@ -209,61 +188,68 @@ export function planPlacement(
     const replacedIds = new Set(
       baseRow.filter((b) => b.kind === "grate" && overlaps(b, singleSeated)).map((b) => b.id)
     );
-    const obstacles = Object.values(workRows).flat().filter((b) => !replacedIds.has(b.id));
+    const obstacles = Object.values(workRows)
+      .flat()
+      .filter((b) => !replacedIds.has(b.id));
     ring = grateRingBricks(singleSeated, seatedThickness(singleSeated), row, singleSeated.id).filter(
       (piece) => isInsideGrid(piece, grid) && !obstacles.some((b) => overlaps3D(piece, b))
     );
   }
 
-  // Садящийся элемент получает посадку НА УСТАНОВКЕ: заподлицо при опоре
-  // (plateSeatZ, уже с учётом автоподреза и кольца обвязки), на низ ряда без.
-  // Считаем до коллизий — занятые объёмы зависят от неё.
-  // (элемент без custom-спеки — легаси из старых проектов: посадку не штампуем,
-  // solids/рендер используют дефолт «верх заподлицо»)
-  const drafts = rawDrafts.map((draft) =>
-    isSeated(draft) && draft.custom
-      ? {
-          ...draft,
-          custom: {
-            ...draft.custom,
-            seatZMm: plateSeatZ([...baseRow, ...ring, ...rawDrafts.filter((d) => d !== draft)], draft)
-          }
-        }
-      : draft
-  );
+  // New elements always use the flush elevation. Never silently drop to the
+  // course base when the ledge is too deep or there is no support.
+  const drafts = rawDrafts.map((draft) => {
+    if (!isSeated(draft)) return draft;
+    return {
+      ...draft,
+      custom: {
+        ...(draft.custom ?? { name: "", ...footprintSizeOf({ ...draft, orientation: "h" }), notch: null }),
+        seatZMm: BRICK_MM - seatedThickness(draft)
+      }
+    };
+  });
+
+  const internalConflicts = drafts.filter((draft, i) => drafts.some((other, j) => i !== j && overlaps3D(draft, other)));
+  if (internalConflicts.length) return { rows: null, conflicts: internalConflicts };
 
   const conflicts = Object.values(workRows)
     .flat()
     .filter((brick) => drafts.some((draft) => overlaps3D(draft, brick)));
 
-  // Повторный клик плитой по плите СВОЕГО ряда — замена: так печник меняет
-  // размер/посадку уже стоящей плиты, не стирая её ластиком. Сравниваем в
-  // плане (не 3D): плиты «поверх» и «заподлицо» живут на разных высотах,
-  // но занимают одно место на ряду.
-  if (drafts.length === 1 && (drafts[0].kind === "plate" || drafts[0].kind === "grate")) {
-    const target = drafts[0];
-    const replacedSame = baseRow.filter((brick) => brick.kind === target.kind && overlaps(brick, target));
-    if (replacedSame.length) {
-      const replaced = new Set(replacedSame.map((brick) => brick.id));
-      const remaining = conflicts.filter((brick) => !replaced.has(brick.id));
-      if (remaining.length) return { rows: null, conflicts: remaining };
-      return {
-        rows: { ...workRows, [row]: [...baseRow.filter((brick) => !replaced.has(brick.id)), ...drafts, ...ring] },
-        conflicts: []
-      };
-    }
-  }
-
-  // плита, колосник и задвижка никого не заменяют: занято — отказ
   if (drafts.some((draft) => draft.kind === "plate" || draft.kind === "damper" || draft.kind === "grate")) {
-    if (conflicts.length) return { rows: null, conflicts };
-    return { rows: { ...workRows, [row]: [...baseRow, ...drafts, ...ring] }, conflicts: [] };
+    // Preserve the legacy replace operation; the interactive preview requires erasing first.
+    const target = drafts.length === 1 && (drafts[0].kind === "plate" || drafts[0].kind === "grate") ? drafts[0] : null;
+    const replaced = new Set(
+      target ? baseRow.filter((b) => b.kind === target.kind && overlaps(b, target)).map((b) => b.id) : []
+    );
+    const blocking = conflicts.filter((brick) => !replaced.has(brick.id));
+    if (blocking.length) return { rows: null, conflicts: blocking };
+    const remaining = baseRow.filter((brick) => !replaced.has(brick.id));
+    const supports = [...remaining, ...ring, ...drafts];
+    const unsupported = drafts.filter((draft) => isSeated(draft) && !hasSeat(supports, draft));
+    // A second cut may lower the shared ledge of an already seated element.
+    const unseated = remaining.filter(
+      (brick) => isSeated(brick) && hasSeat(rows[row] ?? [], brick) && !hasSeat(supports, brick)
+    );
+    if (unsupported.length || unseated.length) {
+      const affected = unsupported.length
+        ? remaining.filter(
+            (brick) =>
+              MASONRY_KINDS.has(brick.kind) &&
+              unsupported.some((draft) => boxesIntersect(brickBounds(brick), brickBounds(draft)))
+          )
+        : [];
+      return { rows: null, conflicts: [...affected, ...unseated], reason: "unsupported" };
+    }
+    return { rows: { ...workRows, [row]: [...remaining, ...drafts, ...ring] }, conflicts: [] };
   }
 
   if (drafts.length === 1) {
     // «тап — заменил» действует только в своём ряду; плиту/задвижку тапом не
     // стираем — их снимают ластиком осознанно
-    const blocking = conflicts.filter((brick) => brick.row !== row || brick.kind === "plate" || brick.kind === "damper");
+    const blocking = conflicts.filter(
+      (brick) => brick.row !== row || brick.kind === "plate" || brick.kind === "damper"
+    );
     if (blocking.length) return { rows: null, conflicts: blocking };
     const replaced = new Set(conflicts.map((brick) => brick.id));
     return {
@@ -292,9 +278,7 @@ export function placeBricksInRows(
  * в UI, размещение не блокирует.
  */
 export function damperBlockers(rowBricks: PlacedBrick[], damper: BrickFootprint): PlacedBrick[] {
-  return rowBricks.filter(
-    (brick) => brick.kind !== "vent" && !isOverlayKind(brick.kind) && overlaps(brick, damper)
-  );
+  return rowBricks.filter((brick) => brick.kind !== "vent" && !isOverlayKind(brick.kind) && overlaps(brick, damper));
 }
 
 // Бывшая «сборка колосника» (grate + 4 подрезки-trim) удалена: колосник, как и
@@ -313,7 +297,12 @@ const RING_MIN_LEN = 0.4;
  * западная/восточная — между ними. Куски длиннее кирпича (2 ячеек) режутся
  * поровну. Узкий колосник (шириной в ячейку) опирается только на две ленты.
  */
-export function grateRingBricks(grate: BrickFootprint, thicknessMm: number, row: number, idPrefix: string): PlacedBrick[] {
+export function grateRingBricks(
+  grate: BrickFootprint,
+  thicknessMm: number,
+  row: number,
+  idPrefix: string
+): PlacedBrick[] {
   const b = brickBounds(grate);
   const pieces: PlacedBrick[] = [];
   let n = 0;
@@ -328,15 +317,17 @@ export function grateRingBricks(grate: BrickFootprint, thicknessMm: number, row:
       custom: { name: "Обвязка колосника", w, h, notch, ledge: true, notchDepthMm: thicknessMm }
     });
   };
-  const split = (len: number): number[] => {
-    const count = Math.max(1, Math.ceil(len / 2 - EPS));
+  const split = (len: number, minimum = 1): number[] => {
+    const count = Math.max(minimum, Math.ceil(len / 2 - EPS));
     return Array.from({ length: count }, () => len / count);
   };
 
   for (const side of ["n", "s"] as const) {
     const py = side === "n" ? b.y1 - 0.5 : b.y2 - 0.5;
     let px = b.x1 - 0.5;
-    for (const len of split(b.x2 - b.x1 + 1)) {
+    // At least two pieces keep the notch anchored at a corner even for a
+    // 125 mm wide grate; one long piece would need a U-shaped cut.
+    for (const len of split(b.x2 - b.x1 + 1, 2)) {
       // полка только под следом решётки — угловые куски получают срез короче тела
       const nx1 = Math.max(px, b.x1) - px;
       const nx2 = Math.min(px + len, b.x2) - px;
@@ -358,4 +349,3 @@ export function grateRingBricks(grate: BrickFootprint, thicknessMm: number, row:
   }
   return pieces;
 }
-

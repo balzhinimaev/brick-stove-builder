@@ -186,6 +186,27 @@ Keyboard: **R** rotates the selected tool, **B** selects brick, **E** selects er
 **arrows** nudge a selected placement, **Enter** confirms, **Escape** cancels,
 **Ctrl/Cmd+Z** undoes and **Ctrl/Cmd+Shift+Z** redoes. Forms keep their native shortcuts.
 The Set position button and X/Z controls provide a placement route without canvas tapping.
+X/Z fields accept millimetres independently of grid snapping, so custom cuts can be
+aligned precisely even when an edge falls between the 62.5 mm grid lines.
+
+### Flush seating into cuts
+
+- A new flush plate or grate has its bottom at `65 − thickness` mm and top at 65 mm.
+  Placement requires contact with a masonry ledge at that elevation. Missing support
+  blocks confirmation with an explanation; the element never silently drops to the course base.
+- Automatic cutting may deepen a shallow ledge or widen its footprint. It never fills
+  a deeper cut or turns a through-cut back into solid material. Rectangular pieces from
+  the cutter can also receive a ledge. A second cut that removes the last contact under
+  an existing seated element is rejected as one complete transaction.
+- Full-height brick inserts fit through-cuts; an existing shallow ledge blocks them.
+  Cut geometry, preview and placement use the same solids. The preview displays the
+  proposed cut in place of the original body, and cancelling restores the original view.
+- Grate supports are cut into separate pieces, including for a rotated 125 mm wide
+  grate. Placement, cut changes and new supports form one undo/redo step.
+- The current format stores one rectangular notch and one depth per brick. A cut
+  requiring an additional depth alongside a through-hole is rejected. Support checking
+  establishes geometric contact only; it does not calculate load-bearing stability.
+  Loading saved projects preserves their existing geometry and stored seating elevations.
 
 ### Geometry and rendering
 

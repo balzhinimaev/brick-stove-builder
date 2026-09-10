@@ -21,6 +21,8 @@ const ru = {
   placeHint: "Коснитесь рабочего ряда, подстройте положение и нажмите «Установить». Два пальца — масштаб и сдвиг.",
   placementLocked: "Ряд зафиксирован. Разблокируйте его для изменений.",
   placementBlocked: "Место занято: мешающие элементы выделены красным.",
+  placementUnsupported:
+    "Нет опоры на нужной высоте или подрезка убирает опору соседнего элемента. Проверьте глубину вырезов.",
   placementOutside: "Элемент выходит за границы основания. Сдвиньте или поверните его.",
   placementEmpty: "Здесь нет элемента для выбранного действия.",
   placementReady: "Положение допустимо. Проверьте превью и подтвердите установку.",
@@ -218,7 +220,7 @@ const ru = {
   plateOnTop: "Поверх ряда",
   plateFlush: "В вырезы",
   plateFlushHint:
-    "Плита пере-режет кирпичи под собой на свою толщину и ляжет заподлицо с верхом ряда; без кирпичей под следом ляжет на низ ряда. Дверцы и колосники не режутся. Клик по стоящей плите — применить текущие размер и посадку.",
+    "Для посадки заподлицо глубина полки должна совпадать с толщиной плиты. Мелкие вырезы углубляются автоматически; глубокие и сквозные сохраняются. Без опоры установка недоступна.",
   doorSizeTitle: "Размер дверцы, мм (ширина × высота)",
   doorWidth: "Ширина, мм",
   doorHeight: "Высота, мм",
@@ -235,7 +237,7 @@ const ru = {
   damperBlocked: "Канал под задвижкой перекрыт кладкой",
   grateSizeTitle: "Размер колосника, мм",
   grateHint:
-    "Колосник пере-режет кирпичи под своими краями на свою толщину (высоту) и ляжет заподлицо с верхом ряда; без кирпичей под следом ляжет на низ ряда — в воздухе не висит. Клик по стоящему колоснику — применить текущий размер.",
+    "Колосник садится на полки глубиной в его толщину. Свободные места по краям дополняются подрезанными кирпичами. Глубокие вырезы сохраняются; без опоры установка недоступна.",
   grateThickness: "Высота (толщина), мм"
 } satisfies Record<string, string>;
 
@@ -259,6 +261,8 @@ const en: Record<TranslationKey, string> = {
   placeHint: "Tap the working course, adjust the position, then Place. Two fingers zoom and pan.",
   placementLocked: "This course is locked. Unlock it to edit.",
   placementBlocked: "Space occupied: conflicting elements are shown in red.",
+  placementUnsupported:
+    "No support at the required height, or the cut removes a neighbouring element’s support. Check the cut depth.",
   placementOutside: "Element extends beyond the base. Move or rotate it.",
   placementEmpty: "No element here for this action.",
   placementReady: "Position is valid. Check the preview and confirm placement.",
@@ -456,7 +460,7 @@ const en: Record<TranslationKey, string> = {
   plateOnTop: "On top of the row",
   plateFlush: "Into cuts",
   plateFlushHint:
-    "The plate re-cuts the bricks beneath it to its own thickness and sits flush with the course top; with no bricks under it, it rests on the course bottom. Doors and grates are not cut. Click a placed plate to apply the current size and seating.",
+    "Flush seating needs a ledge cut to the plate thickness. Shallow cuts deepen automatically; deeper and through-cuts stay intact. Placement requires support.",
   doorSizeTitle: "Door size, mm (width × height)",
   doorWidth: "Width, mm",
   doorHeight: "Height, mm",
@@ -473,7 +477,7 @@ const en: Record<TranslationKey, string> = {
   damperBlocked: "Masonry blocks the flue under the damper",
   grateSizeTitle: "Grate size, mm",
   grateHint:
-    "The grate re-cuts the bricks under its edges to its own thickness (height) and sits flush with the course top; with no bricks under it, it rests on the course bottom — it never floats. Click a placed grate to apply the current size.",
+    "The grate sits on ledges cut to its thickness. Cut bricks are added along free edges. Deeper cuts stay intact; placement requires support.",
   grateThickness: "Height (thickness), mm"
 };
 
@@ -497,6 +501,8 @@ const lt: Record<TranslationKey, string> = {
     "Palieskite darbinę eilę, patikslinkite padėtį ir spauskite Dėti. Dviem pirštais keiskite mastelį ir poslinkį.",
   placementLocked: "Eilė užrakinta. Atrakinkite norėdami redaguoti.",
   placementBlocked: "Vieta užimta: trukdantys elementai pažymėti raudonai.",
+  placementUnsupported:
+    "Nėra atramos reikiamame aukštyje arba pjūvis pašalina gretimo elemento atramą. Patikrinkite išpjovų gylį.",
   placementOutside: "Elementas išeina už pagrindo ribų. Pastumkite arba pasukite.",
   placementEmpty: "Čia nėra elemento šiam veiksmui.",
   placementReady: "Padėtis tinkama. Patikrinkite peržiūrą ir patvirtinkite.",
@@ -693,7 +699,7 @@ const lt: Record<TranslationKey, string> = {
   plateOnTop: "Ant eilės",
   plateFlush: "Į išpjovas",
   plateFlushHint:
-    "Plokštė perpjauna plytas po savimi per savo storį ir gula lygiai su eilės viršumi; be plytų po ja gula ant eilės dugno. Durelės ir grotelės nepjaunamos. Spustelėkite pastatytą plokštę — pritaikyti dabartinį dydį ir įleidimą.",
+    "Įleidimui lygiai su eile išpjovos gylis turi atitikti plokštės storį. Seklios išpjovos gilinamos automatiškai; gilios ir kiaurinės išlieka. Montavimui reikia atramos.",
   doorSizeTitle: "Durelių dydis, mm (plotis × aukštis)",
   doorWidth: "Plotis, mm",
   doorHeight: "Aukštis, mm",
@@ -710,7 +716,7 @@ const lt: Record<TranslationKey, string> = {
   damperBlocked: "Mūras užstoja kanalą po sklende",
   grateSizeTitle: "Grotelių dydis, mm",
   grateHint:
-    "Grotelės perpjauna plytas po savo kraštais per savo storį (aukštį) ir gula lygiai su eilės viršumi; be plytų po jomis gula ant eilės dugno — ore nekybo. Spustelėkite pastatytas groteles — pritaikyti dabartinį dydį.",
+    "Grotelės remiasi į jų storio gylio išpjovas. Laisvuose kraštuose pridedamos pjaustytos plytos. Gilios išpjovos išlieka; montavimui reikia atramos.",
   grateThickness: "Aukštis (storis), mm"
 };
 

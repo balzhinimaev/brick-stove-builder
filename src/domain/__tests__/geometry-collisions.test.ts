@@ -15,6 +15,7 @@ describe("overlaps", () => {
   });
 });
 
+// Two detailed vault models make this exhaustive catalog audit larger; keep every pair.
 describe("ready projects", () => {
   it("keeps every brick inside its foundation grid and without 3D placement overlap", () => {
     for (const project of READY_PROJECTS) {
@@ -26,5 +27,5 @@ describe("ready projects", () => {
         }
       }
     }
-  });
+  }, 30000);
 });

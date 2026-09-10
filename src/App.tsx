@@ -63,6 +63,10 @@ export default function App() {
           />
         ) : screen === "parameters" ? (
           <ParametersScreen
+            locale={locale}
+            calculatorInput={studio.calculatorInput}
+            onCalculatorChange={studio.setCalculatorInput}
+            onOpenReference={studio.openCalculatorReference}
             parameters={studio.parameters}
             updateParameter={studio.updateParameter}
             t={t}

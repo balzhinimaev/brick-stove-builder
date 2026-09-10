@@ -28,6 +28,14 @@ export function removeBrickAt(rowBricks: PlacedBrick[], x: number, y: number): P
 
 export function cloneRows(rows: Record<number, PlacedBrick[]>): Record<number, PlacedBrick[]> {
   return Object.fromEntries(
-    Object.entries(rows).map(([row, bricks]) => [row, bricks.map((brick) => ({ ...brick }))])
+    Object.entries(rows).map(([row, bricks]) => [
+      row,
+      bricks.map((brick) => ({
+        ...brick,
+        ...(brick.custom
+          ? { custom: { ...brick.custom, ...(brick.custom.notch ? { notch: { ...brick.custom.notch } } : {}) } }
+          : {})
+      }))
+    ])
   ) as Record<number, PlacedBrick[]>;
 }

@@ -30,6 +30,7 @@ export function useStudioState() {
   const t = useI18n(locale);
 
   const editor = useEditor();
+  const [demoProjectId, setDemoProjectId] = useState<string | null>(null);
   const session = useSession(t);
   /**
    * Какой СВОЙ сохранённый проект сейчас открыт в редакторе. Пока он задан,
@@ -102,12 +103,15 @@ export function useStudioState() {
 
   const reset = () => {
     editor.reset();
+    setDemoProjectId(null);
     setCurrentProjectId(null);
     setScreen("builder");
   };
 
   const loadProject = (project: ReadyProject) => {
     editor.loadProject(project);
+    if (project.id === "russian-stove-hob") editor.setCurrentRow(project.rowCount);
+    setDemoProjectId(project.ownerLogin ? null : project.id);
     // Свой сохранённый проект открываем «на редактирование»; чужой/демо — как шаблон нового.
     setCurrentProjectId(project.ownerLogin && project.ownerLogin === session.userLogin ? project.id : null);
     setScreen("builder");
@@ -189,6 +193,7 @@ export function useStudioState() {
   };
 
   return {
+    demoProjectId,
     // navigation + i18n
     locale,
     setLocale,

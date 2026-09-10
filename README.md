@@ -153,7 +153,7 @@ signed release builds / store uploads).
 
 - RU/EN/LT UI translations
 - Parameter screen for foundation and room dimensions
-- Ready project gallery with two demo stove layouts
+- Ready project gallery with built-in demo stove layouts, including a 36-course Russian stove with hob
 - Row-by-row project previews for stove order layouts («порядовки»)
 - MongoDB-backed saved custom projects
 - Manual row-by-row brick placement
@@ -228,3 +228,7 @@ aligned precisely even when an edge falls between the 62.5 mm grid lines.
 ## Notes
 
 This is an interactive prototype. Material calculations are rough estimates and should be validated before real construction use.
+
+## Русская печь с плитой — общедоступный пример
+
+Откройте `/?screen=showcase#russian-stove-hob` или выберите «Русская печь с плитой» в готовых проектах. 36 редактируемых рядов, плита, горнило, условный свод и труба. Демо доступно без входа и MongoDB, без коммерческой заявки. **Не строительная порядовка.** [Габариты, устройство, ряды и ограничения](docs/russian-stove-demo.md).

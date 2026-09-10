@@ -1,3 +1,4 @@
+import { RUSSIAN_STOVE } from "./russianStove";
 import { COLORS } from "../theme/colors";
 import type { BrickKind, Orientation, PlacedBrick, ReadyProject } from "./types";
 
@@ -252,6 +253,7 @@ function makeFlushPlateStoveRows(): Record<number, PlacedBrick[]> {
 }
 
 export const READY_PROJECTS: ReadyProject[] = [
+  RUSSIAN_STOVE,
   {
     id: "cook-plate-flush",
     title: {

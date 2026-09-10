@@ -184,7 +184,7 @@ export function unpublishProject(id: string, token: string): Promise<ReadyProjec
 
 export async function fetchShowcaseProjects(): Promise<ReadyProject[]> {
   const response = await fetch(`${apiBaseUrl()}/showcase`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error("Showcase unavailable");
   const data = await response.json();
   return Array.isArray(data.projects) ? data.projects : [];
 }

@@ -18,8 +18,8 @@ export function ClassicRussianStoveGuide({ locale }: { locale: Locale }) {
       </p>
       <p className="mt-2">
         {ru
-          ? "Для просмотра: ряды 4–10 — подпечья и плита; 11–22 — горнило, устье, свод; 28–30 — верхний дымооборот. Задвижки редактируются обычным ползунком выбранной детали."
-          : "Inspect rows 4–10 for underovens and hob, 11–22 for hearth and vault, 28–30 for the upper circuit. Select a gate to use its standard slider."}
+          ? "Для сборки выберите «Арки и своды» над 3D-сценой: отдельный узел, опоры, кружало, пары кирпичей и замок. Номера выбирают реальные детали; просмотр не меняет проект. Для общего просмотра: ряды 4–10 — подпечья и плита; 11–22 — горнило; 28–30 — верхний дымооборот."
+          : "Use the arch assembly selector above the 3D scene (Russian educational labels): isolated supports, timber centering, paired bricks and locks. Numbers select actual parts without editing the project. Inspect rows 4–10 for underovens and hob, 11–22 for the hearth, 28–30 for the upper circuit."}
       </p>
       <a
         className="mt-2 inline-block underline"

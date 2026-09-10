@@ -10,6 +10,8 @@ import {
   type TeplushkaMode
 } from "../components/builder/teplushkaInspection";
 import { uniqueId } from "../lib/id";
+import { CALCULATOR_EXAMPLE } from "../domain/stoveCalculator";
+import { calculatorText } from "../components/stoveCalculatorText";
 import { useI18n, type Locale } from "../i18n";
 import {
   publishProject as publishProjectApi,
@@ -31,9 +33,13 @@ import { useAutosaveDraft } from "./useAutosaveDraft";
 export function useStudioState() {
   const [locale, setLocale] = useState<Locale>("ru");
   // Deep link: /?screen=showcase opens the public showcase (used by the promo landing).
-  const [screen, setScreen] = useState<Screen>(() =>
-    new URLSearchParams(window.location.search).get("screen") === "showcase" ? "showcase" : "builder"
-  );
+  const [screen, setScreen] = useState<Screen>(() => {
+    const requested = new URLSearchParams(window.location.search).get("screen");
+    if (requested === "showcase") return "showcase";
+    if (requested === "parameters" || requested === "calculator") return "parameters";
+    return "builder";
+  });
+  const [calculatorInput, setCalculatorInput] = useState({ ...CALCULATOR_EXAMPLE });
   const t = useI18n(locale);
 
   const editor = useEditor();
@@ -221,6 +227,14 @@ export function useStudioState() {
   };
 
   return {
+    calculatorInput,
+    setCalculatorInput,
+    openCalculatorReference: (project: ReadyProject) => {
+      if (Object.values(editor.rows).some((row) => row.length) && !window.confirm(calculatorText(locale)("replace")))
+        return;
+      loadProject(project);
+      editor.setCurrentRow(project.rowCount);
+    },
     sceneRevision,
     demoProjectId,
     showTeplushkaGuide,

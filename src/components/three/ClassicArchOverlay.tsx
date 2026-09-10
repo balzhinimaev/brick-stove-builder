@@ -30,6 +30,8 @@ export function ArchCentering({ assembly, grid }: { assembly: ArchAssembly; grid
   const position: [number, number, number] = rotated
     ? [(625 + axial + depth / 2) / 125 - grid.cols / 2, 0, (125 + center) / 125 - grid.rows / 2]
     : [(625 + center) / 125 - grid.cols / 2, 0, (125 + axial + depth / 2) / 125 - grid.rows / 2];
+  position[0] += assembly.offsetMm.x / 125;
+  position[2] += assembly.offsetMm.y / 125;
   return (
     <group position={position} rotation={[0, rotated ? -Math.PI / 2 : 0, 0]} name="view-only-centering">
       {Array.from({ length: count }, (_, i) => {

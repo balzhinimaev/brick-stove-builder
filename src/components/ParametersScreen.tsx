@@ -1,17 +1,27 @@
 import { useMemo, useState } from "react";
-import type { Translate } from "../i18n";
-import type { Parameters } from "../domain/types";
+import type { Locale, Translate } from "../i18n";
+import type { Parameters, ReadyProject } from "../domain/types";
+import type { CalculatorInput } from "../domain/stoveCalculator";
+import { StoveCalculator } from "./StoveCalculator";
 import { PARAM_BOUNDS, PARAMETER_FIELDS, validateParameters } from "../domain/parameters";
 import { SectionTitle } from "./ui";
 import { SideSilhouette } from "./SideSilhouette";
 
 export function ParametersScreen({
+  locale,
+  calculatorInput,
+  onCalculatorChange,
+  onOpenReference,
   parameters,
   updateParameter,
   t,
   onContinue,
   lockedRows
 }: {
+  locale: Locale;
+  calculatorInput: CalculatorInput;
+  onCalculatorChange: (input: CalculatorInput) => void;
+  onOpenReference: (project: ReadyProject) => void;
   parameters: Parameters;
   updateParameter: (key: keyof Parameters, value: number) => void;
   t: Translate;
@@ -21,28 +31,34 @@ export function ParametersScreen({
   const valid = useMemo(() => validateParameters(parameters, t), [parameters, t]);
   return (
     <main className="mt-4 space-y-3 xl:space-y-4">
-      <SectionTitle title={t("parametersTitle")} subtitle={t("parametersSubtitle")} />
-      {PARAMETER_FIELDS.map((key) => (
-        <ParameterControl key={key} field={key} value={parameters[key]} updateParameter={updateParameter} t={t} />
-      ))}
-      <div className="flex items-center gap-3 rounded-[26px] border-2 border-[#5F7E4D]/20 bg-[#8FAF76]/20 p-3">
-        <BrickMascot valid={valid.ok} />
-        <div className="flex-1">
-          <div className="font-black">{valid.ok ? t("looksBuildable") : t("checkDimensions")}</div>
-          <p className="mt-1 text-sm font-bold leading-5 text-[#3D2B1F]/70">{valid.message}</p>
+      <StoveCalculator locale={locale} input={calculatorInput} onChange={onCalculatorChange} onOpen={onOpenReference} />
+      <details className="rounded-[26px] border-2 border-[#3D2B1F]/10 p-4">
+        <summary className="cursor-pointer font-black">{t("parametersTitle")}</summary>
+        <div className="mt-4 space-y-3">
+          <SectionTitle title={t("parametersTitle")} subtitle={t("parametersSubtitle")} />
+          {PARAMETER_FIELDS.map((key) => (
+            <ParameterControl key={key} field={key} value={parameters[key]} updateParameter={updateParameter} t={t} />
+          ))}
+          <div className="flex items-center gap-3 rounded-[26px] border-2 border-[#5F7E4D]/20 bg-[#8FAF76]/20 p-3">
+            <BrickMascot valid={valid.ok} />
+            <div className="flex-1">
+              <div className="font-black">{valid.ok ? t("looksBuildable") : t("checkDimensions")}</div>
+              <p className="mt-1 text-sm font-bold leading-5 text-[#3D2B1F]/70">{valid.message}</p>
+            </div>
+          </div>
+          <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8]/80 p-3">
+            <div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div>
+            <SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} />
+          </div>
+          <button
+            type="button"
+            onClick={onContinue}
+            className="min-h-14 w-full rounded-[22px] bg-[#C1440E] text-base font-black text-[#F5E6C8] shadow-lg shadow-[#C1440E]/25"
+          >
+            {t("startBuild")}
+          </button>
         </div>
-      </div>
-      <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8]/80 p-3">
-        <div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div>
-        <SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} />
-      </div>
-      <button
-        type="button"
-        onClick={onContinue}
-        className="min-h-14 w-full rounded-[22px] bg-[#C1440E] text-base font-black text-[#F5E6C8] shadow-lg shadow-[#C1440E]/25"
-      >
-        {t("startBuild")}
-      </button>
+      </details>
     </main>
   );
 }

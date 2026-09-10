@@ -18,12 +18,29 @@ export function classicArchAssembly(document: PlacedBrick[], name: ArchName) {
   const original = Object.values(CLASSIC_RUSSIAN_STOVE.rows)
     .flat()
     .filter((b) => archAddress(b)?.name === name);
+  const first = wedges.find((b) => b.id === original[0]?.id);
+  const offsetMm = {
+    x: first ? (first.x - original[0].x) * 125 : 0,
+    y: first ? (first.y - original[0].y) * 125 : 0
+  };
   // Fixed-source timber must never pretend to fit a removed or edited arch.
+  // A common plan translation (calculator positioning) does preserve that timber.
   if (
     original.length !== wedges.length ||
     original.some((b) => {
       const actual = wedges.find((part) => part.id === b.id);
-      return !actual || JSON.stringify(physicalVertices(actual)) !== JSON.stringify(physicalVertices(b));
+      if (!actual) return true;
+      const expected = physicalVertices(b);
+      const points = physicalVertices(actual);
+      return (
+        points.length !== expected.length ||
+        points.some(
+          (p, i) =>
+            Math.abs(p.x - expected[i].x - offsetMm.x) > 1e-6 ||
+            Math.abs(p.y - expected[i].y - offsetMm.y) > 1e-6 ||
+            Math.abs(p.z - expected[i].z) > 1e-6
+        )
+      );
     })
   )
     return null;
@@ -79,7 +96,7 @@ export function classicArchAssembly(document: PlacedBrick[], name: ArchName) {
     centering: false
   });
   const numbers = new Map(steps.flatMap((s) => s.parts).map((b, i) => [b.id, i + 1]));
-  return { name, wedges, steps, numbers, bounds: { x1, x2, y1, y2, spring } };
+  return { name, wedges, steps, numbers, offsetMm, bounds: { x1, x2, y1, y2, spring } };
 }
 export type ArchAssembly = NonNullable<ReturnType<typeof classicArchAssembly>>;
 export function archAssemblyFrame(assembly: ArchAssembly, step: number) {

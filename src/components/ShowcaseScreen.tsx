@@ -1,3 +1,6 @@
+import { BUILTIN_SHOWCASE_PROJECTS } from "../domain/showcaseProjects";
+import { ClassicRussianStoveGuide } from "./ClassicRussianStoveGuide";
+import { CLASSIC_RUSSIAN_STOVE } from "../domain/classicRussianStove";
 import { RUSSIAN_STOVE } from "../domain/russianStove";
 import { RussianStoveGuide } from "./RussianStoveGuide";
 import { useEffect, useState } from "react";
@@ -41,7 +44,9 @@ export function ShowcaseScreen({
   return (
     <main className="mt-4 space-y-3 xl:space-y-4">
       <SectionTitle title={t("showcaseTitle")} subtitle={t("showcaseSubtitle")} />
-      <ShowcaseCard project={RUSSIAN_STOVE} locale={locale} t={t} onLoad={onLoad} />
+      {BUILTIN_SHOWCASE_PROJECTS.map((project) => (
+        <ShowcaseCard key={project.id} project={project} locale={locale} t={t} onLoad={onLoad} />
+      ))}
       {projects === null ? (
         <p className="rounded-[20px] bg-[#F5E6C8] px-4 py-6 text-center text-sm font-bold text-[#3D2B1F]/70">
           {t("showcaseLoading")}
@@ -50,9 +55,9 @@ export function ShowcaseScreen({
         <p className="rounded-[20px] bg-[#F5E6C8] px-4 py-6 text-center text-sm font-bold text-[#3D2B1F]/70">
           {unavailable
             ? locale === "ru"
-              ? "Работы пользователей временно недоступны. Встроенный пример выше доступен без входа."
+              ? "Работы пользователей временно недоступны. Встроенные проекты выше доступны без входа."
               : locale === "en"
-                ? "Community projects are temporarily unavailable. The built-in example above needs no account."
+                ? "Community projects are temporarily unavailable. The built-in projects above need no account."
                 : "Naudotojų projektai laikinai nepasiekiami. Demo veikia be paskyros."
             : t("showcaseEmpty")}
         </p>
@@ -91,7 +96,7 @@ function ShowcaseCard({
         <div className="mb-2 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-xl font-black leading-6">{project.title[locale]}</h3>
-            {project.id === RUSSIAN_STOVE.id ? <p className="mt-2 text-sm">{project.subtitle[locale]}</p> : null}
+            {onLoad ? <p className="mt-2 text-sm">{project.subtitle[locale]}</p> : null}
             {showcase?.description ? (
               <p className="mt-1 text-sm font-bold leading-5 text-[#3D2B1F]/70">{showcase.description}</p>
             ) : null}
@@ -135,9 +140,13 @@ function ShowcaseCard({
             {t("showcasePrice")}: {showcase.price.toLocaleString("ru-RU")} ₽
           </p>
         ) : null}
-        {project.id === RUSSIAN_STOVE.id ? (
+        {onLoad ? (
           <>
-            <RussianStoveGuide locale={locale} />
+            {project.id === RUSSIAN_STOVE.id ? (
+              <RussianStoveGuide locale={locale} />
+            ) : project.id === CLASSIC_RUSSIAN_STOVE.id ? (
+              <ClassicRussianStoveGuide locale={locale} />
+            ) : null}
             <button
               type="button"
               onClick={() => onLoad?.(project)}

@@ -126,7 +126,8 @@ export function useStudioState() {
   const loadProject = (project: ReadyProject) => {
     editor.loadProject(project);
     setTeplushkaInspection({ section: "whole", fraction: 0.4 });
-    if (project.id === "russian-stove-hob") editor.setCurrentRow(project.rowCount);
+    if (project.id === "russian-stove-hob" || project.id === "classic-russian-stove-hob")
+      editor.setCurrentRow(project.rowCount);
     setDemoProjectId(project.ownerLogin ? null : project.id);
     // Свой сохранённый проект открываем «на редактирование»; чужой/демо — как шаблон нового.
     setCurrentProjectId(project.ownerLogin && project.ownerLogin === session.userLogin ? project.id : null);

@@ -1,3 +1,4 @@
+import { ClassicRussianStoveGuide } from "./ClassicRussianStoveGuide";
 import { RussianStoveGuide } from "./RussianStoveGuide";
 import { useState } from "react";
 import type { Locale, Translate } from "../i18n";
@@ -66,6 +67,8 @@ export function ProjectsScreen({
           </div>
         </div>
         {project.id === "russian-stove-hob" ? <RussianStoveGuide locale={locale} /> : null}
+
+        {project.id === "classic-russian-stove-hob" ? <ClassicRussianStoveGuide locale={locale} /> : null}
 
         <ProjectOrderPreview grid={projectGrid} rows={project.rows} rowCount={project.rowCount} t={t} />
         <div className="space-y-2 p-3 pt-0">

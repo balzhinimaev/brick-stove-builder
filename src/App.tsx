@@ -86,6 +86,7 @@ export default function App() {
           />
         ) : (
           <BuilderScreen
+            key={studio.sceneRevision}
             sceneRevision={studio.sceneRevision}
             inspection={studio.showTeplushkaGuide ? studio.teplushkaInspection : undefined}
             onExitSection={studio.exitTeplushkaSection}
@@ -114,6 +115,7 @@ export default function App() {
             setDoorSize={studio.setDoorSize}
             damperSpec={studio.damperSpec}
             setDamperSize={studio.setDamperSize}
+            setDamperOpenings={studio.setDamperOpenings}
             grateSpec={studio.grateSpec}
             setGrateSize={studio.setGrateSize}
             userLogin={userLogin}

@@ -629,3 +629,75 @@ body {
   background: #1685ac;
   color: white;
 }
+
+.house-design-guide {
+  border: 1px solid #bba483;
+  border-radius: 16px;
+  background: #fff9ef;
+  padding: 12px 16px;
+  color: #49392c;
+  font-size: 13px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+.house-design-guide header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 18px;
+  align-items: baseline;
+}
+.house-design-guide header strong {
+  font-size: 16px;
+}
+.house-design-guide p {
+  margin: 7px 0;
+  line-height: 1.5;
+}
+.house-design-guide h4 {
+  font-weight: 800;
+  margin-top: 14px;
+}
+.house-design-guide summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: 5px 0;
+}
+.house-design-guide a {
+  text-decoration: underline;
+}
+.house-design-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 9px 0;
+}
+.house-design-controls label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+}
+.house-design-controls select {
+  max-width: min(340px, 100%);
+  min-width: 0;
+}
+.house-design-controls button,
+.house-design-controls select {
+  border: 1px solid #b99b77;
+  border-radius: 8px;
+  min-height: 40px;
+  padding: 6px 9px;
+  background: #fffefb;
+}
+.house-design-controls button[aria-pressed="true"] {
+  background: #ebd6b5;
+}
+.house-design-controls details {
+  flex-basis: 100%;
+}
+.house-design-controls details button {
+  margin: 3px 5px 3px 0;
+}

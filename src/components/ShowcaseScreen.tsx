@@ -1,3 +1,4 @@
+import { HouseRussianGuide } from "./HouseRussianGuide";
 import { BUILTIN_SHOWCASE_PROJECTS } from "../domain/showcaseProjects";
 import { ClassicRussianStoveGuide } from "./ClassicRussianStoveGuide";
 import { CLASSIC_RUSSIAN_STOVE } from "../domain/classicRussianStove";
@@ -142,6 +143,7 @@ function ShowcaseCard({
         ) : null}
         {onLoad ? (
           <>
+            {project.id === "russian-house-6x9" && <HouseRussianGuide />}
             {project.id === RUSSIAN_STOVE.id ? (
               <RussianStoveGuide locale={locale} />
             ) : project.id === CLASSIC_RUSSIAN_STOVE.id ? (

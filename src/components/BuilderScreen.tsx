@@ -15,6 +15,7 @@ import type { PlacementPoint, PlacementPreview } from "../domain/editor/preview"
 import { isInsideGrid } from "../domain/geometry";
 import { isNativeApp } from "../lib/platform";
 import { useCustomBricks } from "../hooks/useCustomBricks";
+import { HouseRussianGuide } from "./HouseRussianGuide";
 import { BrickCutter } from "./BrickCutter";
 import { MaterialsSummary } from "./MaterialsSummary";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -72,6 +73,7 @@ export type BuilderScreenProps = {
   saveCurrentProject: () => void;
   inspection?: TeplushkaInspection;
   onExitSection?: () => void;
+  setDamperOpenings: (openings: Record<string, number>) => void;
 };
 
 export function BuilderScreen(props: BuilderScreenProps) {
@@ -91,6 +93,33 @@ export function BuilderScreen(props: BuilderScreenProps) {
     redo
   } = props;
   const { customBricks, addCustomBrick, removeCustomBrick } = useCustomBricks(props.userLogin);
+  const isHouse = useMemo(() => Object.values(rows).some((r) => r.some((b) => b.id.startsWith("rp54-"))), [rows]);
+  const [houseContext, setHouseContext] = useState(false);
+  const [houseInspection, setHouseInspection] = useState<TeplushkaInspection>({
+    section: "whole",
+    fraction: 0.4,
+    courseOnly: true
+  });
+  const houseControls = {
+    currentRow,
+    house: houseContext,
+    inspection: houseInspection,
+    onHouse: (value: boolean) => {
+      setHouseContext(value);
+      setCurrentRow(value ? rowCount : Math.min(29, rowCount));
+      setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+    },
+    onCourse: (row: number) => {
+      setHouseContext(false);
+      setCurrentRow(Math.min(row, rowCount));
+      setHouseInspection({ ...houseInspection, courseOnly: true });
+    },
+    onInspection: (v: TeplushkaInspection) => {
+      setHouseContext(false);
+      setHouseInspection(v);
+    },
+    onGates: props.setDamperOpenings
+  };
   const [cutterOpen, setCutterOpen] = useState(false);
   const [panel, setPanel] = useState<"tools" | "rows" | "materials">("tools");
   const locked = lockedRows.includes(currentRow);
@@ -131,6 +160,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   }, [undo, redo, orientation, setOrientation, setActiveTool, cutterOpen]);
   return (
     <main className="studio-editor">
+      {isHouse && <HouseRussianGuide controls={houseControls} />}
       <div className="studio-commandbar">
         <div className="studio-row-switch">
           <button
@@ -218,8 +248,16 @@ export function BuilderScreen(props: BuilderScreenProps) {
                 previewAt={props.previewAt}
                 placeAt={props.placeAt}
                 rotateBrick={() => setOrientation(orientation === "h" ? "v" : "h")}
-                inspection={props.inspection}
-                onExitSection={props.onExitSection}
+                houseContext={isHouse && houseContext}
+                inspection={isHouse ? houseInspection : props.inspection}
+                onExitSection={
+                  isHouse
+                    ? () => {
+                        setHouseContext(false);
+                        setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+                      }
+                    : props.onExitSection
+                }
               />
             </Suspense>
           </ErrorBoundary>

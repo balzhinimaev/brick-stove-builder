@@ -145,6 +145,7 @@ export function useStudioState() {
       project.id === "shkolnik-pov-3500"
     )
       editor.setCurrentRow(project.rowCount);
+    if (project.id === "russian-house-6x9") editor.setCurrentRow(29);
     setDemoProjectId(project.ownerLogin ? null : project.id);
     // Свой сохранённый проект открываем «на редактирование»; чужой/демо — как шаблон нового.
     setCurrentProjectId(project.ownerLogin && project.ownerLogin === session.userLogin ? project.id : null);
@@ -285,6 +286,7 @@ export function useStudioState() {
     setDoorSize: editor.setDoorSize,
     damperSpec: editor.damperSpec,
     setDamperSize: editor.setDamperSize,
+    setDamperOpenings: editor.setDamperOpenings,
     toggleDamper: editor.toggleDamper,
     grateSpec: editor.grateSpec,
     setGrateSize: editor.setGrateSize,

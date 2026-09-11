@@ -4,6 +4,7 @@ import {
   archAssemblyFrame,
   type ArchName
 } from "../builder/classicArchAssembly";
+import { HouseContext } from "./HouseContext";
 import { ArchCentering, ArchPartLabels, archSceneBounds } from "./ClassicArchOverlay";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
@@ -38,6 +39,7 @@ export type ThreeStackProps = {
   rotateBrick: () => void;
   inspection?: TeplushkaInspection;
   onExitSection?: () => void;
+  houseContext?: boolean;
 };
 
 export function ThreeStack({
@@ -52,7 +54,8 @@ export function ThreeStack({
   placeAt,
   rotateBrick,
   inspection,
-  onExitSection
+  onExitSection,
+  houseContext = false
 }: ThreeStackProps) {
   const [archName, setArchName] = useState<ArchName | null>(null);
   const [archStep, setArchStep] = useState(0);
@@ -89,10 +92,10 @@ export function ThreeStack({
     [bricks, inspect, currentRow]
   );
   const preview = useMemo(
-    () => (!assembly && !inspect && point ? previewAt(point) : null),
-    [assembly, inspect, point, previewAt]
+    () => (!assembly && !inspect && !sectionActive && point ? previewAt(point) : null),
+    [assembly, inspect, sectionActive, point, previewAt]
   );
-  const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect && !assembly;
+  const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect && !assembly && !sectionActive;
   // Inspection is a render-only projection, before bounds and section calculations.
   const sceneBricks = useMemo(
     () => frame?.parts ?? withPlacementAdjustments(visible, valid ? preview : null),
@@ -143,6 +146,18 @@ export function ThreeStack({
       setArchStep(0);
     }
   }, [assembly]);
+  const previousHouse = useRef(false);
+  useEffect(() => {
+    if (houseContext || previousHouse.current) {
+      setArchName(null);
+      setInspect(houseContext || (inspectionSection !== undefined && !inspectionCourseOnly));
+      setPoint(null);
+      gesture.current.cancel();
+      tap.current = false;
+      setCommand((previous) => ({ id: previous.id + 1, kind: "fit" }));
+    }
+    previousHouse.current = houseContext;
+  }, [houseContext, inspectionSection, inspectionCourseOnly]);
   const confirm = () => {
     if (!point || !valid) return;
     placeAt(point.x, point.y, point.rawX, point.rawY);
@@ -159,7 +174,7 @@ export function ThreeStack({
   }, [currentRow, grid, inspect]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (assembly || inspect) return;
+      if (assembly || inspect || sectionActive) return;
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || target?.closest("input,textarea,select,button,dialog,[role=dialog]")) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -184,7 +199,7 @@ export function ThreeStack({
     return () => window.removeEventListener("keydown", onKey);
   });
   const select = (event: ThreeEvent<PointerEvent>) => {
-    if (!tap.current || assembly || inspect || locked || event.button !== 0) return;
+    if (!tap.current || assembly || inspect || sectionActive || locked || event.button !== 0) return;
     event.stopPropagation();
     const hit = event.ray.intersectPlane(
       new Plane(new Vector3(0, 1, 0), -(currentRow - 1) * BRICK_LAYER_HEIGHT),
@@ -216,6 +231,7 @@ export function ThreeStack({
             Арки и своды · учебная сборка{" "}
             <select
               value={archName ?? ""}
+              disabled={houseContext}
               onChange={(event) => {
                 setArchName((event.target.value || null) as ArchName | null);
                 setArchStep(0);
@@ -315,7 +331,7 @@ export function ThreeStack({
           <button
             type="button"
             disabled={!!assembly}
-            aria-pressed={!inspect}
+            aria-pressed={!inspect && !sectionActive}
             onClick={() => {
               onExitSection?.();
               setInspect(false);
@@ -323,7 +339,12 @@ export function ThreeStack({
           >
             {t("buildMode")}
           </button>
-          <button type="button" disabled={!!assembly} aria-pressed={inspect} onClick={() => setInspect(true)}>
+          <button
+            type="button"
+            disabled={!!assembly}
+            aria-pressed={inspect || sectionActive}
+            onClick={() => setInspect(true)}
+          >
             {t("inspectMode")}
           </button>
         </fieldset>
@@ -350,7 +371,7 @@ export function ThreeStack({
         role="application"
         aria-label={t("aria3d")}
         tabIndex={-1}
-        className={`scene-canvas ${inspect ? "is-inspecting" : "is-building"}`}
+        className={`scene-canvas ${inspect || sectionActive ? "is-inspecting" : "is-building"}`}
         onContextMenu={(event) => event.preventDefault()}
         onPointerDownCapture={(event) => {
           if (event.target instanceof HTMLCanvasElement) {
@@ -411,17 +432,25 @@ export function ThreeStack({
           />
           <directionalLight position={[-10, 6, -8]} intensity={0.65} />
           <SceneCamera
-            width={archSize?.x ?? sectionSize?.x ?? grid.cols + 1}
-            depth={archSize?.z ?? sectionSize?.z ?? grid.rows + 1}
-            height={archSize?.y ?? sectionSize?.y ?? height + foundationHeight}
+            width={houseContext ? 52 : (archSize?.x ?? sectionSize?.x ?? grid.cols + 1)}
+            depth={houseContext ? 76 : (archSize?.z ?? sectionSize?.z ?? grid.rows + 1)}
+            height={houseContext ? 68 : (archSize?.y ?? sectionSize?.y ?? height + foundationHeight)}
             centerX={archCenter?.x ?? sectionCenter?.x ?? 0}
-            centerY={archCenter?.y ?? sectionCenter?.y ?? (height - foundationHeight) / 2}
+            centerY={houseContext ? 16 : (archCenter?.y ?? sectionCenter?.y ?? (height - foundationHeight) / 2)}
             centerZ={archCenter?.z ?? sectionCenter?.z ?? 0}
-            inspect={!!assembly || inspect}
+            inspect={!!assembly || inspect || sectionActive}
             frontSign={inspection ? -1 : 1}
             command={command}
           />
-          {!assembly && <Foundation grid={grid} thickness={foundationHeight} sectionActive={sectionActive} />}
+          {!assembly && (
+            <Foundation
+              grid={grid}
+              thickness={foundationHeight}
+              sectionActive={sectionActive || houseContext}
+              exact={bricks.some((b) => b.id.startsWith("rp54-"))}
+            />
+          )}
+          {houseContext && !assembly && <HouseContext grid={grid} />}
           {section && (
             <mesh geometry={section.geometry}>
               <meshStandardMaterial vertexColors roughness={0.94} />
@@ -524,7 +553,7 @@ export function ThreeStack({
                   ? `${t(statusKey)}${preview?.adjustments.length ? ` ${t("autoSeatHint")}` : ""}`
                   : t("placeHint")}
         </output>
-        {!assembly && !inspect && !locked && (
+        {!assembly && !inspect && !sectionActive && !locked && (
           <div className="placement-controls">
             <div className="placement-position">
               <button
@@ -615,16 +644,18 @@ function SectionClipping({ plane }: { plane: Plane | null }) {
 const Foundation = memo(function Foundation({
   grid,
   thickness,
-  sectionActive
+  sectionActive,
+  exact = false
 }: {
   grid: GridSpec;
   thickness: number;
   sectionActive: boolean;
+  exact?: boolean;
 }) {
   return (
     <group>
       <mesh position={[0, -thickness / 2, 0]} receiveShadow>
-        <boxGeometry args={[grid.cols + 0.25, thickness, grid.rows + 0.25]} />
+        <boxGeometry args={[grid.cols + (exact ? 0 : 0.25), thickness, grid.rows + (exact ? 0 : 0.25)]} />
         <meshStandardMaterial color="#bcbeb5" roughness={0.96} />
       </mesh>
       {!sectionActive && (

@@ -21,7 +21,8 @@ describe("separate guest examples", () => {
     expect(BUILTIN_SHOWCASE_PROJECTS.map((p) => p.id)).toEqual([
       "russian-stove-hob",
       "classic-russian-stove-hob",
-      "shkolnik-pov-3500"
+      "shkolnik-pov-3500",
+      "russian-house-6x9"
     ]);
     const html = renderToStaticMarkup(
       createElement(ProjectsScreen, {

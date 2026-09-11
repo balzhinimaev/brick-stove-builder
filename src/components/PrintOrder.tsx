@@ -45,6 +45,14 @@ export function PrintOrder({
         {t("projectRows")} · {t("totalPlaced")}: {materials.total}
       </p>
 
+      {Object.values(rows).some((r) => r.some((b) => b.id.startsWith("rp54-"))) && (
+        <p style={{ border: "2px solid #8b4e35", padding: 8 }}>
+          РП54 · R1 — проектная модель, не разрешение на кладку. Корпус до 29-го ряда, верх 2,025 м; ряды 30–89 —
+          коренная труба. Нагретая прочность, тяга и теплоотдача не подтверждены. Дом и подземное основание показаны
+          отдельной схемой и не входят в ведомость кирпичей; бетон в стандартной ведомости учитывает только верхнюю
+          плиту.
+        </p>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         {Array.from({ length: rowCount }).map((_, index) => {
           const row = index + 1;

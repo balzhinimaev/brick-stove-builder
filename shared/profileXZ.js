@@ -8,6 +8,7 @@ export function profileXZError(spec) {
   if (!Number.isFinite(spec.w) || spec.w <= 0 || !Number.isFinite(spec.h) || spec.h <= 0)
     return "Invalid prism footprint";
   if (
+    spec.solidParts ||
     spec.notch ||
     spec.notchDepthMm != null ||
     spec.heightMm != null ||
@@ -49,7 +50,7 @@ export function damperGeometryError(spec) {
   if (plane !== "horizontal" && plane !== "vertical") return "Invalid damper plane";
   if (!Number.isFinite(spec.w) || spec.w <= 0 || !Number.isFinite(spec.h) || spec.h <= 0)
     return "Invalid damper footprint";
-  if (spec.profileXZ || spec.notch) return "A damper cannot use a masonry profile or notch";
+  if (spec.profileXZ || spec.solidParts || spec.notch) return "A damper cannot use a masonry profile or notch";
   if (spec.seatZMm != null && (!Number.isFinite(spec.seatZMm) || spec.seatZMm < 0)) return "Invalid damper elevation";
   if (spec.thicknessMm != null && (!Number.isFinite(spec.thicknessMm) || spec.thicknessMm <= 0))
     return "Invalid damper thickness";

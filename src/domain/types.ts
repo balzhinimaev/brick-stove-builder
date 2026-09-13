@@ -62,6 +62,10 @@ export type CustomBrickSpec = {
    * Only custom solids; incompatible with notches, seats and height overrides.
    */
   profileXZ?: { x: number; z: number }[];
+  /** One physical cut brick: connected, non-overlapping boxes in local mm.
+   * Z is relative to the course. No mortar exists between these parts.
+   * Mutually exclusive with profileXZ, notches and height/seat overrides. */
+  solidParts?: { x1: number; y1: number; z1: number; x2: number; y2: number; z2: number }[];
   /** вырез, привязанный к углу заготовки: бокс в координатах заготовки */
   notch?: { x1: number; y1: number; x2: number; y2: number } | null;
   /** true — в вырезе остаётся полка на посадку; false — вырез сквозной */

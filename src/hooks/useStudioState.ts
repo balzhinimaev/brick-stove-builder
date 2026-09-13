@@ -1,29 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { COLORS } from "../theme/colors";
-import { cloneRows } from "../domain/geometry";
-import { READY_PROJECTS } from "../domain/projects";
-import { TEPLUSHKA_DAMPERS } from "../domain/teplushkaControls";
+import {
+  type PublishFields,
+  publishProject as publishProjectApi,
+  unpublishProject as unpublishProjectApi
+} from "../api/client";
 import {
   inspectTeplushkaMode,
-  teplushkaModeOpenings,
   type TeplushkaInspection,
-  type TeplushkaMode
+  type TeplushkaMode,
+  teplushkaModeOpenings
 } from "../components/builder/teplushkaInspection";
-import { uniqueId } from "../lib/id";
-import { CALCULATOR_EXAMPLE } from "../domain/stoveCalculator";
 import { calculatorText } from "../components/stoveCalculatorText";
-import { useI18n, type Locale } from "../i18n";
-import {
-  publishProject as publishProjectApi,
-  unpublishProject as unpublishProjectApi,
-  type PublishFields
-} from "../api/client";
+import { cloneRows } from "../domain/geometry";
+import { READY_PROJECTS } from "../domain/projects";
+import { CALCULATOR_EXAMPLE } from "../domain/stoveCalculator";
+import { TEPLUSHKA_DAMPERS } from "../domain/teplushkaControls";
 import type { ReadyProject, Screen } from "../domain/types";
+import { type Locale, useI18n } from "../i18n";
+import { uniqueId } from "../lib/id";
 import { isNativeApp } from "../lib/platform";
-import { useEditor } from "./useEditor";
-import { useSession } from "./useSession";
-import { useSavedProjects } from "./useSavedProjects";
+import { COLORS } from "../theme/colors";
 import { useAutosaveDraft } from "./useAutosaveDraft";
+import { useEditor } from "./useEditor";
+import { useSavedProjects } from "./useSavedProjects";
+import { useSession } from "./useSession";
 
 /**
  * Composition root for editor UI state. Each concern lives in its own hook —
@@ -145,7 +145,7 @@ export function useStudioState() {
       project.id === "shkolnik-pov-3500"
     )
       editor.setCurrentRow(project.rowCount);
-    if (project.id === "russian-house-6x9") editor.setCurrentRow(29);
+    if (project.id.startsWith("russian-house-6x9")) editor.setCurrentRow(29);
     setDemoProjectId(project.ownerLogin ? null : project.id);
     // Свой сохранённый проект открываем «на редактирование»; чужой/демо — как шаблон нового.
     setCurrentProjectId(project.ownerLogin && project.ownerLogin === session.userLogin ? project.id : null);

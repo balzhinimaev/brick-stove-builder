@@ -1,13 +1,14 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ShowcaseScreen } from "../ShowcaseScreen";
-import { ProjectsScreen } from "../ProjectsScreen";
-import { BUILTIN_SHOWCASE_PROJECTS } from "../../domain/showcaseProjects";
-import { READY_PROJECTS } from "../../domain/projects";
-import { translations, type Translate } from "../../i18n";
-import { initialEditorState } from "../../domain/editor/state";
 import { editorReducer } from "../../domain/editor/reducer";
+import { initialEditorState } from "../../domain/editor/state";
+import { READY_PROJECTS } from "../../domain/projects";
+import { BUILTIN_SHOWCASE_PROJECTS } from "../../domain/showcaseProjects";
+import { type Translate, translations } from "../../i18n";
+import { ProjectsScreen } from "../ProjectsScreen";
+import { ShowcaseScreen } from "../ShowcaseScreen";
+
 const t: Translate = (key) => translations.ru[key];
 const load = () => {};
 describe("separate guest examples", () => {
@@ -22,7 +23,8 @@ describe("separate guest examples", () => {
       "russian-stove-hob",
       "classic-russian-stove-hob",
       "shkolnik-pov-3500",
-      "russian-house-6x9"
+      "russian-house-6x9",
+      "russian-house-6x9-r2"
     ]);
     const html = renderToStaticMarkup(
       createElement(ProjectsScreen, {

@@ -7,45 +7,51 @@ import {
   rhsCheck,
   stackBuoyancyPa
 } from "../houseRussianDesign";
-import { HOUSE_RUSSIAN_STOVE } from "../houseRussianStove";
+import { HOUSE_RUSSIAN_STOVE, HOUSE_RUSSIAN_STOVE_R2 } from "../houseRussianStove";
 import { brickPhysicalSolids, gridFromParameters, isInsideGrid, cloneRows } from "../geometry";
 
-it("keeps the assumed building and actual solids consistent, with three full cap layers", () => {
-  const stock = Object.values(HOUSE_RUSSIAN_STOVE.rows).flat();
-  expect(stock.every((b) => isInsideGrid(b, gridFromParameters(HOUSE_RUSSIAN_STOVE.parameters)))).toBe(true);
-  const top = (items: typeof stock) =>
-    Math.max(...items.flatMap((b) => brickPhysicalSolids(b).map((s) => (b.row - 1) * 70 + s.z2)));
-  const body = stock.filter((b) => b.x * 125 >= 625 && b.kind === "custom");
-  expect(top(body)).toBe(HOUSE_DESIGN.bodyTopMm);
-  expect(top(stock)).toBe(HOUSE_DESIGN.chimneyTopMm);
-  expect(HOUSE_DESIGN.ceilingMm - top(body)).toBe(475);
-  expect(HOUSE_DESIGN.shaftWidthMm + 2 * HOUSE_DESIGN.penetrationGapMm).toBe(1260);
-  expect(HOUSE_DESIGN.shaftDepthMm + 2 * HOUSE_DESIGN.penetrationGapMm).toBe(1380);
-  for (const r of [27, 28, 29]) {
-    const cap = HOUSE_RUSSIAN_STOVE.rows[r].filter((b) => b.x * 125 >= 625);
-    expect(cap.length).toBeGreaterThan(50);
-    for (const b of cap) for (const s of brickPhysicalSolids(b)) expect(s.z2 - s.z1).toBeCloseTo(65);
+it.each([HOUSE_RUSSIAN_STOVE, HOUSE_RUSSIAN_STOVE_R2])(
+  "$id keeps building and solids consistent, with three full cap layers",
+  (project) => {
+    const stock = Object.values(project.rows).flat();
+    expect(stock.every((b) => isInsideGrid(b, gridFromParameters(project.parameters)))).toBe(true);
+    const top = (items: typeof stock) =>
+      Math.max(...items.flatMap((b) => brickPhysicalSolids(b).map((s) => (b.row - 1) * 70 + s.z2)));
+    const body = stock.filter((b) => b.x * 125 >= 625 && b.kind === "custom");
+    expect(top(body)).toBe(HOUSE_DESIGN.bodyTopMm);
+    expect(top(stock)).toBe(HOUSE_DESIGN.chimneyTopMm);
+    expect(HOUSE_DESIGN.ceilingMm - top(body)).toBe(475);
+    expect(HOUSE_DESIGN.shaftWidthMm + 2 * HOUSE_DESIGN.penetrationGapMm).toBe(1260);
+    expect(HOUSE_DESIGN.shaftDepthMm + 2 * HOUSE_DESIGN.penetrationGapMm).toBe(1380);
+    for (const r of [27, 28, 29]) {
+      const cap = project.rows[r].filter((b) => b.x * 125 >= 625);
+      expect(cap.length).toBeGreaterThan(50);
+      for (const b of cap) for (const s of brickPhysicalSolids(b)) expect(s.z2 - s.z1).toBeCloseTo(65);
+    }
+    for (const b of stock.filter(
+      (b) =>
+        b.kind === "custom" &&
+        b.custom?.profileXZ &&
+        b.custom.material !== "steel" &&
+        !b.custom.name.includes(" · клин")
+    )) {
+      const p = b.custom!.profileXZ!;
+      const dims = [
+        b.custom!.w * 125,
+        b.custom!.h * 125,
+        Math.max(...p.map((p) => p.z)) - Math.min(...p.map((p) => p.z))
+      ].sort((a, b) => a - b);
+      expect(dims[0], b.id).toBeLessThanOrEqual(65.00001);
+      expect(dims[1], b.id).toBeLessThanOrEqual(120.00001);
+      expect(dims[2], b.id).toBeLessThanOrEqual(250.00001);
+    }
+    for (const b of stock.filter((b) => b.kind === "custom" && !b.custom?.profileXZ)) {
+      const dims = [b.custom!.w * 125, b.custom!.h * 125].sort((a, b) => a - b);
+      expect(dims[0], b.id).toBeLessThanOrEqual(120.00001);
+      expect(dims[1], b.id).toBeLessThanOrEqual(250.00001);
+    }
   }
-  for (const b of stock.filter(
-    (b) =>
-      b.kind === "custom" && b.custom?.profileXZ && b.custom.material !== "steel" && !b.custom.name.includes(" · клин")
-  )) {
-    const p = b.custom!.profileXZ!;
-    const dims = [
-      b.custom!.w * 125,
-      b.custom!.h * 125,
-      Math.max(...p.map((p) => p.z)) - Math.min(...p.map((p) => p.z))
-    ].sort((a, b) => a - b);
-    expect(dims[0], b.id).toBeLessThanOrEqual(65.00001);
-    expect(dims[1], b.id).toBeLessThanOrEqual(120.00001);
-    expect(dims[2], b.id).toBeLessThanOrEqual(250.00001);
-  }
-  for (const b of stock.filter((b) => b.kind === "custom" && !b.custom?.profileXZ)) {
-    const dims = [b.custom!.w * 125, b.custom!.h * 125].sort((a, b) => a - b);
-    expect(dims[0], b.id).toBeLessThanOrEqual(120.00001);
-    expect(dims[1], b.id).toBeLessThanOrEqual(250.00001);
-  }
-});
+);
 it("calculates losses with units, explicit assumptions and no invented verified stove output", () => {
   expect(heatDemand({ wallU: 1, windowU: 1, doorU: 1, roofU: 1, floorU: 1, ach: 0 })).toEqual({
     transmissionWK: 183,

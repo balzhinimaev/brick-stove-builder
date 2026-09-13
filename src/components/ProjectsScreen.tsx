@@ -1,14 +1,14 @@
-import { HouseRussianGuide } from "./HouseRussianGuide";
-import { ClassicRussianStoveGuide } from "./ClassicRussianStoveGuide";
-import { RussianStoveGuide } from "./RussianStoveGuide";
 import { useState } from "react";
-import type { Locale, Translate } from "../i18n";
-import type { GridSpec, PlacedBrick, ReadyProject } from "../domain/types";
 import type { PublishFields } from "../api/client";
 import { gridFromParameters } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
-import { Pill, SectionTitle } from "./ui";
+import type { GridSpec, PlacedBrick, ReadyProject } from "../domain/types";
+import type { Locale, Translate } from "../i18n";
+import { ClassicRussianStoveGuide } from "./ClassicRussianStoveGuide";
+import { HouseRussianGuide } from "./HouseRussianGuide";
 import { RowMap } from "./RowMap";
+import { RussianStoveGuide } from "./RussianStoveGuide";
+import { Pill, SectionTitle } from "./ui";
 
 export function ProjectsScreen({
   locale,
@@ -71,7 +71,7 @@ export function ProjectsScreen({
 
         {project.id === "classic-russian-stove-hob" ? <ClassicRussianStoveGuide locale={locale} /> : null}
 
-        {project.id === "russian-house-6x9" && <HouseRussianGuide />}
+        {project.id.startsWith("russian-house-6x9") && <HouseRussianGuide project={project} />}
         <ProjectOrderPreview grid={projectGrid} rows={project.rows} rowCount={project.rowCount} t={t} />
         <div className="space-y-2 p-3 pt-0">
           {project.ownerLogin ? null : (

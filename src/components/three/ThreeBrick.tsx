@@ -10,17 +10,17 @@ import {
   RGBAFormat
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { brickBounds, footprintSizeOf, damperParts, grateParts, brickPhysicalSolids } from "../../domain/geometry";
 import { MM_PER_CELL } from "../../domain/constants";
+import { brickBounds, brickPhysicalSolids, damperParts, footprintSizeOf, grateParts } from "../../domain/geometry";
+import { isSteelPart } from "../../domain/materials";
 import { plateBurnerCenters } from "../../domain/plate";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
-import { solidBoxes, solidSceneBox, type SceneBox } from "./sceneMath";
-
-import { profileSceneGeometry } from "./profileGeometry";
-
-import { isSteelPart } from "../../domain/materials";
 import { brickAppearance, isMasonry } from "./brickAppearance";
+import { profileSceneGeometry } from "./profileGeometry";
+import { type SceneBox, solidBoxes, solidSceneBox } from "./sceneMath";
+
 export { isMasonry } from "./brickAppearance";
+
 const brickColor = (brick: PlacedBrick) => brickAppearance(brick).color;
 
 /** Small, deterministic mineral bump field. No network texture or font dependency. */
@@ -47,7 +47,7 @@ export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedB
   const { bodies, beds } = useMemo(() => {
     const bodies: Instance[] = [];
     const beds: Instance[] = [];
-    for (const brick of bricks.filter((b) => isMasonry(b) && !b.custom?.profileXZ)) {
+    for (const brick of bricks.filter((b) => isMasonry(b) && !b.custom?.profileXZ && !b.custom?.solidParts)) {
       for (const box of solidBoxes(brick, grid)) bodies.push({ ...box, color: brickColor(brick) });
       // Beds follow the occupied shape, preserving shafts and through-cuts.
       if (brick.row > 1) {
@@ -67,6 +67,11 @@ export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedB
   return (
     <>
       {bricks
+        .filter((b) => isMasonry(b) && b.custom?.solidParts)
+        .map((brick) => (
+          <CompoundMasonry key={brick.id} brick={brick} grid={grid} />
+        ))}
+      {bricks
         .filter((b) => isMasonry(b) && b.custom?.profileXZ)
         .map((brick) => (
           <ProfileMesh key={brick.id} brick={brick} grid={grid} />
@@ -76,6 +81,29 @@ export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedB
     </>
   );
 });
+
+/** Flat continuous faces: no rounded edges or decorative joints between the
+ * occupied volumes of ONE cut brick. The physical cutout remains empty. */
+function CompoundMasonry({ brick, grid }: { brick: PlacedBrick; grid: GridSpec }) {
+  return (
+    <group userData={{ brickId: brick.id }}>
+      {brickPhysicalSolids(brick).map((solid) => {
+        const box = solidSceneBox(solid, brick.row, grid);
+        return (
+          <mesh
+            key={`${solid.box.x1}:${solid.box.y1}:${solid.z1}:${solid.box.x2}:${solid.box.y2}:${solid.z2}`}
+            position={box.position}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={box.scale} />
+            <meshStandardMaterial color={brickColor(brick)} roughness={0.93} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
 
 function InstanceBoxes({ instances, textured = false }: { instances: Instance[]; textured?: boolean }) {
   const ref = useRef<InstancedMesh>(null);

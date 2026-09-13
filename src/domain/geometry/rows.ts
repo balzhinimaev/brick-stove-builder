@@ -30,6 +30,7 @@ export function cloneCustomBrick(spec: CustomBrickSpec): CustomBrickSpec {
   return {
     ...spec,
     ...(spec.notch ? { notch: { ...spec.notch } } : {}),
+    ...(spec.solidParts ? { solidParts: spec.solidParts.map((part) => ({ ...part })) } : {}),
     ...(spec.profileXZ ? { profileXZ: spec.profileXZ.map((point) => ({ ...point })) } : {})
   };
 }

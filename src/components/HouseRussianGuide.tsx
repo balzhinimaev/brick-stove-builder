@@ -7,6 +7,7 @@ import {
   stackBuoyancyPa
 } from "../domain/houseRussianDesign";
 import { HOUSE_RUSSIAN_STOVE } from "../domain/houseRussianStove";
+import type { ReadyProject } from "../domain/types";
 import type { TeplushkaInspection } from "./builder/teplushkaInspection";
 
 export type HouseGuideControls = {
@@ -18,14 +19,20 @@ export type HouseGuideControls = {
   onInspection: (value: TeplushkaInspection) => void;
   onGates: (openings: Record<string, number>) => void;
 };
-export function HouseRussianGuide({ controls }: { controls?: HouseGuideControls }) {
-  const mass = useMemo(() => houseMassAndFoundation(HOUSE_RUSSIAN_STOVE), []);
+export function HouseRussianGuide({
+  controls,
+  project = HOUSE_RUSSIAN_STOVE
+}: {
+  controls?: HouseGuideControls;
+  project?: Pick<ReadyProject, "rows" | "parameters" | "title">;
+}) {
+  const mass = useMemo(() => houseMassAndFoundation(project), [project]);
   const roof = rhsCheck(100, 50, 5, 940, 6),
     frame = rhsCheck(90, 50, 5, 1070, 12);
   return (
     <section className="house-design-guide" aria-label="Русская печь для дома 6 на 9">
       <header>
-        <strong>Русская печь · дом 6×9 · R1</strong>
+        <strong>{project.title.ru}</strong>
         <span>Корпус 2,025 м · потолок 2,50 м · труба 6,225 м</span>
       </header>
       <p>

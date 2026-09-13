@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
-import { profileXZError, damperGeometryError } from "../../shared/profileXZ.js";
+import { damperGeometryError, profileXZError } from "../../shared/profileXZ.js";
+import { solidPartsError } from "../../shared/solidParts.js";
 
 const localizedTextSchema = new mongoose.Schema(
   {
@@ -56,6 +57,23 @@ export const brickSchema = new mongoose.Schema(
           material: { type: String, enum: ["steel"], required: false },
           w: { type: Number, required: true, min: 0.0001 },
           h: { type: Number, required: true, min: 0.0001 },
+          solidParts: {
+            type: [
+              new mongoose.Schema(
+                Object.fromEntries(
+                  ["x1", "y1", "z1", "x2", "y2", "z2"].map((key) => [key, { type: Number, required: true }])
+                ),
+                { _id: false }
+              )
+            ],
+            default: undefined,
+            validate: {
+              validator() {
+                return solidPartsError(this) === null;
+              },
+              message: "Invalid connected cut brick"
+            }
+          },
           profileXZ: {
             type: [
               new mongoose.Schema(
@@ -106,6 +124,8 @@ export const brickSchema = new mongoose.Schema(
 brickSchema.path("custom").validate(function (custom) {
   return (
     (!custom?.profileXZ || this.kind === "custom") &&
+    (!custom?.solidParts || this.kind === "custom") &&
+    solidPartsError(custom) === null &&
     (!custom?.material || this.kind === "custom") &&
     (!custom?.damperPlane || this.kind === "damper") &&
     damperGeometryError(custom) === null

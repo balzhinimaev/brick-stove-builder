@@ -1,4 +1,4 @@
-import { BRICK_GAP, BRICK_BODY_HEIGHT, BRICK_LAYER_HEIGHT, CELL_CM, MIN_GRID_COLS, MIN_GRID_ROWS } from "../constants";
+import { BRICK_BODY_HEIGHT, BRICK_GAP, BRICK_LAYER_HEIGHT, CELL_CM, MIN_GRID_COLS, MIN_GRID_ROWS } from "../constants";
 import type { BrickFootprint, GridSpec, NotchCorner, Orientation, Parameters, PlacedBrick } from "../types";
 
 const EPS = 1e-6;
@@ -119,6 +119,7 @@ const hasArea = (box: BrickBox) => box.x2 - box.x1 > EPS && box.y2 - box.y1 > EP
 
 export function brickBoxes(brick: BrickFootprint): BrickBox[] {
   const b = brickBounds(brick);
+  if (brick.custom?.solidParts) return brick.custom.solidParts.map((p) => partPlanBox(brick, p));
   const notch = notchBox(brick);
   if (!notch) return [b];
 
@@ -154,6 +155,19 @@ export function brickBoxes(brick: BrickFootprint): BrickBox[] {
       y2: north ? b.y2 : notch.y1
     }
   ].filter(hasArea);
+}
+
+/** Rotate every occupied part in the same local frame as the brick. */
+export function partPlanBox(brick: BrickFootprint, p: { x1: number; y1: number; x2: number; y2: number }): BrickBox {
+  if (brick.orientation === "h")
+    return { x1: brick.x + p.x1 / 125, x2: brick.x + p.x2 / 125, y1: brick.y + p.y1 / 125, y2: brick.y + p.y2 / 125 };
+  const h = brick.custom!.h;
+  return {
+    x1: brick.x + h - p.y2 / 125,
+    x2: brick.x + h - p.y1 / 125,
+    y1: brick.y + p.x1 / 125,
+    y2: brick.y + p.x2 / 125
+  };
 }
 
 export function cellToWorld(x: number, z: number, grid: GridSpec): { x: number; z: number } {

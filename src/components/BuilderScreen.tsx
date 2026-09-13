@@ -1,27 +1,28 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import type { Translate } from "../i18n";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import type { PlacementPoint, PlacementPreview } from "../domain/editor/preview";
+import { isInsideGrid } from "../domain/geometry";
 import type {
   CustomBrickSpec,
+  GridSpec,
   MaterialsEstimate,
   NotchCorner,
   Orientation,
   Parameters,
   PlacedBrick,
   SnapStep,
-  ToolKind,
-  GridSpec
+  ToolKind
 } from "../domain/types";
-import type { PlacementPoint, PlacementPreview } from "../domain/editor/preview";
-import { isInsideGrid } from "../domain/geometry";
-import { isNativeApp } from "../lib/platform";
 import { useCustomBricks } from "../hooks/useCustomBricks";
-import { HouseRussianGuide } from "./HouseRussianGuide";
+import type { Translate } from "../i18n";
+import { isNativeApp } from "../lib/platform";
 import { BrickCutter } from "./BrickCutter";
-import { MaterialsSummary } from "./MaterialsSummary";
-import { ErrorBoundary } from "./ErrorBoundary";
-import { PrintOrder } from "./PrintOrder";
 import { Toolbox } from "./builder/Toolbox";
 import type { TeplushkaInspection } from "./builder/teplushkaInspection";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { HouseRussianGuide } from "./HouseRussianGuide";
+import { MasonryReviewPanel } from "./MasonryReviewPanel";
+import { MaterialsSummary } from "./MaterialsSummary";
+import { PrintOrder } from "./PrintOrder";
 
 const ThreeStack = lazy(() => import("./three/ThreeStack").then((module) => ({ default: module.ThreeStack })));
 
@@ -94,6 +95,13 @@ export function BuilderScreen(props: BuilderScreenProps) {
   } = props;
   const { customBricks, addCustomBrick, removeCustomBrick } = useCustomBricks(props.userLogin);
   const isHouse = useMemo(() => Object.values(rows).some((r) => r.some((b) => b.id.startsWith("rp54-"))), [rows]);
+  const [masonrySelection, setMasonrySelection] = useState<{ revision?: number; row: number; ids: string[] } | null>(
+    null
+  );
+  const masonryIds =
+    masonrySelection?.revision === props.sceneRevision && masonrySelection?.row === currentRow
+      ? masonrySelection.ids
+      : [];
   const [houseContext, setHouseContext] = useState(false);
   const [houseInspection, setHouseInspection] = useState<TeplushkaInspection>({
     section: "whole",
@@ -160,7 +168,38 @@ export function BuilderScreen(props: BuilderScreenProps) {
   }, [undo, redo, orientation, setOrientation, setActiveTool, cutterOpen]);
   return (
     <main className="studio-editor">
-      {isHouse && <HouseRussianGuide controls={houseControls} />}
+      {isHouse && (
+        <HouseRussianGuide
+          controls={houseControls}
+          project={{
+            rows,
+            parameters: props.parameters,
+            title: {
+              ru: visibleDocument.some((b) => b.id.startsWith("rp54-r2-"))
+                ? "Русская печь · дом 6×9 · R2"
+                : "Русская печь · дом 6×9 · R1",
+              en: "",
+              lt: ""
+            }
+          }}
+        />
+      )}
+      {isHouse && (
+        <MasonryReviewPanel
+          key={props.sceneRevision}
+          bricks={visibleDocument}
+          grid={grid}
+          currentRow={currentRow}
+          selectedIds={masonryIds.filter((id) => visibleDocument.some((b) => b.id === id))}
+          onClear={() => setMasonrySelection(null)}
+          onSelect={(ids, row) => {
+            setMasonrySelection({ revision: props.sceneRevision, row, ids });
+            setHouseContext(false);
+            setCurrentRow(row);
+            setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+          }}
+        />
+      )}
       <div className="studio-commandbar">
         <div className="studio-row-switch">
           <button
@@ -249,6 +288,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                 placeAt={props.placeAt}
                 rotateBrick={() => setOrientation(orientation === "h" ? "v" : "h")}
                 houseContext={isHouse && houseContext}
+                highlightedIds={isHouse ? masonryIds : undefined}
                 inspection={isHouse ? houseInspection : props.inspection}
                 onExitSection={
                   isHouse

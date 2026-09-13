@@ -1,15 +1,16 @@
-import type { BrickFootprint, PlacedBrick } from "../types";
+import { solidPartsError } from "../../../shared/solidParts.js";
 import { MM_PER_CELL } from "../constants";
-import { damperParts, grateParts } from "./hardware";
+import type { BrickFootprint, PlacedBrick } from "../types";
+import { type BrickBox, brickBounds, brickBoxes, notchBox, partPlanBox } from "./bounds";
 import {
+  type ConvexPolyhedron,
   convexIntersects,
+  type Point3Mm,
   pointInPolyhedron,
   profilePolyhedron,
-  translatedPolyhedron,
-  type ConvexPolyhedron,
-  type Point3Mm
+  translatedPolyhedron
 } from "./convex";
-import { brickBounds, brickBoxes, notchBox, type BrickBox } from "./bounds";
+import { damperParts, grateParts } from "./hardware";
 
 export const GEOMETRY_EPS = 1e-6;
 
@@ -78,6 +79,11 @@ export function notchDepthMm(brick: BrickFootprint): number {
  * снизу до (65 − глубина реза), над ней свободно.
  */
 export function brickSolids(brick: BrickFootprint): BrickSolid[] {
+  if (brick.custom?.solidParts) {
+    const error = solidPartsError(brick.custom);
+    if (error) throw new Error(error);
+    return brick.custom.solidParts.map((p) => ({ box: partPlanBox(brick, p), z1: p.z1, z2: p.z2 }));
+  }
   const bounds = brickBounds(brick);
   const polyhedron = profilePolyhedron(brick);
   if (polyhedron)

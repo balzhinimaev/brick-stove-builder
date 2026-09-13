@@ -76,7 +76,7 @@ export function rhsCheck(heightMm: number, widthMm: number, wallMm: number, span
     deflectionMm: (5 * force * spanMm ** 3) / (384 * 200000 * inertia)
   };
 }
-export function houseMassAndFoundation(project: ReadyProject) {
+export function houseMassAndFoundation(project: Pick<ReadyProject, "rows" | "parameters">) {
   let masonryM3 = 0,
     steelM3 = 0,
     mx = 0,

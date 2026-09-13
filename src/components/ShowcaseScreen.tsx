@@ -1,17 +1,17 @@
-import { HouseRussianGuide } from "./HouseRussianGuide";
-import { BUILTIN_SHOWCASE_PROJECTS } from "../domain/showcaseProjects";
-import { ClassicRussianStoveGuide } from "./ClassicRussianStoveGuide";
-import { CLASSIC_RUSSIAN_STOVE } from "../domain/classicRussianStove";
-import { RUSSIAN_STOVE } from "../domain/russianStove";
-import { RussianStoveGuide } from "./RussianStoveGuide";
 import { useEffect, useState } from "react";
-import type { Locale, Translate } from "../i18n";
-import type { ReadyProject } from "../domain/types";
 import { fetchShowcaseProjects, submitLead } from "../api/client";
+import { CLASSIC_RUSSIAN_STOVE } from "../domain/classicRussianStove";
 import { gridFromParameters } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
-import { Pill, SectionTitle } from "./ui";
+import { RUSSIAN_STOVE } from "../domain/russianStove";
+import { BUILTIN_SHOWCASE_PROJECTS } from "../domain/showcaseProjects";
+import type { ReadyProject } from "../domain/types";
+import type { Locale, Translate } from "../i18n";
+import { ClassicRussianStoveGuide } from "./ClassicRussianStoveGuide";
+import { HouseRussianGuide } from "./HouseRussianGuide";
 import { ProjectOrderPreview } from "./ProjectsScreen";
+import { RussianStoveGuide } from "./RussianStoveGuide";
+import { Pill, SectionTitle } from "./ui";
 
 export function ShowcaseScreen({
   locale,
@@ -143,7 +143,7 @@ function ShowcaseCard({
         ) : null}
         {onLoad ? (
           <>
-            {project.id === "russian-house-6x9" && <HouseRussianGuide />}
+            {project.id.startsWith("russian-house-6x9") && <HouseRussianGuide project={project} />}
             {project.id === RUSSIAN_STOVE.id ? (
               <RussianStoveGuide locale={locale} />
             ) : project.id === CLASSIC_RUSSIAN_STOVE.id ? (

@@ -1,10 +1,11 @@
+import { stockGrid, uniteCutBricks, verticalJoints } from "./masonryLayout";
 import type { PlacedBrick, ReadyProject } from "./types";
 
 type Rect = { x: number; y: number; w: number; h: number };
 type Point = { x: number; z: number };
 const rect = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h });
 /** RP54 R1: independent low-layout design study. NOT an unchanged Shkolnik order or a construction release. */
-export function makeHouseRussianStove(): ReadyProject {
+export function makeHouseRussianStove(revision: "R1" | "R2" = "R1"): ReadyProject {
   const rows: Record<number, PlacedBrick[]> = {};
   let sequence = 0;
   const emit = (row: number, r: Rect, name: string, extra: Partial<PlacedBrick> = {}) => {
@@ -56,10 +57,31 @@ export function makeHouseRussianStove(): ReadyProject {
       ...(row >= 22 && row <= 25 ? [rect(-5, 270, 5, 200)] : []),
       ...(row >= 23 && row <= 30 ? [rect(-5, 470, 5, 180)] : [])
     ];
+    // Full-course seats are known before R2 tiling, so their edge remnants can
+    // participate in closure planning. The exact final 3D seat cut still runs.
+    if (revision === "R2") {
+      if (row === 22) slots.push(rect(-120, 245, 115, 250));
+      if (row === 27) slots.push(rect(-120, 435, 110, 250));
+    }
     for (const hole of [...holes, ...slots]) occupied = occupied.flatMap((p) => subtract(p, hole));
+    const lowerJoints = revision === "R2" ? verticalJoints(rows[row - 1] ?? []) : [];
     for (const a of occupied) {
       const dx = row % 2 ? 250 : 120,
         dy = row % 2 ? 120 : 250;
+      if (revision === "R2") {
+        const grid = stockGrid(
+          a.w,
+          a.h,
+          row,
+          625 + a.x,
+          125 + a.y,
+          lowerJoints,
+          occupied.map((p) => ({ ...p, x: p.x + 625, y: p.y + 125 }))
+        );
+        for (const sy of grid.ys)
+          for (const sx of grid.xs) emit(row, rect(a.x + sx.start, a.y + sy.start, sx.length, sy.length), name);
+        continue;
+      }
       const nx = Math.max(1, Math.ceil((a.w + 5) / (dx + 5)));
       const ny = Math.max(1, Math.ceil((a.h + 5) / (dy + 5)));
       const w = (a.w - 5 * (nx - 1)) / nx,
@@ -526,12 +548,18 @@ export function makeHouseRussianStove(): ReadyProject {
     b.custom!.damperSlide = "up";
     b.damperOpen = open;
   }
+  if (revision === "R2")
+    for (const row of Object.keys(rows)) {
+      rows[Number(row)] = uniteCutBricks(rows[Number(row)]).map((b) =>
+        /^rp54-\d+$/.test(b.id) ? { ...b, id: b.id.replace("rp54-", "rp54-r2-") } : b
+      );
+    }
   return {
-    id: "russian-house-6x9",
+    id: revision === "R2" ? "russian-house-6x9-r2" : "russian-house-6x9",
     title: {
-      ru: "Русская печь · дом 6×9 · R1",
-      en: "Russian stove · 6×9 house · R1",
-      lt: "Rusiška krosnis · 6×9 namas · R1"
+      ru: `Русская печь · дом 6×9 · ${revision}`,
+      en: `Russian stove · 6×9 house · ${revision}`,
+      lt: `Rusiška krosnis · 6×9 namas · ${revision}`
     },
     subtitle: {
       ru: "Отдельная низкая 3D-компоновка: горнило, плита, своды, дымооборот 200×280 мм и полная труба. Расчётные допущения и нерешённые строительные проверки — в карточке проекта.",
@@ -546,3 +574,5 @@ export function makeHouseRussianStove(): ReadyProject {
   };
 }
 export const HOUSE_RUSSIAN_STOVE = makeHouseRussianStove();
+
+export const HOUSE_RUSSIAN_STOVE_R2 = makeHouseRussianStove("R2");

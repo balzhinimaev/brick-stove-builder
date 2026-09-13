@@ -1,30 +1,30 @@
-import {
-  CLASSIC_ARCH_NAMES,
-  classicArchAssembly,
-  archAssemblyFrame,
-  type ArchName
-} from "../builder/classicArchAssembly";
-import { HouseContext } from "./HouseContext";
-import { ArchCentering, ArchPartLabels, archSceneBounds } from "./ClassicArchOverlay";
+import { Canvas, type ThreeEvent, useThree } from "@react-three/fiber";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { Plane, Vector3 } from "three";
-import type { Translate } from "../../i18n";
-import type { GridSpec, PlacedBrick, SnapStep } from "../../domain/types";
 import { BRICK_LAYER_HEIGHT, MM_PER_CELL } from "../../domain/constants";
 import { canConfirmPlacement, type PlacementPoint, type PlacementPreview } from "../../domain/editor/preview";
-import { BrickHighlight, isMasonry, Masonry, ThreeBrick } from "./ThreeBrick";
-import { SceneCamera, type CameraCommand } from "./SceneCamera";
-import { inspectionPlane, sectionScene } from "./sectionGeometry";
+import type { GridSpec, PlacedBrick, SnapStep } from "../../domain/types";
+import type { Translate } from "../../i18n";
+import {
+  type ArchName,
+  archAssemblyFrame,
+  CLASSIC_ARCH_NAMES,
+  classicArchAssembly
+} from "../builder/classicArchAssembly";
 import type { TeplushkaInspection } from "../builder/teplushkaInspection";
+import { ArchCentering, ArchPartLabels, archSceneBounds } from "./ClassicArchOverlay";
+import { HouseContext } from "./HouseContext";
+import { type CameraCommand, SceneCamera } from "./SceneCamera";
 import {
   nudgePoint,
-  placementPoint,
   PlacementGesture,
+  placementPoint,
   setPointCoordinateMm,
   solidBoxes,
   withPlacementAdjustments
 } from "./sceneMath";
+import { inspectionPlane, sectionScene } from "./sectionGeometry";
+import { BrickHighlight, isMasonry, Masonry, ThreeBrick } from "./ThreeBrick";
 
 export type ThreeStackProps = {
   grid: GridSpec;
@@ -40,6 +40,7 @@ export type ThreeStackProps = {
   inspection?: TeplushkaInspection;
   onExitSection?: () => void;
   houseContext?: boolean;
+  highlightedIds?: string[];
 };
 
 export function ThreeStack({
@@ -55,6 +56,7 @@ export function ThreeStack({
   rotateBrick,
   inspection,
   onExitSection,
+  highlightedIds,
   houseContext = false
 }: ThreeStackProps) {
   const [archName, setArchName] = useState<ArchName | null>(null);
@@ -248,6 +250,10 @@ export function ThreeStack({
               ))}
             </select>
           </label>
+          {!assembly &&
+            renderedBricks
+              .filter((b) => highlightedIds?.includes(b.id))
+              .map((b) => <BrickHighlight key={`review-${b.id}`} brick={b} grid={grid} color="#00d6df" />)}
           {assembly && frame && (
             <>
               <p>
@@ -468,6 +474,10 @@ export function ThreeStack({
           >
             <Masonry bricks={renderedBricks} grid={grid} />
           </group>
+          {!assembly &&
+            renderedBricks
+              .filter((b) => highlightedIds?.includes(b.id))
+              .map((b) => <BrickHighlight key={`review-${b.id}`} brick={b} grid={grid} color="#00d6df" />)}
           {assembly && frame && (
             <>
               {frame.centering && <ArchCentering assembly={assembly} grid={grid} />}

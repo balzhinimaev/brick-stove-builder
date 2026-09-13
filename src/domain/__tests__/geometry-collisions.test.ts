@@ -15,10 +15,11 @@ describe("overlaps", () => {
   });
 });
 
-// Two detailed vault models make this exhaustive catalog audit larger; keep every pair.
+// A per-project budget grows with the catalog; every original pair is retained.
 describe("ready projects", () => {
-  it("keeps every brick inside its foundation grid and without 3D placement overlap", () => {
-    for (const project of READY_PROJECTS) {
+  it.each(READY_PROJECTS)(
+    "$id: every brick is inside the grid without 3D placement overlap",
+    (project) => {
       const grid = gridFromParameters(project.parameters);
       for (const rowBricks of Object.values(project.rows)) {
         for (const item of rowBricks) expect(isInsideGrid(item, grid)).toBe(true);
@@ -26,6 +27,7 @@ describe("ready projects", () => {
           for (const next of rowBricks.slice(index + 1)) expect(overlaps3D(item, next)).toBe(false);
         }
       }
-    }
-  }, 30000);
+    },
+    30000
+  );
 });

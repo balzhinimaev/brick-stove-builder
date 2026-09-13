@@ -701,3 +701,243 @@ body {
 .house-design-controls details button {
   margin: 3px 5px 3px 0;
 }
+
+/* The part review is a quiet work sheet, shared by R1 and R2. */
+.masonry-review {
+  margin: 14px 0;
+  border: 1px solid #d8caba;
+  border-radius: 18px;
+  background: #fffdf8;
+  color: #35291f;
+  overflow: hidden;
+}
+.masonry-review > summary {
+  padding: 16px 20px;
+  cursor: pointer;
+  font-weight: 800;
+}
+.masonry-review-badge {
+  display: inline-block;
+  margin-left: 12px;
+  padding: 4px 9px;
+  border-radius: 20px;
+  background: #ebe4d7;
+  font-size: 11px;
+  font-weight: 600;
+}
+.masonry-review-body {
+  padding: 0 20px 18px;
+}
+.masonry-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-block: 1px solid #e6ded2;
+  padding: 18px 0;
+  gap: 12px;
+}
+.masonry-metrics > div {
+  display: grid;
+  gap: 3px;
+}
+.masonry-metrics strong {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(22px, 3vw, 32px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+.masonry-metrics span {
+  color: #796b5d;
+  font-size: 11px;
+}
+.masonry-caption {
+  color: #796b5d;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.masonry-review-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(240px, 1.1fr);
+  gap: 22px;
+  align-items: start;
+}
+.masonry-section {
+  border: 1px solid #e5dccf;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f5f1e9;
+}
+.masonry-section header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.masonry-section header span {
+  color: #796b5d;
+  font-size: 10px;
+}
+.masonry-section svg {
+  display: block;
+  width: 100%;
+  height: 270px;
+  margin: 8px 0;
+}
+.masonry-section svg g[role="button"] {
+  cursor: pointer;
+}
+.masonry-section svg g:focus-visible path {
+  stroke: #167e89;
+  stroke-width: 8px;
+}
+.masonry-section label {
+  font-size: 11px;
+  display: grid;
+  gap: 5px;
+}
+.masonry-section input[type="range"] {
+  width: 100%;
+  accent-color: #167e89;
+}
+.masonry-issues > label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.masonry-issues select {
+  min-width: 0;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #d8caba;
+  border-radius: 8px;
+  background: #fffdf8;
+  font: inherit;
+}
+.masonry-issues ol {
+  padding: 0;
+  margin: 10px 0;
+  list-style: none;
+  max-height: 370px;
+  overflow: auto;
+}
+.masonry-issues li + li {
+  border-top: 1px solid #ece5d9;
+}
+.masonry-issues li button {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  align-items: start;
+}
+.masonry-issues li button:hover {
+  background: #f1eadf;
+}
+.masonry-issues li button[aria-pressed="true"] {
+  background: #e2f0ed;
+  color: #125963;
+}
+.masonry-issues li button > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.masonry-issues li strong {
+  display: block;
+  font-size: 12px;
+}
+.masonry-issues li small {
+  display: block;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.masonry-part-id {
+  color: #897b6c;
+  font-family: ui-monospace, monospace;
+}
+.masonry-row {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  background: #efe4d4;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.masonry-review footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e6ded2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+  color: #796b5d;
+}
+.masonry-review footer button,
+.masonry-selection button,
+.masonry-more {
+  border: 1px solid #d8caba;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #35291f;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+.masonry-selection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+}
+.masonry-selection strong {
+  overflow-wrap: anywhere;
+}
+.masonry-empty {
+  padding: 20px 0;
+  color: #23685f;
+  font-size: 12px;
+}
+.masonry-review button:focus-visible,
+.masonry-review select:focus-visible {
+  outline: 2px solid #167e89;
+  outline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .masonry-review-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .masonry-review-body {
+    padding-inline: 12px;
+  }
+  .masonry-review > summary {
+    padding: 14px 12px;
+  }
+  .masonry-review-badge {
+    margin: 7px 0 0;
+  }
+  .masonry-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+  }
+  .masonry-section svg {
+    height: 250px;
+  }
+  .masonry-review footer {
+    align-items: start;
+    flex-direction: column;
+  }
+}

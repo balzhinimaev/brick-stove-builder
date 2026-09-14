@@ -1,3 +1,4 @@
+import { LocalProjectsPanel } from "./components/LocalProjectsPanel";
 import { RussianStoveGuide } from "./components/RussianStoveGuide";
 import { useStudioState } from "./hooks/useStudioState";
 import { Header } from "./components/Header";
@@ -42,10 +43,15 @@ export default function App() {
           pendingCount={studio.pendingCount}
         />
         {screen === "builder" && studio.showTeplushkaGuide ? (
-          <RussianStoveGuide locale={locale} controls={studio.teplushkaControls} />
+          <details className="studio-top-guide">
+            <summary>Режимы и описание «Теплушки»</summary>
+            <RussianStoveGuide locale={locale} controls={studio.teplushkaControls} />
+          </details>
         ) : null}
         <MobileTabs screen={screen} setScreen={studio.setScreen} t={t} />
-        {screen === "showcase" ? (
+        {!studio.localWorkspace.ready ? (
+          <main className="studio-fallback">Восстанавливаю рабочую библиотеку…</main>
+        ) : screen === "showcase" ? (
           // Витрина публичная: заказчики смотрят печи без регистрации.
           <ShowcaseScreen locale={locale} t={t} onLoad={studio.loadProject} />
         ) : screen === "auth" ? (
@@ -74,19 +80,24 @@ export default function App() {
             lockedRows={studio.lockedRows}
           />
         ) : screen === "projects" ? (
-          <ProjectsScreen
-            locale={locale}
-            t={t}
-            projects={studio.allProjects}
-            onLoad={studio.loadProject}
-            userLogin={userLogin}
-            onPublish={studio.publishSavedProject}
-            onUnpublish={studio.unpublishSavedProject}
-            onDelete={studio.deleteProject}
-          />
+          <>
+            <LocalProjectsPanel workspace={studio.localWorkspace} onContinue={() => studio.setScreen("builder")} />
+            <ProjectsScreen
+              locale={locale}
+              t={t}
+              projects={studio.allProjects}
+              onLoad={studio.loadProject}
+              userLogin={userLogin}
+              onPublish={studio.publishSavedProject}
+              onUnpublish={studio.unpublishSavedProject}
+              onDelete={studio.deleteProject}
+            />
+          </>
         ) : (
           <BuilderScreen
             key={studio.sceneRevision}
+            workspace={studio.localWorkspace}
+            onServerSave={studio.saveCurrentToServer}
             sceneRevision={studio.sceneRevision}
             inspection={studio.showTeplushkaGuide ? studio.teplushkaInspection : undefined}
             onExitSection={studio.exitTeplushkaSection}
@@ -119,6 +130,8 @@ export default function App() {
             grateSpec={studio.grateSpec}
             setGrateSize={studio.setGrateSize}
             userLogin={userLogin}
+            editPart={studio.editPart}
+            removePart={studio.removePart}
             placeAt={studio.placeAt}
             previewAt={studio.previewAt}
             addRow={studio.addRow}

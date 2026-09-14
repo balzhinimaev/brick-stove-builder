@@ -130,7 +130,11 @@ export type MaterialsEstimate = {
   steelPieces?: number;
   /** Approximate mass from actual solid volume and nominal 7850 kg/m³ density. */
   steelKg?: number;
-  mortarM3: number;
+  fullPieces?: number;
+  rectangularPieces?: number;
+  shapedPieces?: number;
+  /** null: joint volume has not been measured; never a per-piece purchasing estimate. */
+  mortarM3: number | null;
   concreteVolumeM3: number;
   total: number;
 };

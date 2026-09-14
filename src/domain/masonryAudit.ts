@@ -1,5 +1,7 @@
-import { brickPhysicalSolids, polyhedronVolumeMm3, solidPolyhedron } from "./geometry";
+import { brickPhysicalSolids, solidPolyhedron } from "./geometry/collisions";
+import { polyhedronVolumeMm3 } from "./geometry/convex";
 import { partBounds, rectangularParts, THIN_PART_MM, verticalJoints } from "./masonryLayout";
+import { partNumbers } from "./partNumbers";
 import type { PlacedBrick } from "./types";
 
 export type MasonryIssue = {
@@ -31,13 +33,25 @@ export function masonryCsv(bricks: PlacedBrick[]): string {
     const text = String(v);
     return `"${(/^[=+@-]/.test(text) ? `'${text}` : text).replaceAll('"', '""')}"`;
   };
+  const numbers = partNumbers(bricks);
   const records: (string | number)[][] = [
-    ["Ряд", "Номер детали", "Узел", "Габарит X, мм", "Габарит Y, мм", "Габарит Z, мм", "Форма", "Количество"]
+    [
+      "Ряд",
+      "№ на сечении",
+      "ID детали",
+      "Узел",
+      "Габарит X, мм",
+      "Габарит Y, мм",
+      "Габарит Z, мм",
+      "Форма",
+      "Количество"
+    ]
   ];
   for (const b of bricks.filter(isMasonryPiece)) {
     const dimensions = masonryDimensions(b);
     records.push([
       b.row,
+      numbers.get(b.id) ?? b.id,
       b.id,
       b.custom?.name ?? b.kind,
       ...dimensions.map(mmLabel),
@@ -57,6 +71,22 @@ const stockFits = (dims: number[]) =>
     .sort((a, b) => a - b)
     .every((n, i) => n <= [65, 120, 250][i] + 1e-5);
 
+export function masonryCategory(b: PlacedBrick): "full" | "rectangular" | "shaped" {
+  const parts = rectangularParts(b);
+  if (!parts) {
+    if (!b.custom && (b.kind === "standard" || b.kind === "firebrick")) return "full";
+    if (!b.custom && (b.kind === "cut" || b.kind === "trim")) return "rectangular";
+    return "shaped";
+  }
+  if (b.custom?.solidParts) return "shaped";
+  const p = partBounds(parts);
+  return [p.x2 - p.x1, p.y2 - p.y1, p.z2 - p.z1]
+    .sort((a, b) => a - b)
+    .every((n, i) => Math.abs(n - [65, 120, 250][i]) < 1e-5)
+    ? "full"
+    : "rectangular";
+}
+
 /** Geometry-derived inventory, not a purchase estimate. A compound brick is one item. */
 export function auditMasonry(bricks: PlacedBrick[]) {
   let full = 0,
@@ -71,8 +101,8 @@ export function auditMasonry(bricks: PlacedBrick[]) {
     const parts = rectangularParts(b);
     const c = b.custom;
     if (!parts) {
-      if (!c && (b.kind === "standard" || b.kind === "firebrick")) full++;
-      else if (!c && (b.kind === "cut" || b.kind === "trim")) rectangular++;
+      if (masonryCategory(b) === "full") full++;
+      else if (masonryCategory(b) === "rectangular") rectangular++;
       else shaped++;
       if (c?.profileXZ) {
         // Wedges are cut in their own radial frame, not their world AABB.
@@ -99,15 +129,10 @@ export function auditMasonry(bricks: PlacedBrick[]) {
     const bounds = partBounds(parts);
     const dims = [bounds.x2 - bounds.x1, bounds.y2 - bounds.y1, bounds.z2 - bounds.z1];
     const compound = !!c?.solidParts;
-    if (compound) shaped++;
-    else if (
-      dims
-        .slice()
-        .sort((a, b) => a - b)
-        .every((n, i) => Math.abs(n - [65, 120, 250][i]) < 1e-5)
-    )
-      full++;
-    else rectangular++;
+    const category = masonryCategory(b);
+    if (category === "full") full++;
+    else if (category === "rectangular") rectangular++;
+    else shaped++;
     const push = (kind: MasonryIssue["kind"], value: number) =>
       issues.push({ key: `${kind}:${b.id}`, kind, row: b.row, ids: [b.id], dimensions: dims, value });
     if (!stockFits(dims)) push("stock", Math.max(...dims));

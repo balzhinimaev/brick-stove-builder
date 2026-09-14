@@ -130,7 +130,14 @@ function clipPolygon(subject: Point2[], clip: Point2[]): Point2[] {
   return result;
 }
 
-export type FaceContact = { areaMm2: number; gapMm: number; normalA: Point3Mm; polygonMm: Point3Mm[] };
+export type FaceContact = {
+  areaMm2: number;
+  gapMm: number;
+  normalA: Point3Mm;
+  polygonMm: Point3Mm[];
+  /** Paired points on the opposing plane; preserves the taper of fan joints. */
+  opposingPolygonMm: Point3Mm[];
+};
 /**
  * Positive-area opposing face contacts, including inclined voussoir joints.
  * Measures actual projected face overlap, not AABB contact or a point touch.
@@ -165,15 +172,20 @@ export function convexFaceContacts(
       const polygon = clipPolygon(af.vertices.map(project), bf.vertices.map(project));
       const areaMm2 = Math.abs(signedArea2(polygon));
       if (areaMm2 <= EPS) continue;
+      const polygonMm = polygon.map((p) => ({
+        x: af.point.x + p.x * u.x + p.y * v.x,
+        y: af.point.y + p.x * u.y + p.y * v.y,
+        z: af.point.z + p.x * u.z + p.y * v.z
+      }));
       contacts.push({
         areaMm2,
         gapMm: Math.max(0, gapMm),
         normalA: af.normal,
-        polygonMm: polygon.map((p) => ({
-          x: af.point.x + p.x * u.x + p.y * v.x,
-          y: af.point.y + p.x * u.y + p.y * v.y,
-          z: af.point.z + p.x * u.z + p.y * v.z
-        }))
+        polygonMm,
+        opposingPolygonMm: polygonMm.map((p) => {
+          const d = dot(bf.normal, sub(bf.point, p)) / dot(bf.normal, af.normal);
+          return { x: p.x + d * af.normal.x, y: p.y + d * af.normal.y, z: p.z + d * af.normal.z };
+        })
       });
     }
   return contacts;

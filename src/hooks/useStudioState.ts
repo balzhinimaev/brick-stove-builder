@@ -20,7 +20,9 @@ import { type Locale, useI18n } from "../i18n";
 import { uniqueId } from "../lib/id";
 import { isNativeApp } from "../lib/platform";
 import { COLORS } from "../theme/colors";
-import { useAutosaveDraft } from "./useAutosaveDraft";
+import { useLocalWorkspace } from "./useLocalWorkspace";
+import { projectSnapshot } from "../storage/projectFile";
+import { initialEditorState } from "../domain/editor/state";
 import { useEditor } from "./useEditor";
 import { useSavedProjects } from "./useSavedProjects";
 import { useSession } from "./useSession";
@@ -63,11 +65,16 @@ export function useStudioState() {
   const { savedProjects, pendingCount, saveProject, updateProject, replaceProject, removeProject } = useSavedProjects(
     session.session,
     // офлайн-созданный проект после синка получает серверный id
-    (idMap) => setCurrentProjectId((current) => (current && idMap[current] ? idMap[current] : current)),
+    (idMap) => {
+      setCurrentProjectId((current) => (current && idMap[current] ? idMap[current] : current));
+      for (const item of localWorkspace.projects ?? [])
+        if (item.remoteId && idMap[item.remoteId])
+          void localWorkspace.linkRemote(item.id, idMap[item.remoteId]).catch(() => {});
+    },
     session.invalidateSession
   );
-  const autosaveState = useAutosaveDraft(
-    session.session,
+  const localWorkspace = useLocalWorkspace(
+    session.userLogin,
     {
       parameters: editor.parameters,
       rowCount: editor.rowCount,
@@ -75,19 +82,17 @@ export function useStudioState() {
       lockedRows: editor.lockedRows,
       rows: editor.rows
     },
-    // Черновик молча заменяет только нетронутый редактор: если пользователь
-    // уже что-то строил (например, час работал анонимно и вошёл, чтобы
-    // сохранить), — спрашиваем. Отказ безопасен: текущая работа получит
-    // свежую метку автосейва и станет черновиком сама.
-    (draft) => {
-      if (editor.canUndo && !window.confirm(t("draftReplaceConfirm"))) return false;
+    (draft, navigate) => {
       editor.loadDraft(draft);
       setSceneRevision((revision) => revision + 1);
       setDemoProjectId(null);
+      setCurrentProjectId(null);
       setTeplushkaInspection({ section: "whole", fraction: 0.4 });
-      return true;
+      if (navigate) setScreen("builder");
     }
   );
+  const autosaveState: "idle" | "saving" | "saved" | "error" =
+    localWorkspace.state === "loading" ? "idle" : localWorkspace.state;
 
   const allProjects = useMemo(() => [...READY_PROJECTS, ...savedProjects], [savedProjects]);
 
@@ -126,33 +131,31 @@ export function useStudioState() {
     };
   }, []);
 
-  const reset = () => {
-    editor.reset();
-    setSceneRevision((revision) => revision + 1);
-    setDemoProjectId(null);
-    setTeplushkaInspection({ section: "whole", fraction: 0.4 });
-    setCurrentProjectId(null);
-    setScreen("builder");
+  const reset = async () => {
+    await localWorkspace.create("Новая печь", initialEditorState());
   };
 
-  const loadProject = (project: ReadyProject) => {
-    editor.loadProject(project);
-    setSceneRevision((revision) => revision + 1);
-    setTeplushkaInspection({ section: "whole", fraction: 0.4 });
+  const loadProject = async (project: ReadyProject) => {
+    const row = project.id.startsWith("russian-house-6x9")
+      ? Math.min(29, project.rowCount)
+      : ["russian-stove-hob", "classic-russian-stove-hob", "shkolnik-pov-3500"].includes(project.id)
+        ? project.rowCount
+        : 1;
     if (
-      project.id === "russian-stove-hob" ||
-      project.id === "classic-russian-stove-hob" ||
-      project.id === "shkolnik-pov-3500"
-    )
-      editor.setCurrentRow(project.rowCount);
-    if (project.id.startsWith("russian-house-6x9")) editor.setCurrentRow(29);
-    setDemoProjectId(project.ownerLogin ? null : project.id);
-    // Свой сохранённый проект открываем «на редактирование»; чужой/демо — как шаблон нового.
-    setCurrentProjectId(project.ownerLogin && project.ownerLogin === session.userLogin ? project.id : null);
-    setScreen("builder");
+      await localWorkspace.create(
+        project.title[locale],
+        projectSnapshot(project, row),
+        project.id,
+        project.ownerLogin === session.userLogin ? project.id : undefined
+      )
+    ) {
+      setDemoProjectId(project.ownerLogin ? null : project.id);
+      setScreen("builder");
+    }
   };
 
-  const saveCurrentProject = async () => {
+  const saveCurrentProject = localWorkspace.save;
+  const saveCurrentToServer = async () => {
     // Гостю сохранять некуда (проекты живут на аккаунте) — ведём на вход;
     // его кладка при этом не теряется: анонимный черновик автосейвится.
     if (!session.session) {
@@ -160,12 +163,20 @@ export function useStudioState() {
       setScreen("auth");
       return;
     }
-    const editingOwn = currentProjectId ? savedProjects.find((item) => item.id === currentProjectId) : undefined;
-    const title = window.prompt(t("saveProjectPrompt"), editingOwn?.title.ru ?? "");
+    let local: Awaited<ReturnType<typeof localWorkspace.flush>>;
+    try {
+      local = await localWorkspace.flush();
+    } catch {
+      return;
+    }
+    const localId = local.id,
+      remoteId = local.remoteId;
+    const editingOwn = savedProjects.find((item) => item.id === remoteId);
+    const title = local.title;
     if (!title?.trim()) return;
 
     const project: ReadyProject = {
-      id: editingOwn?.id ?? uniqueId("custom"),
+      id: remoteId ?? uniqueId("custom"),
       title: { ru: title.trim(), en: title.trim(), lt: title.trim() },
       subtitle: editingOwn?.subtitle ?? {
         ru: t("savedProjectSubtitle"),
@@ -183,8 +194,8 @@ export function useStudioState() {
 
     // офлайн не мешает: без сети операция встаёт в очередь и синкнется сама;
     // null — постоянный отказ сервера (или разлогин), сохранение не удалось
-    if (editingOwn) {
-      const saved = await updateProject(editingOwn.id, project, session.session.token);
+    if (remoteId) {
+      const saved = await updateProject(remoteId, project, session.session.token);
       if (!saved) {
         window.alert(t("apiUnavailable"));
         return;
@@ -196,8 +207,8 @@ export function useStudioState() {
         return;
       }
       setCurrentProjectId(saved.id);
+      await localWorkspace.linkRemote(localId, saved.id);
     }
-    setScreen("projects");
   };
 
   const deleteProject = async (project: ReadyProject) => {
@@ -230,11 +241,10 @@ export function useStudioState() {
   return {
     calculatorInput,
     setCalculatorInput,
-    openCalculatorReference: (project: ReadyProject) => {
+    openCalculatorReference: async (project: ReadyProject) => {
       if (Object.values(editor.rows).some((row) => row.length) && !window.confirm(calculatorText(locale)("replace")))
         return;
-      loadProject(project);
-      editor.setCurrentRow(project.rowCount);
+      await loadProject(project);
     },
     sceneRevision,
     demoProjectId,
@@ -293,6 +303,8 @@ export function useStudioState() {
     materials: editor.materials,
     updateParameter: editor.updateParameter,
     placeAt: editor.placeAt,
+    editPart: editor.editPart,
+    removePart: editor.removePart,
     previewAt: editor.previewAt,
     addRow: editor.addRow,
     deleteCurrentRow: editor.deleteCurrentRow,
@@ -316,7 +328,12 @@ export function useStudioState() {
     authPassword: session.authPassword,
     setAuthPassword: session.setAuthPassword,
     submitAuth: session.submitAuth,
-    switchAccount: () => {
+    switchAccount: async () => {
+      try {
+        await localWorkspace.flush();
+      } catch {
+        return;
+      }
       session.switchAccount();
       setCurrentProjectId(null);
     },
@@ -326,6 +343,8 @@ export function useStudioState() {
     allProjects,
     currentProjectId,
     saveCurrentProject,
+    saveCurrentToServer,
+    localWorkspace,
     deleteProject,
     publishSavedProject,
     unpublishSavedProject,

@@ -11,6 +11,7 @@ import type { PlacedBrick } from "../types";
 import { damperSpecFromMm, doorSpecFromMm, grateSpecFromMm, plateSpecFromMm } from "./specs";
 import { initialEditorState } from "./state";
 import type { EditorAction, EditorState } from "./types";
+import { partEditError } from "./partEdit";
 
 function isLocked(state: EditorState, row = state.currentRow): boolean {
   return state.lockedRows.includes(row);
@@ -22,6 +23,38 @@ function withRow(state: EditorState, bricks: PlacedBrick[]): EditorState {
 
 export function editorReducer(state: EditorState, action: EditorAction): EditorState {
   switch (action.type) {
+    case "editPart": {
+      if (partEditError(state, action.originalId, action.brick, action.duplicate)) return state;
+      const original = Object.values(state.rows)
+        .flat()
+        .find((b) => b.id === action.originalId)!;
+      if (!action.duplicate && original.row === action.brick.row)
+        return {
+          ...state,
+          rows: {
+            ...state.rows,
+            [original.row]: state.rows[original.row].map((b) => (b.id === original.id ? action.brick : b))
+          }
+        };
+      const rows = Object.fromEntries(
+        Object.entries(state.rows).map(([row, bricks]) => [
+          row,
+          action.duplicate ? bricks : bricks.filter((b) => b.id !== action.originalId)
+        ])
+      );
+      rows[action.brick.row] = [...(rows[action.brick.row] ?? []), action.brick];
+      return { ...state, rows };
+    }
+    case "removePart": {
+      const brick = Object.values(state.rows)
+        .flat()
+        .find((b) => b.id === action.id);
+      if (!brick || state.lockedRows.includes(brick.row)) return state;
+      return {
+        ...state,
+        rows: { ...state.rows, [brick.row]: state.rows[brick.row].filter((b) => b.id !== action.id) }
+      };
+    }
     case "setCurrentRow":
       return { ...state, currentRow: action.row };
     case "setTool":

@@ -40,7 +40,7 @@ function mineralTexture() {
   return texture;
 }
 
-type Instance = SceneBox & { color: Color };
+type Instance = SceneBox & { color: Color; brickId?: string };
 
 /** Two instanced draws for masonry and beds, independent of brick count. */
 export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedBrick[]; grid: GridSpec }) {
@@ -48,7 +48,7 @@ export const Masonry = memo(function Masonry({ bricks, grid }: { bricks: PlacedB
     const bodies: Instance[] = [];
     const beds: Instance[] = [];
     for (const brick of bricks.filter((b) => isMasonry(b) && !b.custom?.profileXZ && !b.custom?.solidParts)) {
-      for (const box of solidBoxes(brick, grid)) bodies.push({ ...box, color: brickColor(brick) });
+      for (const box of solidBoxes(brick, grid)) bodies.push({ ...box, color: brickColor(brick), brickId: brick.id });
       // Beds follow the occupied shape, preserving shafts and through-cuts.
       if (brick.row > 1) {
         for (const box of solidBoxes(brick, grid, 0.008)) {
@@ -148,6 +148,7 @@ function InstanceBoxes({ instances, textured = false }: { instances: Instance[];
     <instancedMesh
       key={instances.length}
       ref={ref}
+      userData={{ brickIds: instances.map((i) => i.brickId) }}
       args={[resources.geometry, resources.material, Math.max(1, instances.length)]}
       castShadow
       receiveShadow
@@ -166,11 +167,11 @@ export function BrickHighlight({ brick, grid, color }: { brick: PlacedBrick; gri
         : solidBoxes(brick, grid, 0)
       ).map((box) => (
         <group key={box.position.join(":")} position={box.position}>
-          <mesh>
+          <mesh raycast={() => null}>
             <boxGeometry args={box.scale} />
             <meshBasicMaterial color={color} transparent opacity={0.16} depthWrite={false} />
           </mesh>
-          <mesh>
+          <mesh raycast={() => null}>
             <boxGeometry args={box.scale} />
             <meshBasicMaterial color={color} wireframe transparent opacity={0.85} depthWrite={false} />
           </mesh>

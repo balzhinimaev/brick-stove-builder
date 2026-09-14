@@ -1,3 +1,36 @@
+import { brickPhysicalSolids, solidPolyhedron } from "./geometry";
+import { horizontalSection } from "./orderReferenceHtml";
+import type { PlacedBrick } from "./types";
+
+export { partNumbers } from "./partNumbers";
+
+/** Shared exact horizontal slices for screen and print, including parts installed below the plane. */
+export function sectionsAtHeight(bricks: PlacedBrick[], z: number) {
+  return bricks.flatMap((brick) => {
+    const polygons = brickPhysicalSolids(brick).flatMap((solid) => {
+      const base = (brick.row - 1) * 70;
+      if (z < base + solid.z1 || z > base + solid.z2) return [];
+      const points = horizontalSection(solidPolyhedron(solid, base), z);
+      return points.length > 2 ? [points] : [];
+    });
+    const points = polygons.flat();
+    if (!points.length) return [];
+    const path = polygons.map((p) => `M${p.map((p) => `${p.x},${p.y}`).join("L")}Z`).join(" ");
+    return [
+      {
+        brick,
+        path,
+        polygons,
+        outline: brick.custom?.solidParts ? compoundSectionOutline(polygons) : path,
+        center: {
+          x: points.reduce((s, p) => s + p.x, 0) / points.length,
+          y: points.reduce((s, p) => s + p.y, 0) / points.length
+        }
+      }
+    ];
+  });
+}
+
 /** Outline the union of axis-aligned slices belonging to ONE physical brick.
  * Computational box boundaries are not saw cuts or mortar joints. */
 export function compoundSectionOutline(polygons: { x: number; y: number }[][]): string {

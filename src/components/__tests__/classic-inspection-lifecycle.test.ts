@@ -2,7 +2,12 @@ import { beforeEach, expect, it, vi } from "vitest";
 import type { DraftSnapshot } from "../../domain/editor";
 
 // Hook harness: exercise studio/editor actions without a DOM, WebGL or browser.
-const hooks = vi.hoisted(() => ({ slots: [] as unknown[], cursor: 0, accept: (_draft: DraftSnapshot) => false }));
+const hooks = vi.hoisted(() => ({
+  slots: [] as unknown[],
+  cursor: 0,
+  accept: (_draft: DraftSnapshot): boolean => false,
+  storeError: false
+}));
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
   useState: (initial: unknown) => {
@@ -36,10 +41,22 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("../../hooks/useSession", () => ({ useSession: () => ({ session: null, userLogin: null }) }));
 vi.mock("../../hooks/useSavedProjects", () => ({ useSavedProjects: () => ({ savedProjects: [] }) }));
-vi.mock("../../hooks/useAutosaveDraft", () => ({
-  useAutosaveDraft: (_session: unknown, _draft: unknown, accept: typeof hooks.accept) => {
-    hooks.accept = accept;
-    return {};
+vi.mock("../../hooks/useLocalWorkspace", () => ({
+  useLocalWorkspace: (_login: unknown, _draft: unknown, load: (d: DraftSnapshot, navigate?: boolean) => void) => {
+    hooks.accept = (draft) => {
+      load(draft, false);
+      return true;
+    };
+    return {
+      state: "saved",
+      ready: true,
+      projects: [],
+      create: async (_title: string, draft: DraftSnapshot) => {
+        if (hooks.storeError) return false;
+        load(draft, true);
+        return true;
+      }
+    };
   }
 }));
 import { useStudioState } from "../../hooks/useStudioState";
@@ -52,11 +69,12 @@ const render = () => {
 };
 beforeEach(() => {
   hooks.slots = [];
+  hooks.storeError = false;
   vi.stubGlobal("window", { location: { search: "" }, confirm: () => true });
 });
-it("recognizes a saved classic copy without template ID, and scrubs without changing editor or materials", () => {
+it("recognizes a saved classic copy without template ID, and scrubs without changing editor or materials", async () => {
   let studio = render();
-  studio.loadProject({ ...structuredClone(CLASSIC_RUSSIAN_STOVE), id: "saved-copy", ownerLogin: "owner" });
+  await studio.loadProject({ ...structuredClone(CLASSIC_RUSSIAN_STOVE), id: "saved-copy", ownerLogin: "owner" });
   studio = render();
   expect(studio.demoProjectId).toBeNull();
   expect(studio.showTeplushkaGuide).toBe(false);
@@ -71,13 +89,13 @@ it("recognizes a saved classic copy without template ID, and scrubs without chan
   expect(JSON.stringify(hooks.slots)).toBe(before);
   expect(render().materials).toEqual(materials);
 });
-it("invalidates mounted scene state on same-project reload, reset and accepted draft only", () => {
+it("invalidates mounted scene state on same-project reload, reset and persisted replacement only", async () => {
   let studio = render();
   const revision = studio.sceneRevision;
-  studio.loadProject(CLASSIC_RUSSIAN_STOVE);
+  await studio.loadProject(CLASSIC_RUSSIAN_STOVE);
   studio = render();
   expect(studio.sceneRevision).toBe(revision + 1);
-  studio.loadProject(CLASSIC_RUSSIAN_STOVE);
+  await studio.loadProject(CLASSIC_RUSSIAN_STOVE);
   studio = render();
   expect(studio.sceneRevision).toBe(revision + 2);
   const draft = {
@@ -87,7 +105,7 @@ it("invalidates mounted scene state on same-project reload, reset and accepted d
     lockedRows: studio.lockedRows,
     rows: studio.rows
   };
-  studio.reset();
+  await studio.reset();
   studio = render();
   expect(studio.sceneRevision).toBe(revision + 3);
   expect(hooks.accept(draft)).toBe(true);
@@ -96,13 +114,13 @@ it("invalidates mounted scene state on same-project reload, reset and accepted d
   expect(studio.currentRow).toBe(3);
   studio.addRow();
   studio = render();
-  vi.stubGlobal("window", { location: { search: "" }, confirm: () => false });
-  expect(hooks.accept(draft)).toBe(false);
+  hooks.storeError = true;
+  await studio.loadProject(CLASSIC_RUSSIAN_STOVE);
   expect(render().sceneRevision).toBe(studio.sceneRevision);
 });
-it("keeps restored Teplushka detection separate from classic assemblies", () => {
+it("keeps restored Teplushka detection separate from classic assemblies", async () => {
   let studio = render();
-  studio.loadProject({
+  await studio.loadProject({
     ...READY_PROJECTS.find((p) => p.id === "russian-stove-hob")!,
     id: "saved-teplushka",
     ownerLogin: "owner"

@@ -24,8 +24,8 @@ describe("estimateMaterials", () => {
     expect(m.regularBricks).toBe(2);
     expect(m.firebricks).toBe(1);
     expect(m.grates).toBe(1);
-    // cut (=1) + two trims counted as 0.5 each (=1) => 2; дверца — отдельной строкой
-    expect(m.cutBricks).toBe(2);
+    // Physical pieces: a cut and two trims are three parts, not inferred purchasing stock.
+    expect(m.cutBricks).toBe(3);
     expect(m.doors).toBe(1);
     expect(m.total).toBe(8);
   });
@@ -46,11 +46,11 @@ describe("estimateMaterials", () => {
     const flat = Object.values(project.rows).flat();
     const m = estimateMaterials(flat, project.parameters);
     expect(m.total).toBe(flat.length);
-    for (const value of Object.values(m)) {
+    for (const value of Object.values(m).filter((v) => v !== null)) {
       expect(Number.isFinite(value)).toBe(true);
       expect(value).toBeGreaterThanOrEqual(0);
     }
-    expect(m.mortarM3).toBeGreaterThan(0);
+    expect(m.mortarM3).toBeNull();
     expect(m.concreteVolumeM3).toBeGreaterThan(0);
   });
 });

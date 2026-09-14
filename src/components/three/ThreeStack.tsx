@@ -41,6 +41,12 @@ export type ThreeStackProps = {
   onExitSection?: () => void;
   houseContext?: boolean;
   highlightedIds?: string[];
+  selectParts?: boolean;
+  onSelectPart?: (id: string) => void;
+  rowMode?: "through" | "row" | "all";
+  ghostPrevious?: boolean;
+  isolateIds?: string[];
+  focusRequest?: number;
 };
 
 export function ThreeStack({
@@ -57,6 +63,12 @@ export function ThreeStack({
   inspection,
   onExitSection,
   highlightedIds,
+  selectParts = false,
+  onSelectPart,
+  rowMode,
+  ghostPrevious = false,
+  isolateIds,
+  focusRequest,
   houseContext = false
 }: ThreeStackProps) {
   const [archName, setArchName] = useState<ArchName | null>(null);
@@ -90,12 +102,22 @@ export function ThreeStack({
   const sectionActive = !assembly && !!inspection && inspection.section !== "whole";
   const selectionContext = useRef({ currentRow, grid, inspect });
   const visible = useMemo(
-    () => bricks.filter((brick) => inspect || brick.row <= currentRow),
-    [bricks, inspect, currentRow]
+    () =>
+      bricks.filter((brick) =>
+        isolateIds?.length
+          ? isolateIds.includes(brick.id)
+          : rowMode === "all" ||
+            (rowMode === "row"
+              ? brick.row === currentRow
+              : rowMode === "through"
+                ? brick.row <= currentRow
+                : inspect || brick.row <= currentRow)
+      ),
+    [bricks, inspect, currentRow, rowMode, isolateIds]
   );
   const preview = useMemo(
-    () => (!assembly && !inspect && !sectionActive && point ? previewAt(point) : null),
-    [assembly, inspect, sectionActive, point, previewAt]
+    () => (!selectParts && !assembly && !inspect && !sectionActive && point ? previewAt(point) : null),
+    [selectParts, assembly, inspect, sectionActive, point, previewAt]
   );
   const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect && !assembly && !sectionActive;
   // Inspection is a render-only projection, before bounds and section calculations.
@@ -126,6 +148,35 @@ export function ThreeStack({
     () => (section ? sceneBricks.filter((brick) => section.retainedBrickIds.has(brick.id)) : sceneBricks),
     [sceneBricks, section]
   );
+  const focusBounds = useMemo(
+    () =>
+      (focusRequest || isolateIds?.length) && highlightedIds?.length
+        ? archSceneBounds(
+            bricks.filter((b) => highlightedIds.includes(b.id)),
+            grid
+          )
+        : null,
+    [focusRequest, isolateIds, highlightedIds, bricks, grid]
+  );
+  const focusSize = focusBounds?.getSize(new Vector3()),
+    focusCenter = focusBounds?.getCenter(new Vector3());
+  useEffect(() => {
+    if (focusRequest) setCommand((p) => ({ id: p.id + 1, kind: "fit" }));
+  }, [focusRequest]);
+  const choosePart = (event: ThreeEvent<PointerEvent>) => {
+    if (!selectParts || !tap.current || event.button !== 0) return;
+    if (clipPlane && clipPlane.distanceToPoint(event.point) < 0) return;
+    let object: typeof event.object | null = event.object;
+    let id: unknown = event.instanceId !== undefined ? object.userData.brickIds?.[event.instanceId] : undefined;
+    while (object && typeof id !== "string") {
+      id = object.userData.brickId;
+      object = object.parent;
+    }
+    if (typeof id === "string") {
+      event.stopPropagation();
+      onSelectPart?.(id);
+    }
+  };
   const sectionSize = section?.bounds.getSize(new Vector3());
   const sectionCenter = section?.bounds.getCenter(new Vector3());
   const act = (kind: CameraCommand["kind"]) => setCommand((previous) => ({ id: previous.id + 1, kind }));
@@ -148,6 +199,13 @@ export function ThreeStack({
       setArchStep(0);
     }
   }, [assembly]);
+  useEffect(() => {
+    if (selectParts) {
+      setPoint(null);
+      gesture.current.cancel();
+      tap.current = false;
+    }
+  }, [selectParts]);
   const previousHouse = useRef(false);
   useEffect(() => {
     if (houseContext || previousHouse.current) {
@@ -201,7 +259,7 @@ export function ThreeStack({
     return () => window.removeEventListener("keydown", onKey);
   });
   const select = (event: ThreeEvent<PointerEvent>) => {
-    if (!tap.current || assembly || inspect || sectionActive || locked || event.button !== 0) return;
+    if (selectParts || !tap.current || assembly || inspect || sectionActive || locked || event.button !== 0) return;
     event.stopPropagation();
     const hit = event.ray.intersectPlane(
       new Plane(new Vector3(0, 1, 0), -(currentRow - 1) * BRICK_LAYER_HEIGHT),
@@ -333,27 +391,29 @@ export function ThreeStack({
         </section>
       )}
       <div className="scene-toolbar">
-        <fieldset className="studio-segment" aria-label={t("interactionMode")}>
-          <button
-            type="button"
-            disabled={!!assembly}
-            aria-pressed={!inspect && !sectionActive}
-            onClick={() => {
-              onExitSection?.();
-              setInspect(false);
-            }}
-          >
-            {t("buildMode")}
-          </button>
-          <button
-            type="button"
-            disabled={!!assembly}
-            aria-pressed={inspect || sectionActive}
-            onClick={() => setInspect(true)}
-          >
-            {t("inspectMode")}
-          </button>
-        </fieldset>
+        {rowMode === undefined && (
+          <fieldset className="studio-segment" aria-label={t("interactionMode")}>
+            <button
+              type="button"
+              disabled={!!assembly}
+              aria-pressed={!inspect && !sectionActive}
+              onClick={() => {
+                onExitSection?.();
+                setInspect(false);
+              }}
+            >
+              {t("buildMode")}
+            </button>
+            <button
+              type="button"
+              disabled={!!assembly}
+              aria-pressed={inspect || sectionActive}
+              onClick={() => setInspect(true)}
+            >
+              {t("inspectMode")}
+            </button>
+          </fieldset>
+        )}
         <fieldset className="scene-camera" aria-label={t("camera")}>
           {(
             [
@@ -377,7 +437,7 @@ export function ThreeStack({
         role="application"
         aria-label={t("aria3d")}
         tabIndex={-1}
-        className={`scene-canvas ${inspect || sectionActive ? "is-inspecting" : "is-building"}`}
+        className={`scene-canvas ${selectParts || inspect || sectionActive ? "is-inspecting" : "is-building"}`}
         onContextMenu={(event) => event.preventDefault()}
         onPointerDownCapture={(event) => {
           if (event.target instanceof HTMLCanvasElement) {
@@ -438,13 +498,17 @@ export function ThreeStack({
           />
           <directionalLight position={[-10, 6, -8]} intensity={0.65} />
           <SceneCamera
-            width={houseContext ? 52 : (archSize?.x ?? sectionSize?.x ?? grid.cols + 1)}
-            depth={houseContext ? 76 : (archSize?.z ?? sectionSize?.z ?? grid.rows + 1)}
-            height={houseContext ? 68 : (archSize?.y ?? sectionSize?.y ?? height + foundationHeight)}
-            centerX={archCenter?.x ?? sectionCenter?.x ?? 0}
-            centerY={houseContext ? 16 : (archCenter?.y ?? sectionCenter?.y ?? (height - foundationHeight) / 2)}
-            centerZ={archCenter?.z ?? sectionCenter?.z ?? 0}
-            inspect={!!assembly || inspect || sectionActive}
+            width={houseContext ? 52 : (focusSize?.x ?? archSize?.x ?? sectionSize?.x ?? grid.cols + 1)}
+            depth={houseContext ? 76 : (focusSize?.z ?? archSize?.z ?? sectionSize?.z ?? grid.rows + 1)}
+            height={houseContext ? 68 : (focusSize?.y ?? archSize?.y ?? sectionSize?.y ?? height + foundationHeight)}
+            centerX={focusCenter?.x ?? archCenter?.x ?? sectionCenter?.x ?? 0}
+            centerY={
+              houseContext
+                ? 16
+                : (focusCenter?.y ?? archCenter?.y ?? sectionCenter?.y ?? (height - foundationHeight) / 2)
+            }
+            centerZ={focusCenter?.z ?? archCenter?.z ?? sectionCenter?.z ?? 0}
+            inspect={selectParts || !!assembly || inspect || sectionActive}
             frontSign={inspection ? -1 : 1}
             command={command}
           />
@@ -464,6 +528,7 @@ export function ThreeStack({
           )}
           <group
             onPointerUp={(event) => {
+              choosePart(event);
               if (!assembly || !tap.current) return;
               const id = event.object.userData.brickId;
               if (typeof id === "string" && assembly.numbers.has(id)) {
@@ -497,8 +562,15 @@ export function ThreeStack({
           {renderedBricks
             .filter((brick) => !isMasonry(brick))
             .map((brick) => (
-              <ThreeBrick key={brick.id} grid={grid} brick={brick} />
+              <group key={brick.id} userData={{ brickId: brick.id }} onPointerUp={choosePart}>
+                <ThreeBrick grid={grid} brick={brick} />
+              </group>
             ))}
+          {ghostPrevious &&
+            rowMode === "row" &&
+            bricks
+              .filter((b) => b.row === currentRow - 1)
+              .map((b) => <BrickHighlight key={`ghost-${b.id}`} brick={b} grid={grid} color="#738f9b" />)}
           {showGrid && !assembly && !inspect && (
             <WorkGrid grid={grid} elevation={(currentRow - 1) * BRICK_LAYER_HEIGHT + 0.006} step={snapStep} />
           )}
@@ -527,14 +599,16 @@ export function ThreeStack({
                 color={preview.status === "toggle" ? "#25866d" : "#ba4a3d"}
               />
             ))}
-          <mesh
-            position={[0, (currentRow - 1) * BRICK_LAYER_HEIGHT, 0]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            onPointerUp={select}
-          >
-            <planeGeometry args={[grid.cols, grid.rows]} />
-            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          </mesh>
+          {!selectParts && (
+            <mesh
+              position={[0, (currentRow - 1) * BRICK_LAYER_HEIGHT, 0]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              onPointerUp={select}
+            >
+              <planeGeometry args={[grid.cols, grid.rows]} />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+          )}
         </Canvas>
         <fieldset className="scene-zoom" aria-label={t("camera")}>
           <button type="button" aria-label={t("cameraZoomIn")} onClick={() => act("in")}>

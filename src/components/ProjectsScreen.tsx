@@ -29,9 +29,14 @@ export function ProjectsScreen({
   onUnpublish: (project: ReadyProject) => Promise<void>;
   onDelete: (project: ReadyProject) => Promise<void>;
 }) {
+  const [query, setQuery] = useState("");
   const unit = t("unitCm");
   const mine = projects.filter((project) => userLogin && project.ownerLogin === userLogin);
-  const templates = projects.filter((project) => !(userLogin && project.ownerLogin === userLogin));
+  const templates = projects.filter(
+    (project) =>
+      !(userLogin && project.ownerLogin === userLogin) &&
+      project.title[locale].toLowerCase().includes(query.toLowerCase())
+  );
 
   const renderCard = (project: ReadyProject) => {
     const projectGrid = gridFromParameters(project.parameters);
@@ -107,17 +112,24 @@ export function ProjectsScreen({
 
   return (
     <main className="mt-4 space-y-3 xl:space-y-4">
-      <SectionTitle title={t("myProjectsTitle")} subtitle={t("myProjectsSubtitle")} />
-      {mine.length ? (
-        <div className="space-y-3">{mine.map(renderCard)}</div>
-      ) : (
-        <p className="rounded-[20px] bg-[#F5E6C8] px-4 py-5 text-center text-sm font-bold text-[#3D2B1F]/70">
-          {t("myProjectsEmpty")}
-        </p>
+      {userLogin && (
+        <>
+          <SectionTitle title="В аккаунте" subtitle={t("myProjectsSubtitle")} />
+          {mine.length ? (
+            <div className="space-y-3">{mine.map(renderCard)}</div>
+          ) : (
+            <p className="rounded-[20px] bg-[#F5E6C8] px-4 py-5 text-center text-sm font-bold text-[#3D2B1F]/70">
+              {t("myProjectsEmpty")}
+            </p>
+          )}
+        </>
       )}
       <div className="pt-4">
         <SectionTitle title={t("templatesTitle")} subtitle={t("projectsSubtitle")} />
       </div>
+      <label className="catalog-search">
+        Найти шаблон <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
+      </label>
       <div className="space-y-3">{templates.map(renderCard)}</div>
     </main>
   );
@@ -243,6 +255,8 @@ export function ProjectOrderPreview({
   rowCount: number;
   t: Translate;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(0);
   return (
     <div className="border-y border-[#3D2B1F]/10 bg-[#FFF7E8] px-3 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -251,22 +265,43 @@ export function ProjectOrderPreview({
           {t("currentRow")} 1 → {rowCount}
         </div>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-        {Array.from({ length: rowCount }).map((_, index) => {
-          const row = index + 1;
-          return (
-            <div key={row} className="w-[150px] shrink-0 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2">
-              <div className="mb-1 flex items-center justify-between text-[11px] font-black">
-                <span>
-                  {t("currentRow")} {row}
-                </span>
-                <span className="text-[#5F7E4D]">{rows[row]?.length ?? 0}</span>
-              </div>
-              <RowMap grid={grid} bricks={rows[row] ?? []} variant="screen" />
-            </div>
-          );
-        })}
-      </div>
+      <button type="button" onClick={() => setExpanded(!expanded)} className="min-h-11 rounded-lg border px-3">
+        {expanded ? "Свернуть ряды" : "Посмотреть порядовку"}
+      </button>
+      {expanded && (
+        <>
+          <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
+            {Array.from({ length: Math.min(6, rowCount - page * 6) }).map((_, index) => {
+              const row = page * 6 + index + 1;
+              return (
+                <div
+                  key={row}
+                  className="w-[150px] shrink-0 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2"
+                >
+                  <div className="mb-1 flex items-center justify-between text-[11px] font-black">
+                    <span>
+                      {t("currentRow")} {row}
+                    </span>
+                    <span className="text-[#5F7E4D]">{rows[row]?.length ?? 0}</span>
+                  </div>
+                  <RowMap grid={grid} bricks={rows[row] ?? []} variant="screen" />
+                </div>
+              );
+            })}
+          </div>
+          <div className="part-actions">
+            <button type="button" disabled={page === 0} onClick={() => setPage(page - 1)}>
+              ← Ряды
+            </button>
+            <span>
+              {page * 6 + 1}–{Math.min(rowCount, page * 6 + 6)} / {rowCount}
+            </span>
+            <button type="button" disabled={(page + 1) * 6 >= rowCount} onClick={() => setPage(page + 1)}>
+              Ряды →
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -10,11 +10,13 @@ import {
 import { fillRowBricks } from "../domain/geometry";
 import { estimateMaterials } from "../domain/materials";
 import { nextSeq } from "../lib/id";
+import { partEditError } from "../domain/editor/partEdit";
 import type {
   CustomBrickSpec,
   NotchCorner,
   Orientation,
   Parameters,
+  PlacedBrick,
   ReadyProject,
   SnapStep,
   ToolKind
@@ -123,6 +125,17 @@ export function useEditor() {
     materials,
 
     setCurrentRow: useCallback((row: number) => dispatch({ type: "setCurrentRow", row }), []),
+    editPart: useCallback(
+      (originalId: string, brick: PlacedBrick, duplicate = false) => {
+        const candidate = { ...brick, id: duplicate ? `part-${nextSeq()}` : originalId };
+        const error = partEditError(state, originalId, candidate, duplicate);
+        if (error) return error;
+        dispatch({ type: "editPart", originalId, brick: candidate, duplicate });
+        return null;
+      },
+      [state]
+    ),
+    removePart: useCallback((id: string) => dispatch({ type: "removePart", id }), []),
     setActiveTool: useCallback((tool: ToolKind) => dispatch({ type: "setTool", tool }), []),
     setOrientation: useCallback((orientation: Orientation) => dispatch({ type: "setOrientation", orientation }), []),
     setNotchCorner: useCallback((corner: NotchCorner) => dispatch({ type: "setNotchCorner", corner }), []),

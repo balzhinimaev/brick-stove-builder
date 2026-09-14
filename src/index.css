@@ -702,6 +702,372 @@ body {
   margin: 3px 5px 3px 0;
 }
 
+/* Independent structural inspection; never overlays the editable work plane. */
+.physics-review {
+  margin: 14px 0;
+  border: 1px solid #bfcbc5;
+  border-radius: 18px;
+  background: #fbfcf8;
+  color: #243c36;
+  overflow: hidden;
+}
+.physics-review > summary {
+  padding: 18px 20px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.physics-review > summary > span {
+  margin-left: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #68786f;
+}
+.physics-panel {
+  padding: 0 20px 20px;
+}
+.physics-heading,
+.physics-toolbar,
+.physics-listbar,
+.physics-pagination,
+.physics-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.physics-heading {
+  justify-content: space-between;
+  padding: 10px 0 20px;
+}
+.physics-eyebrow {
+  color: #597267;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+.physics-heading h3 {
+  margin: 6px 0;
+  font-size: clamp(20px, 2.7vw, 29px);
+  letter-spacing: -0.035em;
+}
+.physics-panel .physics-heading p,
+.physics-panel .physics-detail p {
+  font-size: 12px;
+  line-height: 1.65;
+}
+.physics-panel button,
+.physics-panel input,
+.physics-panel select {
+  min-height: 36px;
+  border: 1px solid #c8d3cb;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #fffef9;
+  color: #243c36;
+  font-size: 12px;
+}
+.physics-panel button {
+  cursor: pointer;
+  font-weight: 650;
+}
+.physics-panel button:hover:not(:disabled) {
+  border-color: #597b6c;
+  background: #e9efdf;
+}
+.physics-panel button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.physics-panel button:focus-visible,
+.physics-panel input:focus-visible,
+.physics-panel select:focus-visible {
+  outline: 3px solid #499ca9;
+  outline-offset: 2px;
+}
+.physics-panel label {
+  display: grid;
+  gap: 5px;
+  color: #566b60;
+  font-size: 11px;
+}
+.physics-settings {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr 0.7fr 0.7fr;
+  gap: 12px;
+}
+.physics-settings input,
+.physics-settings select,
+.physics-densities input {
+  width: 100%;
+  min-width: 0;
+}
+.physics-assumptions {
+  margin: 14px 0;
+  padding: 12px 14px;
+  background: #edf1e8;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.physics-assumptions summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.physics-panel .physics-assumptions p {
+  max-width: 100ch;
+  margin-top: 10px;
+  line-height: 1.65;
+}
+.physics-densities {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.physics-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 20px 0;
+  border-block: 1px solid #dce3d7;
+}
+.physics-panel .physics-metrics > div {
+  display: grid;
+  gap: 5px;
+}
+.physics-metrics strong {
+  font-size: clamp(22px, 3vw, 32px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+.physics-metrics span {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #6b786c;
+}
+.physics-toolbar {
+  padding-top: 18px;
+}
+.physics-toolbar label {
+  margin-left: auto;
+}
+.physics-panel .physics-primary {
+  background: #244e3d;
+  color: #fbf8ec;
+  border-color: #244e3d;
+}
+.physics-panel .physics-primary:hover:not(:disabled) {
+  background: #35634d;
+  color: white;
+}
+.physics-live {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 14px 0 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.physics-note,
+.physics-panel footer {
+  margin: 9px 0;
+  color: #667467;
+  font-size: 11px;
+  line-height: 1.65;
+}
+.physics-status {
+  padding: 18px;
+  border-radius: 10px;
+  background: #e5ecdf;
+  font-size: 13px;
+}
+.physics-error {
+  padding: 12px;
+  border-radius: 10px;
+  background: #f7e5dc;
+  color: #8f392d;
+  font-size: 12px;
+}
+.physics-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+.physics-canvas {
+  min-width: 0;
+  border: 1px solid #cbd4c8;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e9eae4;
+}
+.physics-canvas .physics-note {
+  padding: 0 12px;
+}
+.physics-viewbar {
+  padding: 10px;
+  background: #f1f3ed;
+  gap: 6px;
+}
+.physics-viewbar label {
+  display: flex;
+  align-items: center;
+}
+.physics-viewbar input[type="range"] {
+  width: 100px;
+  padding: 0;
+  min-height: 30px;
+}
+.physics-scene {
+  height: 470px;
+  touch-action: none;
+}
+.physics-detail {
+  max-height: 620px;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid #d4ddcf;
+  border-radius: 12px;
+  background: #f3f5ec;
+}
+.physics-detail h4 {
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.5;
+}
+.physics-detail h5 {
+  font-size: 11px;
+  font-weight: 800;
+  margin: 16px 0 6px;
+}
+.physics-detail .physics-id {
+  color: #758172;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.physics-detail dl {
+  margin-top: 16px;
+}
+.physics-detail dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #dfe5d6;
+  font-size: 11px;
+}
+.physics-detail dd {
+  text-align: right;
+  font-weight: 700;
+}
+.physics-detail ul {
+  padding-left: 16px;
+  font-size: 10px;
+}
+.physics-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 11px;
+}
+.physics-links button {
+  font-size: 10px;
+  min-height: 28px;
+  padding: 4px 6px;
+}
+.physics-detail .physics-issue {
+  font-size: 11px;
+  margin: 6px 0;
+  color: #916c31;
+}
+.physics-listbar {
+  margin: 20px 0 12px;
+}
+.physics-listbar > span {
+  margin-left: auto;
+  font-size: 12px;
+}
+.physics-parts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.physics-parts button {
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+}
+.physics-parts span,
+.physics-parts small {
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  font-weight: 400;
+}
+.physics-parts small {
+  color: #82663e;
+}
+.physics-parts button[aria-pressed="true"] {
+  background: #e0ece7;
+  border-color: #348392;
+}
+.physics-pagination {
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 11px;
+}
+.physics-panel footer {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #dce3d7;
+}
+@media (max-width: 900px) {
+  .physics-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .physics-detail {
+    max-height: 380px;
+  }
+  .physics-parts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .physics-panel {
+    padding: 0 12px 14px;
+  }
+  .physics-review > summary {
+    padding: 16px 12px;
+  }
+  .physics-review > summary > span {
+    display: block;
+    margin: 5px 0 0 18px;
+  }
+  .physics-settings,
+  .physics-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+  .physics-metrics {
+    gap: 16px;
+  }
+  .physics-densities {
+    grid-template-columns: 1fr;
+  }
+  .physics-scene {
+    height: 360px;
+  }
+  .physics-toolbar label {
+    margin-left: 0;
+  }
+  .physics-parts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media print {
+  .physics-review {
+    display: none;
+  }
+}
+
 /* The part review is a quiet work sheet, shared by R1 and R2. */
 .masonry-review {
   margin: 14px 0;
@@ -940,4 +1306,496 @@ body {
     align-items: start;
     flex-direction: column;
   }
+}
+
+/* UX workspace: a persistent scene, contextual inspector, portable local documents. */
+.project-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--studio-line);
+  flex-shrink: 0;
+}
+.project-identity {
+  flex: 1;
+  min-width: 150px;
+}
+.project-identity output {
+  display: block;
+}
+.studio-shell button.project-title {
+  border: 0;
+  padding: 0 6px 0 0;
+  min-height: 28px;
+  font-size: 16px;
+  font-weight: 750;
+  text-align: left;
+  background: transparent;
+}
+.project-title span {
+  color: #728278;
+  font-size: 12px;
+}
+.project-actions {
+  position: relative;
+}
+.project-actions summary {
+  padding: 12px;
+  cursor: pointer;
+  font-size: 12px;
+  border: 1px solid #d9ded8;
+  border-radius: 8px;
+}
+.project-actions > div {
+  position: absolute;
+  z-index: 80;
+  right: 0;
+  top: 48px;
+  display: grid;
+  gap: 6px;
+  width: min(300px, 85vw);
+  padding: 12px;
+  border: 1px solid #d9ded8;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 12px 36px #18271f26;
+}
+.project-actions p {
+  font-size: 12px;
+  color: #596a60;
+  line-height: 1.5;
+}
+.project-error {
+  color: #953d2d;
+  font-size: 13px;
+  width: 100%;
+  margin: 4px 0;
+}
+.project-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #62776c;
+}
+.workspace-modes,
+.viewport-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  flex-shrink: 0;
+}
+.studio-layout {
+  grid-template-columns: minmax(0, 1fr) clamp(340px, 32vw, 480px);
+}
+.studio-viewport {
+  flex-direction: column;
+  overflow: hidden;
+}
+.studio-panel-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px;
+  flex-shrink: 0;
+}
+.studio-panel-tabs button {
+  font-size: 12px;
+  padding: 8px 4px;
+}
+.studio-panel-content {
+  overscroll-behavior: contain;
+}
+.studio-panel-content .masonry-review,
+.studio-panel-content .physics-review {
+  margin: 0;
+  width: 100%;
+}
+.studio-panel-content .masonry-review-grid,
+.studio-panel-content .physics-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.studio-panel-content .masonry-review-body {
+  padding: 8px;
+}
+.studio-panel-content .masonry-metrics,
+.studio-panel-content .physics-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.studio-panel-content .physics-settings,
+.studio-panel-content .physics-densities {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.studio-panel-content .physics-heading {
+  flex-wrap: wrap;
+}
+.studio-panel-content input:not([type="checkbox"]),
+.studio-panel-content select,
+.local-library input,
+.catalog-search input {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #cfd9d1;
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  color: #243d31;
+  font: inherit;
+}
+.studio-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  font-size: 13px;
+}
+.studio-check input {
+  width: 18px;
+  height: 18px;
+}
+.part-inspector header {
+  margin-bottom: 10px;
+}
+.part-inspector h3 {
+  font-size: 24px;
+  font-weight: 750;
+  margin: 4px 0;
+}
+.part-inspector p {
+  line-height: 1.5;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+.part-inspector small {
+  font-size: 12px;
+  color: #68756f;
+  line-height: 1.5;
+  display: block;
+}
+.part-inspector fieldset {
+  border: 0;
+  padding: 8px 0;
+  margin: 10px 0;
+}
+.part-inspector legend {
+  font-weight: 650;
+  font-size: 14px;
+}
+.part-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.part-fields label {
+  font-size: 12px;
+  display: grid;
+  gap: 5px;
+}
+.part-actions,
+.section-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 0;
+}
+.part-locked {
+  padding: 8px;
+  background: #f1e7d8;
+  border-radius: 8px;
+}
+.exact-section {
+  min-width: 0;
+  min-height: 0;
+}
+.exact-section svg {
+  width: 100%;
+  max-height: 65dvh;
+  min-height: 220px;
+  background: #fafbf8;
+  border: 1px solid #d9ded8;
+  border-radius: 8px;
+}
+.exact-section output {
+  display: block;
+  font-size: 13px;
+  padding: 8px;
+}
+.studio-viewport > .exact-section {
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+}
+.studio-viewport > .exact-section svg {
+  height: calc(100% - 60px);
+}
+.section-tools span {
+  font-size: 12px;
+  color: #657a6d;
+}
+.studio-top-guide {
+  padding: 6px 16px;
+  border-bottom: 1px solid #d9ded8;
+  flex-shrink: 0;
+}
+.studio-top-guide[open] {
+  max-height: 40dvh;
+  overflow: auto;
+}
+.studio-top-guide summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.local-library {
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #d4dfd5;
+  border-radius: 18px;
+  background: #f9fbf8;
+  color: #283b31;
+}
+.local-library header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.local-library h2 {
+  font-size: 22px;
+  font-weight: 750;
+}
+.local-library header p {
+  font-size: 13px;
+  color: #65776b;
+}
+.local-library button,
+.catalog-search button {
+  min-height: 44px;
+  border: 1px solid #cbd9ce;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+.local-library button[aria-pressed="true"],
+.local-library .studio-primary {
+  background: #326856;
+  color: #fff;
+}
+.local-library-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin: 16px 0;
+}
+.local-library-filters label {
+  flex: 1;
+  min-width: 180px;
+  font-size: 12px;
+}
+.local-library ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.local-library li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid #dce4db;
+}
+.local-library li > div {
+  flex: 1;
+  min-width: 180px;
+  overflow-wrap: anywhere;
+}
+.local-library small {
+  display: block;
+  color: #65776b;
+  margin-top: 5px;
+}
+.local-diff {
+  display: block;
+  padding: 12px;
+  background: #e5eee7;
+  border-radius: 8px;
+  line-height: 1.6;
+  font-size: 13px;
+}
+.catalog-search {
+  display: block;
+  max-width: 500px;
+  margin: 16px 0;
+}
+.physics-apply {
+  margin: 10px 0;
+  padding: 10px;
+  background: #e9f0ec;
+  border-radius: 8px;
+}
+.physics-apply p {
+  margin: 8px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 760px) {
+  .studio-shell button,
+  .studio-shell nav button,
+  .studio-shell select,
+  .studio-shell summary {
+    min-height: 44px;
+    font-size: 12px;
+  }
+  .studio-header .studio-save-state {
+    display: none;
+  }
+  .studio-header-actions button,
+  .studio-header select {
+    max-width: none;
+  }
+  .project-bar {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .project-identity {
+    flex-basis: 100%;
+  }
+  .studio-shell button.project-title {
+    min-height: 28px;
+    font-size: 15px;
+  }
+  .project-identity output {
+    font-size: 11px;
+  }
+  .studio-layout {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 340px;
+  }
+  .studio-viewport {
+    flex: 1;
+    min-height: 260px;
+  }
+  .scene-workspace {
+    min-height: 0;
+  }
+  .scene-canvas {
+    min-height: 180px;
+  }
+  .studio-inspector {
+    flex: 0 0 auto;
+    max-height: 48dvh;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 18px #1d362714;
+  }
+  .studio-panel-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 6px 8px;
+  }
+  .studio-panel-tabs button {
+    flex: 0 0 auto;
+    min-width: 64px;
+  }
+  .studio-panel-content {
+    max-height: 30dvh;
+    padding: 8px;
+  }
+  .studio-shell button.studio-lock {
+    position: static;
+    width: auto;
+    margin: 4px 8px;
+    min-height: 44px;
+  }
+  .local-library {
+    padding: 12px;
+  }
+  .local-library header {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .exact-section svg {
+    min-height: 200px;
+  }
+}
+.mobile-inspector-toggle {
+  display: none;
+}
+@media (max-width: 760px) {
+  .studio-layout {
+    min-height: 320px;
+  }
+  .studio-viewport {
+    min-height: 0;
+    padding-bottom: 104px;
+  }
+  .studio-inspector {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    max-height: 60dvh;
+  }
+  .studio-shell .mobile-inspector-toggle {
+    display: block;
+    border: 0;
+    border-radius: 16px 16px 0 0;
+    min-height: 36px;
+    width: 100%;
+    background: #ecf1eb;
+  }
+  .studio-inspector:not(.is-expanded) .studio-panel-content,
+  .studio-inspector:not(.is-expanded) .studio-lock {
+    display: none;
+  }
+  .studio-panel-content {
+    max-height: 38dvh;
+  }
+  .studio-shell {
+    overflow: hidden;
+  }
+  .studio-shell nav {
+    overflow-x: auto;
+  }
+  .studio-shell nav button {
+    flex: 0 0 auto;
+    min-width: 68px;
+  }
+  .project-identity {
+    flex-basis: auto;
+  }
+  .project-actions summary {
+    font-size: 11px;
+  }
+  .workspace-modes {
+    padding: 3px 8px;
+  }
+}
+.workspace-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: #f5f8f1dc;
+  color: #294535;
+  font-size: 18px;
+  font-weight: 650;
 }

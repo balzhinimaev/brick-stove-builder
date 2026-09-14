@@ -1,8 +1,10 @@
 import { createPortal } from "react-dom";
 import type { Translate } from "../i18n";
 import type { GridSpec, MaterialsEstimate, Parameters, PlacedBrick } from "../domain/types";
-import { RowMap } from "./RowMap";
-import { formatM3 } from "./format";
+import { ExactSection } from "./ExactSection";
+import { partNumbers } from "../domain/masonrySections";
+import { masonryDimensions } from "../domain/masonryAudit";
+import { MaterialsSummary } from "./MaterialsSummary";
 
 /**
  * Print-only sheet with the full stove order: one plan per row plus the
@@ -16,8 +18,14 @@ export function PrintOrder({
   rowCount,
   lockedRows,
   parameters,
-  materials
+  materials,
+  title,
+  revision,
+  onlyRow
 }: {
+  title?: string;
+  revision?: number;
+  onlyRow?: number;
   t: Translate;
   grid: GridSpec;
   rows: Record<number, PlacedBrick[]>;
@@ -27,6 +35,8 @@ export function PrintOrder({
   materials: MaterialsEstimate;
 }) {
   const unit = t("unitCm");
+  const all = Object.values(rows).flat();
+  const numbers = partNumbers(all);
   return createPortal(
     <div className="print-order">
       <style>{`
@@ -34,11 +44,15 @@ export function PrintOrder({
         @media print {
           #root { display: none !important; }
           .print-order { display: block; font-family: system-ui, sans-serif; color: #1a1a1a; }
-          .print-order .row-card { break-inside: avoid; }
+          .print-order .row-card { break-before: page; }
+          .print-order .exact-section svg { width: 100%; max-height: 135mm; }
+          .print-order table { width:100%; border-collapse:collapse; font-size:9pt; }
+          .print-order td, .print-order th { border:1px solid #bbb; padding:3px; }
+          .print-order tr { break-inside:avoid; }
         }
       `}</style>
       <h1 style={{ fontSize: 22, margin: "0 0 4px" }}>
-        {t("appTitle")} — {t("printOrderTitle")}
+        {title ?? t("appTitle")} — {t("printOrderTitle")} · рев. {revision ?? 1}
       </h1>
       <p style={{ fontSize: 12, margin: "0 0 12px", color: "#555" }}>
         {t("projectFootprint")}: {parameters.foundationWidth}×{parameters.foundationLength} {unit} · {rowCount}{" "}
@@ -52,9 +66,8 @@ export function PrintOrder({
           схемой и не входят в ведомость кирпичей; бетон в стандартной ведомости учитывает только верхнюю плиту.
         </p>
       )}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        {Array.from({ length: rowCount }).map((_, index) => {
-          const row = index + 1;
+      <div>
+        {(onlyRow ? [onlyRow] : Array.from({ length: rowCount }, (_, i) => i + 1)).map((row) => {
           const bricks = rows[row] ?? [];
           return (
             <div key={row} className="row-card" style={{ border: "1px solid #bbb", borderRadius: 8, padding: 8 }}>
@@ -62,38 +75,54 @@ export function PrintOrder({
                 {t("currentRow")} {row}
                 {lockedRows.includes(row) ? " ✓" : ""} · {bricks.length}
               </div>
-              <RowMap grid={grid} bricks={bricks} variant="print" />
+              <p>
+                Точное сечение Z = {(row - 1) * 70 + 32.5} мм. Масштаб задаётся основанием {grid.cols * 125} ×{" "}
+                {grid.rows * 125} мм. Детали из нижних рядов включены.
+              </p>
+              <ExactSection grid={grid} bricks={all} row={row} numbers />
+              <p>Установка в этом ряду (габариты в мм; номера совпадают с редактором):</p>
+              <table>
+                <thead>
+                  <tr>
+                    <th>№</th>
+                    <th>Деталь</th>
+                    <th>X × Y × Z, мм</th>
+                    <th>Форма</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bricks.map((b) => (
+                    <tr key={b.id}>
+                      <td>{numbers.get(b.id)}</td>
+                      <td>{b.custom?.name ?? b.kind}</td>
+                      <td>
+                        {masonryDimensions(b)
+                          .map((n) => n.toFixed(1))
+                          .join(" × ")}
+                      </td>
+                      <td>
+                        {b.custom?.solidParts
+                          ? "Составной вырез · одна заготовка"
+                          : b.custom?.profileXZ
+                            ? "Профильная"
+                            : "Прямая / арматура"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           );
         })}
       </div>
 
-      <h2 style={{ fontSize: 15, margin: "16px 0 6px" }}>{t("materialsSnapshot")}</h2>
-      <table style={{ fontSize: 12, borderCollapse: "collapse" }}>
-        <tbody>
-          {[
-            [t("regularBricks"), materials.regularBricks],
-            [t("cutBricks"), materials.cutBricks],
-            [t("rebatedBricks"), materials.rebatedBricks],
-            [t("firebricks"), materials.firebricks],
-            [t("grates"), materials.grates],
-            [t("plates"), materials.plates],
-            [t("doors"), materials.doors],
-            [t("dampers"), materials.dampers],
-            [t("vents"), materials.vents],
-            ...((materials.steelKg ?? 0) > 0 ? [[t("steelApproxKg"), (materials.steelKg ?? 0).toFixed(2)]] : []),
-            [t("mortarEstimate"), formatM3(materials.mortarM3)],
-            [t("foundationConcrete"), formatM3(materials.concreteVolumeM3)]
-          ].map(([label, value]) => (
-            <tr key={String(label)}>
-              <td style={{ border: "1px solid #bbb", padding: "3px 10px" }}>{label}</td>
-              <td style={{ border: "1px solid #bbb", padding: "3px 10px", textAlign: "right", fontWeight: 700 }}>
-                {value}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <section className="row-card">
+        <MaterialsSummary materials={materials} t={t} />
+        <p>
+          Ведомость относится ко всему проекту. Сечения и габариты — геометрические данные, не оптимизированная карта
+          раскроя с пропилом.
+        </p>
+      </section>
     </div>,
     document.body
   );

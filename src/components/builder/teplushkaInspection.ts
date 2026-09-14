@@ -3,7 +3,12 @@ import type { PlacedBrick } from "../../domain/types";
 export type TeplushkaMode = "winter" | "summer" | "ventilation";
 export type TeplushkaSection = "whole" | "front" | "side";
 export type TeplushkaDamperIds = Record<"summer" | "main" | "hood" | "mouth", string>;
-export type TeplushkaInspection = { section: TeplushkaSection; fraction: number; courseOnly?: boolean };
+export type TeplushkaInspection = {
+  section: TeplushkaSection;
+  fraction: number;
+  courseOnly?: boolean;
+  coordinateMm?: number;
+};
 export const TEPLUSHKA_MODES: TeplushkaMode[] = ["winter", "summer", "ventilation"];
 
 const SETTINGS: Record<TeplushkaMode, Record<keyof TeplushkaDamperIds, number>> = {

@@ -1,6 +1,6 @@
-import { compoundSectionOutline } from "../domain/masonrySections";
+import { sectionsAtHeight, partNumbers } from "../domain/masonrySections";
 import { useMemo, useState } from "react";
-import { brickPhysicalSolids, solidPolyhedron } from "../domain/geometry";
+import { brickPhysicalSolids } from "../domain/geometry";
 import {
   isMasonryPiece,
   auditMasonry,
@@ -10,7 +10,6 @@ import {
   masonryDimensions
 } from "../domain/masonryAudit";
 import { THIN_PART_MM } from "../domain/masonryLayout";
-import { horizontalSection } from "../domain/orderReferenceHtml";
 import type { GridSpec, PlacedBrick } from "../domain/types";
 
 const labels: Record<MasonryIssue["kind"], string> = {
@@ -35,30 +34,21 @@ export function MasonryReviewPanel({
   onClear: () => void;
 }) {
   const audit = useMemo(() => auditMasonry(bricks), [bricks]);
-  const [filter, setFilter] = useState<"all" | MasonryIssue["kind"]>("thin");
+  const [filter, setFilter] = useState<"all" | MasonryIssue["kind"]>("all");
   const [limit, setLimit] = useState(12);
   const [offset, setOffset] = useState(32.5);
   const [zoom, setZoom] = useState(true);
-  const issues = audit.issues.filter((i) => filter === "all" || i.kind === filter);
+  const [scope, setScope] = useState<"all" | "row" | "selected">("all");
+  const issues = audit.issues.filter(
+    (i) =>
+      (filter === "all" || i.kind === filter) &&
+      (scope === "all" || (scope === "row" ? i.row === currentRow : i.ids.some((id) => selectedIds.includes(id))))
+  );
   const selected = new Set(selectedIds);
   const issueIds = new Set(audit.issues.filter((i) => i.kind !== "bond").flatMap((i) => i.ids));
   const z = (currentRow - 1) * 70 + offset;
-  const sections = useMemo(
-    () =>
-      bricks.flatMap((brick) => {
-        const polygons = brickPhysicalSolids(brick).flatMap((solid) => {
-          const base = (brick.row - 1) * 70;
-          if (z < base + solid.z1 || z > base + solid.z2) return [];
-          const points = horizontalSection(solidPolyhedron(solid, base), z);
-          return points.length > 2 ? [points] : [];
-        });
-        const path = polygons.map((points) => `M${points.map((p) => `${p.x},${p.y}`).join("L")}Z`).join(" ");
-        return polygons.length
-          ? [{ brick, path, outline: brick.custom?.solidParts ? compoundSectionOutline(polygons) : path }]
-          : [];
-      }),
-    [bricks, z]
-  );
+  const sections = useMemo(() => sectionsAtHeight(bricks, z), [bricks, z]);
+  const numbers = useMemo(() => partNumbers(bricks), [bricks]);
   const pick = (ids: string[], row: number) => {
     const brick = bricks.find((b) => b.id === ids[0]);
     const solid = brick && brickPhysicalSolids(brick)[0];
@@ -229,6 +219,14 @@ export function MasonryReviewPanel({
           </div>
           <div className="masonry-issues">
             <label>
+              Область{" "}
+              <select value={scope} onChange={(e) => setScope(e.target.value as typeof scope)}>
+                <option value="all">Вся печь</option>
+                <option value="row">Текущий ряд</option>
+                <option value="selected">Выбранная деталь</option>
+              </select>
+            </label>
+            <label>
               Проверка{" "}
               <select
                 value={filter}
@@ -265,7 +263,7 @@ export function MasonryReviewPanel({
                       {issue.kind === "cut-detail" && (
                         <small>Участок {mmLabel(issue.value)} мм внутри одного кирпича</small>
                       )}
-                      <small className="masonry-part-id">{issue.ids[0]}</small>
+                      <small>Деталь № {numbers.get(issue.ids[0])} · для осмотра</small>
                     </span>
                     <span aria-hidden="true">↗</span>
                   </button>

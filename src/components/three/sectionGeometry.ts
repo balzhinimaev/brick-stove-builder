@@ -95,7 +95,10 @@ export function inspectionPlane(
   const min = Math.min(...boxes.map((box) => box.position[axis] - box.scale[axis] / 2));
   const max = Math.max(...boxes.map((box) => box.position[axis] + box.scale[axis] / 2));
   const fraction = Math.max(0.05, Math.min(0.95, inspection.fraction));
-  return new Plane(axis === 2 ? new Vector3(0, 0, 1) : new Vector3(1, 0, 0), -(min + (max - min) * fraction));
+  const coordinate = Number.isFinite(inspection.coordinateMm)
+    ? inspection.coordinateMm! / 125 - (axis === 2 ? grid.rows : grid.cols) / 2
+    : min + (max - min) * fraction;
+  return new Plane(axis === 2 ? new Vector3(0, 0, 1) : new Vector3(1, 0, 0), -coordinate);
 }
 
 /** Close only occupied cross-sections. Convex wedges use their true edges, never their bounding box. */

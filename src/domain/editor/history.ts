@@ -24,6 +24,8 @@ export type HistoryAction = EditorAction | { type: "undo" } | { type: "redo" };
 const HISTORY_LIMIT = 50;
 
 const TRACKED_ACTIONS: ReadonlySet<EditorAction["type"]> = new Set([
+  "editPart",
+  "removePart",
   "place",
   "erase",
   "toggleDamper",

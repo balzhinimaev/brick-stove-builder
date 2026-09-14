@@ -47,6 +47,8 @@ export type PlacementSelection = Pick<
 >;
 
 export type EditorAction =
+  | { type: "editPart"; originalId: string; brick: PlacedBrick; duplicate?: boolean }
+  | { type: "removePart"; id: string }
   | { type: "setCurrentRow"; row: number }
   | { type: "setTool"; tool: ToolKind }
   | { type: "setOrientation"; orientation: Orientation }

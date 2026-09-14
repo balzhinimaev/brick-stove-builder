@@ -7,10 +7,13 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
   return (
     <div className="mt-3 rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-3">
       <div className="mb-2 text-lg font-black">{t("materialsSnapshot")}</div>
-      <MaterialRow label={t("regularBricks")} value={materials.regularBricks} />
-      <MaterialRow label={t("firebricks")} value={materials.firebricks} />
-      <MaterialRow label={t("cutBricks")} value={materials.cutBricks} />
-      <MaterialRow label={t("rebatedBricks")} value={materials.rebatedBricks} />
+      <p className="studio-muted">
+        Ведомость физических деталей, не закупочная смета. Одна составная деталь — один кирпич.
+      </p>
+      <MaterialRow label="Целые кирпичи · все материалы" value={materials.fullPieces ?? materials.regularBricks} />
+      <MaterialRow label="Прямые подрезки" value={materials.rectangularPieces ?? materials.cutBricks} />
+      <MaterialRow label="Фасонные детали и вырезы" value={materials.shapedPieces ?? materials.rebatedBricks} />
+      <MaterialRow label="Из них шамотных деталей" value={materials.firebricks} />
       <MaterialRow label={t("grates")} value={materials.grates} />
       <MaterialRow label={t("plates")} value={materials.plates} />
       <MaterialRow label={t("doors")} value={materials.doors} />
@@ -20,7 +23,11 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
         <MaterialRow label={t("steelApproxKg")} value={(materials.steelKg ?? 0).toFixed(2)} />
       )}
       <MaterialRow label={t("mortarEstimate")} value={formatM3(materials.mortarM3)} />
-      <MaterialRow label={t("foundationConcrete")} value={formatM3(materials.concreteVolumeM3)} />
+      <MaterialRow label="Бетон · только плита по параметрам" value={formatM3(materials.concreteVolumeM3)} />
+      <p className="studio-muted">
+        Для закупки нужны карта раскроя с пропилом и отходами, объём швов и состав основания. Эти количества здесь не
+        подменяются числом деталей.
+      </p>
     </div>
   );
 }

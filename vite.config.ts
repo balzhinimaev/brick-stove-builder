@@ -9,6 +9,7 @@ const appBase = process.env.VITE_APP_BASE ?? "/";
 export default defineConfig({
   base: appBase,
   plugins: [react(), tailwindcss()],
+  worker: { format: "es" },
   build: {
     // Three.js is intentionally code-split into its own lazy chunk (see BuilderScreen);
     // raise the warning threshold above that chunk's expected size.

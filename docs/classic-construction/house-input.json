@@ -1,0 +1,107 @@
+{
+  "stage": "conditional-design-basis-not-for-construction",
+  "source": "User messages, 2026-09-10: conditions at 21:02 UTC; assumptions delegated at 21:03; timber ceiling, bags/sawdust/coal above it and new foundation/chimney scope confirmed at 21:05",
+  "confirmed": {
+    "houseAreaM2": 60,
+    "indoorTemperatureC": 20,
+    "outdoorTemperatureC": -30,
+    "fuel": "firewood",
+    "wallMaterial": "wood",
+    "wallDescriptionOriginal": "стены из дерева, чисто дерево",
+    "ceilingMaterial": "timber",
+    "aboveCeilingDescriptionOriginal": "над ним просто мешки обсыпанные опилкой с углем",
+    "foundationScope": "design from scratch",
+    "chimneyScope": "design from scratch"
+  },
+  "derived": {
+    "temperatureDifferenceK": 50,
+    "requiredHeatOutputKw": null
+  },
+  "previouslyInterpreted": {
+    "ceilingHeightMm": 2500,
+    "note": "Earlier floor-to-ceiling value interpreted as 2.50 m; not a site measurement."
+  },
+  "selectedAssumptions": {
+    "status": "Agent-selected design scenarios, NOT observations of the existing house",
+    "jurisdictionForPreliminaryChecks": "Russian Federation; to verify before site design",
+    "building": {
+      "heatedStoreys": 1,
+      "planWidthM": 6,
+      "planLengthM": 10,
+      "ceilingHeightMm": 2500,
+      "windowAreaM2": 8,
+      "externalDoorAreaM2": 2,
+      "exposedCeilingAreaM2": 60,
+      "exposedFloorAreaM2": 60,
+      "walls": "Wood confirmed; no separate insulation reported. Log/timber type, thickness and joints are unknown. Treat adjacent walls as unprotected combustible construction until their protection is established.",
+      "ceiling": "Timber confirmed; no protective construction evidenced, treated as unprotected. Bags with sawdust/coal around or above them are reported; exact composition and layer thickness unknown. Cold ventilated space above remains a thermal assumption, not a confirmed attic survey.",
+      "floor": "Floor above a cold ventilated crawlspace, not a ground-bearing slab",
+      "geometryNote": "6x10 m is an equivalent simplified thermal perimeter, not a measured room or wall plan."
+    },
+    "use": {
+      "occupancy": "Continuous winter occupation",
+      "heatingRole": "Primary heating sought, not demonstrated by the current stove model",
+      "roomHeatDistribution": "Unverified; the whole-house sum is not proof that closed rooms reach +20 C",
+      "stoveType": "Russian cooking chamber with separate hob retained as a design requirement",
+      "wood": "Seasoned firewood; no burn rate or permissible fuel charge assigned"
+    },
+    "installation": {
+      "firstCourseAboveFinishedFloorMm": 0,
+      "selectedCeilingClearanceMm": 350,
+      "ceilingClearanceCondition": "SP 7.13130.2013 section 5.18: periodic masonry stove with three-course cap below an unprotected combustible ceiling; not a chimney penetration clearance",
+      "foundation": "Selected concept: one new reinforced-concrete foundation supporting stove plus rooted masonry chimney, structurally separated from the house foundation. Soil bearing, depth, dimensions and reinforcement are engineering outputs.",
+      "chimney": "Selected concept: new vertical rooted clay-brick chimney with accessible cleaning, carried by the stove/chimney foundation. Bore, terminal height, stability and penetration details remain engineering outputs.",
+      "combustibleFillAtPenetration": "No bags, sawdust or coal retained within the designed noncombustible penetration zone; remaining loose fill must be restrained from spilling into it. A coal/slag substitution is not inferred from the user's wording.",
+      "wallInterface": "Stove-to-wood clearances and wall protection require a separate placement detail; do not reuse the ceiling gap or chimney penetration distance as a universal side clearance.",
+      "structuralDimensionsAssigned": false
+    },
+    "thermalMethod": {
+      "airHeatCapacityWhM3K": 0.33,
+      "boundaryTemperature": "Outdoor temperature applied to walls, ceiling and exposed floor in all three scenarios; no ground-temperature model",
+      "gains": "No credit for sun, occupants or appliances",
+      "airExchange": "Equivalent outdoor air rate without heat recovery; includes the scenario's ventilation/infiltration, not a prescribed ventilation design. Combustion air and extractor operation are not sized.",
+      "uValues": "Chosen whole-element U-values W/(m2 K), not inferred actual wall materials or code compliance. Neither the reported wooden walls nor the sawdust/coal establish the assumed wall U=0.60 or ceiling U=0.30; the 6.93 kW scenario is NOT verified house demand.",
+      "thermalBridges": "Explicit scenario allowance W/K, not a measured value, normative percentage or hidden output margin"
+    },
+    "selectedThermalScenario": "reference",
+    "thermalScenarios": [
+      {
+        "id": "better",
+        "label": "Better insulated assumed envelope",
+        "uWm2K": { "walls": 0.3, "ceiling": 0.18, "floor": 0.3, "windows": 1.1, "door": 1.4 },
+        "thermalBridgesWK": 5,
+        "airChangesPerHour": 0.5
+      },
+      {
+        "id": "reference",
+        "label": "Selected intermediate assumed envelope",
+        "uWm2K": { "walls": 0.6, "ceiling": 0.3, "floor": 0.45, "windows": 1.6, "door": 2 },
+        "thermalBridgesWK": 10,
+        "airChangesPerHour": 0.5
+      },
+      {
+        "id": "weaker",
+        "label": "Weaker assumed envelope and higher outdoor air exchange",
+        "uWm2K": { "walls": 1.2, "ceiling": 0.65, "floor": 0.8, "windows": 2.6, "door": 3 },
+        "thermalBridgesWK": 15,
+        "airChangesPerHour": 1
+      }
+    ]
+  },
+  "missing": {
+    "location": null,
+    "roomPlanAndDimensions": null,
+    "wallFloorRoofLayersAndInsulation": null,
+    "wallThicknessTimberTypeAndJointCondition": null,
+    "windowAndDoorAreasAndTypes": null,
+    "ceilingLayerThicknessesBeamPositionsAndAboveCeilingGeometry": null,
+    "ventilationAndAirSupply": null,
+    "primaryOrSupplementaryHeating": null,
+    "occupancyAndFiringSchedule": null,
+    "groundSoilWaterFrostAndHouseFoundationGeometry": null,
+    "roofPitchRidgeHeightRafterPositionsAndRoofMaterial": null,
+    "availableStoveFootprint": null,
+    "firstCourseAboveFinishedFloorMm": null
+  },
+  "note": "The user authorized selection of assumptions. The missing entries remain unknown SITE FACTS, not unanswered preferences blocking preliminary work. See thermal-scenarios.json for computed loads. Actual house load, foundation and chimney construction remain unverified."
+}

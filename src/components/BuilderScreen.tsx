@@ -1,3 +1,4 @@
+import { isSaveShortcut } from "../lib/shortcuts";
 import { PartInspector } from "./PartInspector";
 import { ExactSection } from "./ExactSection";
 import { partNumbers } from "../domain/masonrySections";
@@ -194,15 +195,16 @@ export function BuilderScreen(props: BuilderScreenProps) {
   }, [printReady]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isSaveShortcut(event)) {
+        event.preventDefault();
+        if (!event.repeat) void props.saveCurrentProject();
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (cutterOpen) return;
       if (target?.isContentEditable || target?.closest("input,textarea,select,dialog,[role=dialog]")) return;
       const key = event.key.toLowerCase();
       if (event.ctrlKey || event.metaKey) {
-        if (key === "s") {
-          event.preventDefault();
-          void props.saveCurrentProject();
-        }
         if (key === "z") {
           event.preventDefault();
           if (event.shiftKey) redo();

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   clearSession,
   loadSession,
@@ -8,6 +8,7 @@ import {
   saveSession,
   type Session
 } from "../api/client";
+import { authFailureKey } from "../api/authFailure";
 import type { Translate } from "../i18n";
 
 export type AuthMode = "login" | "register";
@@ -16,6 +17,7 @@ const MIN_LOGIN_LENGTH = 3;
 const MIN_PASSWORD_LENGTH = 6;
 
 export function useSession(t: Translate) {
+  const submitting = useRef(false);
   const [session, setSession] = useState<Session | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authLogin, setAuthLogin] = useState("");
@@ -27,6 +29,7 @@ export function useSession(t: Translate) {
   }, []);
 
   const submitAuth = async () => {
+    if (submitting.current) return;
     const normalized = normalizeLogin(authLogin);
     if (normalized.length < MIN_LOGIN_LENGTH) {
       window.alert(t("authLoginTooShort"));
@@ -37,20 +40,25 @@ export function useSession(t: Translate) {
       return;
     }
 
-    const result =
-      authMode === "register"
-        ? await registerRequest(normalized, authPassword)
-        : await loginRequest(normalized, authPassword);
-
-    if (!result.ok) {
-      window.alert(authMode === "register" && result.status === 409 ? t("authTaken") : t("authBadCredentials"));
-      return;
+    submitting.current = true;
+    try {
+      const result =
+        authMode === "register"
+          ? await registerRequest(normalized, authPassword)
+          : await loginRequest(normalized, authPassword);
+      if (!result.ok) {
+        window.alert(t(authFailureKey(authMode, result.status)));
+        return;
+      }
+      saveSession(result.session);
+      setSession(result.session);
+      setAuthLogin("");
+      setAuthPassword("");
+    } catch {
+      window.alert(t("authUnavailable"));
+    } finally {
+      submitting.current = false;
     }
-
-    saveSession(result.session);
-    setSession(result.session);
-    setAuthLogin("");
-    setAuthPassword("");
   };
 
   const switchAccount = () => {

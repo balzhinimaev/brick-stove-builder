@@ -11,6 +11,7 @@ import {
 import {
   enqueuePendingOp,
   flushOps,
+  remapPendingOps,
   loadPendingOps,
   loadProjectsCache,
   savePendingOps,
@@ -90,22 +91,29 @@ export function useSavedProjects(
     flushing.current = true;
     try {
       const ops = loadPendingOps(active.login);
+      // Retry an earlier failed checkpoint even when its in-memory queue is empty.
+      if (!savePendingOps(active.login, ops)) scheduleRetry();
       if (ops.length) {
         const { remaining, idMap, authFailed } = await flushOps(ops, makeExecutor(active.token));
         // Пока шла прокачка, пользователь мог насохранять ещё — сливаем хвосты,
         // а не перезаписываем очередь снапшотом.
         const addedMeanwhile = loadPendingOps(active.login).slice(ops.length);
-        const nextOps = [...remaining, ...addedMeanwhile];
-        savePendingOps(active.login, nextOps);
+        const nextOps = [...remaining, ...remapPendingOps(addedMeanwhile, idMap)];
+        if (!savePendingOps(active.login, nextOps) && active.login === loginRef.current) {
+          scheduleRetry();
+          window.alert(
+            "Не удалось записать состояние синхронизации. Очередь сохранена только в памяти этой вкладки; не закрывайте её до повторной синхронизации."
+          );
+        }
         if (active.login === loginRef.current) setPendingCount(nextOps.length);
         if (Object.keys(idMap).length) {
           persistList(active.login, (current) =>
             current.map((item) => (idMap[item.id] ? { ...item, id: idMap[item.id] } : item))
           );
-          onIdRemap?.(idMap);
+          if (active.login === loginRef.current) onIdRemap?.(idMap);
         }
         if (authFailed) {
-          onAuthFailure?.();
+          if (active.token === sessionRef.current?.token) onAuthFailure?.();
           return;
         }
         if (nextOps.length) {
@@ -116,10 +124,10 @@ export function useSavedProjects(
       // Очередь пуста — серверный список авторитетен, в том числе пустой
       // (проект могли удалить с другого устройства).
       const fresh = await fetchSavedProjects(active.token);
-      persistList(active.login, () => fresh);
+      if (!loadPendingOps(active.login).length) persistList(active.login, () => fresh);
     } catch (error) {
       if (isAuthError(error)) {
-        onAuthFailure?.();
+        if (active.token === sessionRef.current?.token) onAuthFailure?.();
         return;
       }
       scheduleRetry();
@@ -155,71 +163,48 @@ export function useSavedProjects(
     };
   }, [currentLogin]);
 
-  /**
-   * Ошибка прямого сохранения: транзиентную прячем в очередь (и планируем
-   * повтор), постоянную — нет: её ретрай не вылечит. Возвращает, встала ли
-   * операция в очередь.
-   */
-  const queueOrReject = useCallback(
-    (login: string, op: PendingOp, error: unknown): boolean => {
-      if (isAuthError(error)) {
-        onAuthFailure?.();
-        return false;
-      }
-      if (isPermanentError(error)) return false;
-      setPendingCount(enqueuePendingOp(login, op).length);
-      scheduleRetry();
+  // Every mutation joins the same writer, including when the network is online.
+  const queue = useCallback((op: PendingOp, token: string) => {
+    const active = sessionRef.current;
+    if (!active || active.token !== token) return false;
+    try {
+      setPendingCount(enqueuePendingOp(active.login, op).length);
       return true;
-    },
-    [onAuthFailure, scheduleRetry]
-  );
+    } catch {
+      window.alert(
+        "Не удалось сохранить очередь синхронизации. Освободите место в хранилище браузера. Локальный проект остаётся в библиотеке."
+      );
+      return false;
+    }
+  }, []);
 
   const saveProject = useCallback(
     async (project: ReadyProject, token: string) => {
-      const login = loginRef.current;
-      try {
-        const saved = await createSavedProject(project, token);
-        persistList(login, (current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
-        return saved;
-      } catch (error) {
-        // офлайн: сохраняем локально и ставим в очередь
-        if (!queueOrReject(login, { kind: "create", project, queuedAt: Date.now() }, error)) return null;
-        persistList(login, (current) => [project, ...current.filter((item) => item.id !== project.id)]);
-        return project;
-      }
+      if (!queue({ kind: "create", project, queuedAt: Date.now() }, token)) return null;
+      persistList(loginRef.current, (current) => [project, ...current.filter((item) => item.id !== project.id)]);
+      void flushRef.current();
+      return project;
     },
-    [persistList, queueOrReject]
+    [persistList, queue]
   );
 
   const updateProject = useCallback(
     async (id: string, project: ReadyProject, token: string) => {
-      const login = loginRef.current;
-      try {
-        const saved = await updateSavedProject(id, project, token);
-        persistList(login, (current) => current.map((item) => (item.id === saved.id ? saved : item)));
-        return saved;
-      } catch (error) {
-        if (!queueOrReject(login, { kind: "update", id, project, queuedAt: Date.now() }, error)) return null;
-        persistList(login, (current) => current.map((item) => (item.id === id ? { ...project, id } : item)));
-        return { ...project, id };
-      }
+      if (!queue({ kind: "update", id, project, queuedAt: Date.now() }, token)) return null;
+      persistList(loginRef.current, (current) => current.map((item) => (item.id === id ? { ...project, id } : item)));
+      void flushRef.current();
+      return { ...project, id };
     },
-    [persistList, queueOrReject]
+    [persistList, queue]
   );
 
   const removeProject = useCallback(
     async (id: string, token: string) => {
-      const login = loginRef.current;
-      try {
-        await deleteSavedProject(id, token);
-      } catch (error) {
-        // Постоянная ошибка (404 = уже удалён с другого устройства) — цель
-        // достигнута, локально тоже убираем; транзиентная — в очередь.
-        queueOrReject(login, { kind: "delete", id, queuedAt: Date.now() }, error);
-      }
-      persistList(login, (current) => current.filter((item) => item.id !== id));
+      if (!queue({ kind: "delete", id, queuedAt: Date.now() }, token)) return;
+      persistList(loginRef.current, (current) => current.filter((item) => item.id !== id));
+      void flushRef.current();
     },
-    [persistList, queueOrReject]
+    [persistList, queue]
   );
 
   const replaceProject = useCallback(

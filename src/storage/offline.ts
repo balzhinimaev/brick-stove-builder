@@ -35,21 +35,27 @@ export function saveProjectsCache(login: string, projects: ReadyProject[]): void
   }
 }
 
+const pendingMemory = new Map<string, PendingOp[]>();
+
 export function loadPendingOps(login: string): PendingOp[] {
-  return readJson<PendingOp[]>(pendingKey(login), []);
+  return pendingMemory.get(login) ?? readJson<PendingOp[]>(pendingKey(login), []);
 }
 
-export function savePendingOps(login: string, ops: PendingOp[]): void {
+export function savePendingOps(login: string, ops: PendingOp[], requireDurable = false): boolean {
   try {
     localStorage.setItem(pendingKey(login), JSON.stringify(ops));
+    pendingMemory.delete(login);
+    return true;
   } catch {
-    /* при переполнении очередь живёт только в памяти — но не роняем сохранение */
+    if (requireDurable) throw new Error("Pending queue storage unavailable");
+    pendingMemory.set(login, ops);
+    return false;
   }
 }
 
 export function enqueuePendingOp(login: string, op: PendingOp): PendingOp[] {
   const ops = [...loadPendingOps(login), op];
-  savePendingOps(login, ops);
+  savePendingOps(login, ops, true);
   return ops;
 }
 
@@ -97,10 +103,19 @@ export async function flushOps(ops: PendingOp[], exec: FlushExecutor): Promise<F
         await exec.remove(idMap[op.id] ?? op.id);
       }
     } catch (error) {
-      if (exec.isAuth(error)) return { remaining: ops.slice(i), idMap, authFailed: true };
+      if (exec.isAuth(error)) return { remaining: remapPendingOps(ops.slice(i), idMap), idMap, authFailed: true };
       if (exec.isPermanent(error)) continue;
-      return { remaining: ops.slice(i), idMap, authFailed: false };
+      return { remaining: remapPendingOps(ops.slice(i), idMap), idMap, authFailed: false };
     }
   }
   return { remaining: [], idMap, authFailed: false };
+}
+
+/** Apply successful creates to both failed operations and concurrent additions. */
+export function remapPendingOps(ops: PendingOp[], idMap: Record<string, string>): PendingOp[] {
+  return ops.map((op) => {
+    if (op.kind === "create") return op;
+    const id = idMap[op.id] ?? op.id;
+    return op.kind === "delete" ? { ...op, id } : { ...op, id, project: { ...op.project, id } };
+  });
 }

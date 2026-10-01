@@ -66,18 +66,26 @@ export function useStudioState() {
    * Живёт в studio-слое, а не в editor-редьюсере: ядро редактора про это не знает.
    */
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const { savedProjects, pendingCount, syncIssue, saveProject, updateProject, replaceProject, removeProject } =
-    useSavedProjects(
-      session.session,
-      // офлайн-созданный проект после синка получает серверный id
-      (idMap) => {
-        setCurrentProjectId((current) => (current && idMap[current] ? idMap[current] : current));
-        for (const item of localWorkspace.projects ?? [])
-          if (item.remoteId && idMap[item.remoteId])
-            void localWorkspace.linkRemote(item.id, idMap[item.remoteId]).catch(() => {});
-      },
-      session.invalidateSession
-    );
+  const {
+    savedProjects,
+    pendingCount,
+    syncIssue,
+    syncFailureStatus,
+    saveProject,
+    updateProject,
+    replaceProject,
+    removeProject
+  } = useSavedProjects(
+    session.session,
+    // офлайн-созданный проект после синка получает серверный id
+    (idMap) => {
+      setCurrentProjectId((current) => (current && idMap[current] ? idMap[current] : current));
+      for (const item of localWorkspace.projects ?? [])
+        if (item.remoteId && idMap[item.remoteId])
+          void localWorkspace.linkRemote(item.id, idMap[item.remoteId]).catch(() => {});
+    },
+    session.invalidateSession
+  );
   const localWorkspace = useLocalWorkspace(
     session.userLogin,
     {
@@ -355,6 +363,7 @@ export function useStudioState() {
     savedProjects,
     pendingCount,
     syncIssue,
+    syncFailureStatus,
     allProjects,
     currentProjectId,
     saveCurrentProject,

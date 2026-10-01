@@ -42,6 +42,7 @@ export default function App() {
           autosaveState={studio.autosaveState}
           pendingCount={studio.pendingCount}
           syncIssue={studio.syncIssue}
+          syncFailureStatus={studio.syncFailureStatus}
         />
         {screen === "builder" && studio.showTeplushkaGuide ? (
           <details className="studio-top-guide">

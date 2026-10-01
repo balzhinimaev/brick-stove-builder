@@ -231,7 +231,7 @@ it("permanent create/update failures retain the operation and its tail", async (
       isAuth: () => false,
       isNotFound: () => false
     });
-    expect(result.remaining).toEqual([op, tail]);
+    expect(result.remaining).toEqual([{ ...op, rejected: {} }, tail]);
     expect(result.permanentFailure).toBe(true);
   }
 });
@@ -279,4 +279,27 @@ it("failed empty checkpoint is not durable success and recovers without replayin
   expect(localStorage.getItem("brick-stove-pending-ops:" + session.login)).toBe("[]");
   expect(updateSavedProject).toHaveBeenCalledTimes(1);
   expect(fetchSavedProjects).toHaveBeenCalledTimes(1);
+});
+
+it("does not lose an independent write appended during a permanent rejection", async () => {
+  storage();
+  const session = { login: "append-after-rejection", token: "test" };
+  let reject!: (reason: unknown) => void;
+  vi.mocked(updateSavedProject).mockImplementationOnce(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      })
+  );
+  enqueuePendingOp(session.login, { kind: "update", id: "p", project, queuedAt: 1 });
+  const pending = render(session).flushPending();
+  await render(session).updateProject("other", { ...project, id: "other" }, "test");
+  reject("permanent400");
+  await pending;
+  // The queued rerun proceeds without retrying the rejected first project.
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+  expect(updateSavedProject).toHaveBeenCalledTimes(2);
+  expect(updateSavedProject).toHaveBeenLastCalledWith("other", { ...project, id: "other" }, "test");
+  expect(loadPendingOps(session.login)).toEqual([{ kind: "update", id: "p", project, queuedAt: 1, rejected: {} }]);
+  expect(render(session).syncIssue).toBe("syncRejected");
 });

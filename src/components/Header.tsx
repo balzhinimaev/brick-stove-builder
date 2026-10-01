@@ -17,7 +17,8 @@ export function Header({
   onSignIn,
   autosaveState,
   pendingCount,
-  syncIssue
+  syncIssue,
+  syncFailureStatus
 }: {
   compact?: boolean;
   locale: Locale;
@@ -32,6 +33,7 @@ export function Header({
   autosaveState: AutosaveState;
   pendingCount: number;
   syncIssue?: SyncIssue;
+  syncFailureStatus?: number;
 }) {
   const autosaveLabel =
     autosaveState === "saving"
@@ -50,7 +52,11 @@ export function Header({
             {autosaveLabel}
             {pendingCount > 0 ? ` · ${t("pendingSync")}: ${pendingCount}` : ""}
           </output>
-          {syncIssue && <p role="alert">{t(syncIssue)}</p>}
+          {syncIssue && (
+            <p role="alert">
+              {t(syncIssue)} {syncIssue === "syncRejected" && syncFailureStatus ? `(HTTP ${syncFailureStatus})` : ""}
+            </p>
+          )}
         </div>
         <div className="studio-header-actions">
           <select
@@ -123,7 +129,11 @@ export function Header({
           )}
         </div>
       </div>
-      {syncIssue && <p role="alert">{t(syncIssue)}</p>}
+      {syncIssue && (
+        <p role="alert">
+          {t(syncIssue)} {syncIssue === "syncRejected" && syncFailureStatus ? `(HTTP ${syncFailureStatus})` : ""}
+        </p>
+      )}
       <fieldset
         className="mt-2 grid grid-cols-3 gap-1.5 rounded-[20px] border border-[#3D2B1F]/10 bg-[#FFF7E8]/70 p-1.5"
         aria-label={t("language")}

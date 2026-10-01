@@ -6,10 +6,11 @@ import type { ReadyProject } from "../domain/types";
  * без сети проекты сохраняются локально, при появлении сети очередь
  * выталкивается на сервер (см. useSavedProjects).
  */
-export type PendingOp =
+export type PendingOp = (
   | { kind: "create"; project: ReadyProject; queuedAt: number }
   | { kind: "update"; id: string; project: ReadyProject; queuedAt: number }
-  | { kind: "delete"; id: string; queuedAt: number };
+  | { kind: "delete"; id: string; queuedAt: number }
+) & { rejected?: { status?: number } };
 
 const cacheKey = (login: string) => `brick-stove-projects-cache:${login || "anon"}`;
 const pendingKey = (login: string) => `brick-stove-pending-ops:${login || "anon"}`;
@@ -78,6 +79,7 @@ export type FlushResult = {
   idMap: Record<string, string>;
   authFailed: boolean;
   permanentFailure?: boolean;
+  retryable?: boolean;
 };
 
 /**
@@ -85,14 +87,51 @@ export type FlushResult = {
  * - операции выполняются строго по порядку;
  * - транзиентная ошибка (сеть/5xx/429) прерывает прокачку — упавшая операция
  *   и ВСЁ после неё остаются в очереди (иначе старый update перегонит новый);
- * - permanent failures retain the failed operation and tail; only delete 404 is complete;
+ * - permanent failures retain data and block only same-project dependencies; delete 404 is complete;
  * - 401 останавливает всё до перелогина.
  * Чистая функция от (ops, executor) — покрыта юнит-тестами.
  */
 export async function flushOps(ops: PendingOp[], exec: FlushExecutor): Promise<FlushResult> {
   const idMap: Record<string, string> = {};
-  for (let i = 0; i < ops.length; i++) {
-    const op = ops[i];
+  const remaining: PendingOp[] = [];
+  const work = [...ops];
+  const key = (op: PendingOp) => (op.kind === "create" ? op.project.id : op.id);
+  // Only explicitly rejected writes may be replaced by a later user correction.
+  // Enqueue remains append-only, including while a snapshot is in flight.
+  for (let i = 0; i < work.length; i++) {
+    const failed = work[i];
+    if (!failed.rejected) continue;
+    let last = i;
+    for (let j = i + 1; j < work.length; j++) if (key(work[j]) === key(failed)) last = j;
+    if (last === i) continue;
+    const correction = work[last];
+    const replacement: PendingOp | null =
+      correction.kind === "delete"
+        ? failed.kind === "create"
+          ? null
+          : correction
+        : failed.kind === "create"
+          ? { kind: "create", project: correction.project, queuedAt: correction.queuedAt }
+          : correction;
+    for (let j = last; j > i; j--) if (key(work[j]) === key(failed)) work.splice(j, 1);
+    if (replacement) work[i] = { ...replacement, rejected: undefined };
+    else work.splice(i--, 1);
+  }
+  const blocked = new Set<string>();
+  const result = (tail: PendingOp[] = [], authFailed = false): FlushResult => ({
+    remaining: remapPendingOps([...remaining, ...tail], idMap),
+    idMap,
+    authFailed,
+    retryable: tail.length > 0 && !authFailed,
+    permanentFailure: remaining.some((op) => !!op.rejected)
+  });
+  for (let i = 0; i < work.length; i++) {
+    const op = work[i];
+    if (op.rejected || blocked.has(key(op))) {
+      blocked.add(key(op));
+      remaining.push(op);
+      continue;
+    }
     try {
       if (op.kind === "create") {
         const saved = await exec.create(op.project);
@@ -104,17 +143,21 @@ export async function flushOps(ops: PendingOp[], exec: FlushExecutor): Promise<F
         await exec.remove(idMap[op.id] ?? op.id);
       }
     } catch (error) {
-      if (exec.isAuth(error)) return { remaining: remapPendingOps(ops.slice(i), idMap), idMap, authFailed: true };
+      if (exec.isAuth(error)) return result(work.slice(i), true);
       if (op.kind === "delete" && exec.isNotFound?.(error)) continue;
-      return {
-        remaining: remapPendingOps(ops.slice(i), idMap),
-        idMap,
-        authFailed: false,
-        permanentFailure: exec.isPermanent(error)
-      };
+      if (exec.isPermanent(error)) {
+        const status =
+          typeof error === "object" && error !== null && "status" in error && typeof error.status === "number"
+            ? error.status
+            : undefined;
+        remaining.push({ ...op, rejected: { status } });
+        blocked.add(key(op));
+        continue;
+      }
+      return result(work.slice(i));
     }
   }
-  return { remaining: [], idMap, authFailed: false };
+  return result();
 }
 
 /** Apply successful creates to both failed operations and concurrent additions. */

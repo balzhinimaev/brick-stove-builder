@@ -98,3 +98,38 @@ describe("flushOps", () => {
     expect(calls).toEqual(["create:tmp", "update:srv-tmp", "delete:srv-tmp"]);
   });
 });
+
+it("retains create400 but executes independent delete/update, including a second flush", async () => {
+  const { exec, calls } = fakeExec({ "create:tmp": ["permanent"] });
+  const first = await flushOps([createOp("tmp"), updateOp("tmp"), deleteOp("old"), updateOp("other")], exec);
+  expect(calls).toEqual(["create:tmp", "delete:old", "update:other"]);
+  expect(first.remaining).toEqual([{ ...createOp("tmp"), rejected: {} }, updateOp("tmp")]);
+  await flushOps([first.remaining[0], deleteOp("another")], exec);
+  expect(calls.at(-1)).toBe("delete:another");
+  expect(calls.filter((c) => c === "create:tmp")).toHaveLength(1);
+});
+
+it("corrects rejected create with latest data and remaps following writes", async () => {
+  const { exec, calls } = fakeExec({});
+  const corrected = { ...updateOp("tmp", "new") };
+  const result = await flushOps([{ ...createOp("tmp"), rejected: { status: 400 } }, corrected], exec);
+  expect(result.remaining).toEqual([]);
+  expect(result.idMap).toEqual({ tmp: "srv-tmp" });
+  expect(calls).toEqual(["create:tmp"]);
+});
+
+it("cancels rejected creates locally and lets deletes bypass rejected updates", async () => {
+  const { exec, calls } = fakeExec({});
+  const result = await flushOps(
+    [
+      { ...createOp("tmp"), rejected: { status: 400 } },
+      updateOp("tmp"),
+      deleteOp("tmp"),
+      { ...updateOp("existing"), rejected: { status: 403 } },
+      deleteOp("existing")
+    ],
+    exec
+  );
+  expect(result.remaining).toEqual([]);
+  expect(calls).toEqual(["delete:existing"]);
+});

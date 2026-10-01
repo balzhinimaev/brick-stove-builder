@@ -143,7 +143,7 @@ const ru = {
   authBadCredentials: "Неверный логин или пароль",
   authRateLimited: "Слишком много попыток входа. Подождите немного и попробуйте снова.",
   syncRejected:
-    "Сервер отклонил изменения. Данные остаются в очереди; автоматические повторы остановлены. Скачайте файл проекта для резервной копии.",
+    "Сервер отклонил изменения. Данные сохранены в очереди. Исправьте и сохраните проект снова или удалите его, чтобы отменить запись. Другие проекты синхронизируются. Скачайте резервную копию.",
   syncCheckpointFailed:
     "Состояние очереди не сохранено на устройстве. Не закрывайте вкладку; освободите место в хранилище браузера. Синхронизация не подтверждена.",
   authUnavailable: "Сервис входа недоступен или не удалось сохранить сессию. Попробуйте позже.",
@@ -392,7 +392,7 @@ const en: Record<TranslationKey, string> = {
   authBadCredentials: "Invalid login or password",
   authRateLimited: "Too many sign-in attempts. Wait a moment and try again.",
   syncRejected:
-    "The server rejected the changes. Data remains queued; automatic retries have stopped. Download the project file as a backup.",
+    "The server rejected the changes. Data remains queued. Edit and save the project again, or delete it to cancel the write. Other projects continue syncing. Download a backup.",
   syncCheckpointFailed:
     "Queue state could not be saved on this device. Keep this tab open and free browser storage. Synchronization is not confirmed.",
   authUnavailable: "Login service unavailable or session storage failed. Please try again later.",
@@ -640,7 +640,7 @@ const lt: Record<TranslationKey, string> = {
   authBadCredentials: "Neteisingas prisijungimas arba slaptažodis",
   authRateLimited: "Per daug bandymų prisijungti. Šiek tiek palaukite ir bandykite dar kartą.",
   syncRejected:
-    "Serveris atmetė pakeitimus. Duomenys lieka eilėje; automatiniai bandymai sustabdyti. Atsisiųskite projekto failą kaip atsarginę kopiją.",
+    "Serveris atmetė pakeitimus. Duomenys lieka eilėje. Pataisykite ir išsaugokite projektą arba ištrinkite jį, kad atšauktumėte įrašą. Kiti projektai sinchronizuojami. Atsisiųskite atsarginę kopiją.",
   syncCheckpointFailed:
     "Eilės būsenos nepavyko išsaugoti įrenginyje. Neuždarykite kortelės ir atlaisvinkite naršyklės saugyklą. Sinchronizavimas nepatvirtintas.",
   authUnavailable: "Prisijungimo paslauga nepasiekiama arba nepavyko išsaugoti sesijos. Bandykite vėliau.",

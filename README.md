@@ -190,7 +190,9 @@ if the browser cannot persist that queue, the UI reports failure instead of conf
 Rejected create/update operations remain pending (including permanent HTTP failures); only
 deleting an already-missing project (404) is acknowledged. Session-token and list-revision
 guards prevent late responses from replacing newer account state. Permanent server rejections
-are shown in the header and stop automatic retries without discarding queued changes.
+are shown in the header with an HTTP code. Rejected writes remain recoverable and block only
+the same project; independent projects continue syncing. Save an edited project again to replace
+a rejected write, or delete it to cancel (an uncreated project is cancelled locally).
 A failed queue checkpoint (even an empty queue) remains visibly unconfirmed until browser
 storage recovers; keep the tab open and export a project backup. Sign-in rate limits
 have a separate translated message.

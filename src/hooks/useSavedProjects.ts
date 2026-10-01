@@ -53,6 +53,7 @@ export function useSavedProjects(
   const [savedProjects, setSavedProjects] = useState<ReadyProject[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncIssue, setSyncIssue] = useState<SyncIssue>(null);
+  const [syncFailureStatus, setSyncFailureStatus] = useState<number | undefined>(undefined);
   const revision = useRef(0);
   const callbacks = useRef({ onIdRemap, onAuthFailure });
   callbacks.current = { onIdRemap, onAuthFailure };
@@ -110,7 +111,10 @@ export function useSavedProjects(
         setPendingCount(ops.length);
       }
       if (ops.length) {
-        const { remaining, idMap, authFailed, permanentFailure } = await flushOps(ops, makeExecutor(active.token));
+        const { remaining, idMap, authFailed, permanentFailure, retryable } = await flushOps(
+          ops,
+          makeExecutor(active.token)
+        );
         // Пока шла прокачка, пользователь мог насохранять ещё — сливаем хвосты,
         // а не перезаписываем очередь снапшотом.
         const addedMeanwhile = loadPendingOps(active.login).slice(ops.length);
@@ -118,6 +122,7 @@ export function useSavedProjects(
         const checkpointSaved = savePendingOps(active.login, nextOps);
         if (isCurrent()) {
           setPendingCount(nextOps.length);
+          setSyncFailureStatus(nextOps.find((op) => op.rejected)?.rejected?.status);
           setSyncIssue(!checkpointSaved ? "syncCheckpointFailed" : permanentFailure ? "syncRejected" : null);
         }
         if (Object.keys(idMap).length) {
@@ -141,7 +146,7 @@ export function useSavedProjects(
             window.clearTimeout(retryTimer.current);
             retryTimer.current = null;
           }
-          rerunAfterFlush.current = false;
+          if (retryable) scheduleRetry();
           return;
         }
         if (nextOps.length) {
@@ -174,6 +179,7 @@ export function useSavedProjects(
 
   useEffect(() => {
     setSyncIssue(null);
+    setSyncFailureStatus(undefined);
     if (!currentLogin || !session?.token) {
       setSavedProjects([]);
       setPendingCount(0);
@@ -254,6 +260,7 @@ export function useSavedProjects(
     savedProjects,
     pendingCount,
     syncIssue,
+    syncFailureStatus,
     saveProject,
     updateProject,
     removeProject,

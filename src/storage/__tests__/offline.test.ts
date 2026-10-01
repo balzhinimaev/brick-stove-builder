@@ -49,7 +49,8 @@ function fakeExec(script: Record<string, Array<"ok" | "net" | "permanent" | "aut
       next(`delete:${id}`);
     },
     isPermanent: (e) => e instanceof Permanent,
-    isAuth: (e) => e instanceof Auth
+    isAuth: (e) => e instanceof Auth,
+    isNotFound: (e) => e instanceof Permanent
   };
   return { exec, calls };
 }

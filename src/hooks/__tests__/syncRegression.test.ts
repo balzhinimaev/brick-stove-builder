@@ -1,23 +1,42 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { useSavedProjects } from "../useSavedProjects";
 import { enqueuePendingOp, loadPendingOps, savePendingOps, flushOps, remapPendingOps } from "../../storage/offline";
-import { updateSavedProject } from "../../api/client";
+import { updateSavedProject, fetchSavedProjects } from "../../api/client";
 import type { ReadyProject } from "../../domain/types";
 import { authFailureKey } from "../../api/authFailure";
 import { isSaveShortcut } from "../../lib/shortcuts";
 
+const harness = vi.hoisted(() => ({ slots: [] as unknown[], index: 0 }));
+function render(session: { login: string; token: string }, onAuthFailure?: () => void) {
+  harness.index = 0;
+  return useSavedProjects(session, undefined, onAuthFailure);
+}
 vi.mock("react", () => ({
   useCallback: (fn: unknown) => fn,
-  useRef: (current: unknown) => ({ current }),
-  useState: (initial: unknown) => [initial, vi.fn()],
+  useRef: (current: unknown) => {
+    const i = harness.index++;
+    if (!harness.slots[i]) harness.slots[i] = { current };
+    return harness.slots[i];
+  },
+  useState: (initial: unknown) => {
+    const i = harness.index++;
+    if (!(i in harness.slots)) harness.slots[i] = initial;
+    return [
+      harness.slots[i],
+      (next: unknown) => {
+        harness.slots[i] = typeof next === "function" ? next(harness.slots[i]) : next;
+      }
+    ];
+  },
   useEffect: vi.fn()
 }));
 vi.mock("../../api/client", () => ({
+  ApiError: class extends Error {},
   createSavedProject: vi.fn(),
   updateSavedProject: vi.fn(async (_id, p) => p),
   deleteSavedProject: vi.fn(),
   fetchSavedProjects: vi.fn(async () => []),
-  isAuthError: () => false,
+  isAuthError: (e: unknown) => e === "old401",
   isPermanentError: () => false
 }));
 const project = { id: "p", accent: "v1" } as ReadyProject;
@@ -32,6 +51,8 @@ function storage() {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  harness.slots = [];
+  harness.index = 0;
 });
 it("online update joins old queued update, including a save during flush", async () => {
   storage();
@@ -126,4 +147,89 @@ it("retries persistence of an empty checkpoint after storage recovers", async ()
   vi.stubGlobal("localStorage", { getItem: () => null, setItem });
   await useSavedProjects({ login: "recovered", token: "test" }).flushPending();
   expect(setItem).toHaveBeenCalledWith("brick-stove-pending-ops:recovered", "[]");
+});
+
+it("old token 401 cannot invalidate the new session with the same login", async () => {
+  storage();
+  let reject!: (e: unknown) => void;
+  vi.mocked(fetchSavedProjects).mockImplementationOnce(
+    () =>
+      new Promise((_resolve, fail) => {
+        reject = fail;
+      })
+  );
+  const logout = vi.fn();
+  const old = render({ login: "same", token: "token1" }, logout);
+  const pending = old.flushPending();
+  render({ login: "same", token: "token2" }, logout);
+  reject("old401");
+  await pending;
+  expect(logout).not.toHaveBeenCalled();
+});
+it("old token GET cannot overwrite a new session's list", async () => {
+  storage();
+  let resolve!: (p: ReadyProject[]) => void;
+  vi.mocked(fetchSavedProjects).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      })
+  );
+  const pending = render({ login: "same", token: "token1" }).flushPending();
+  render({ login: "same", token: "token2" });
+  resolve([project]);
+  await pending;
+  expect(render({ login: "same", token: "token2" }).savedProjects).toEqual([]);
+});
+it("GET cannot overwrite an optimistic revision even with an empty queue", async () => {
+  storage();
+  const session = { login: "revision", token: "test" };
+  // Install an existing card through a completed GET.
+  vi.mocked(fetchSavedProjects).mockResolvedValueOnce([project]);
+  await render(session).flushPending();
+  let resolve!: (p: ReadyProject[]) => void;
+  vi.mocked(fetchSavedProjects).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resolve = done;
+      })
+  );
+  const hook = render(session);
+  const pending = hook.flushPending();
+  hook.replaceProject({ ...project, accent: "optimistic" });
+  resolve([project]);
+  await pending;
+  expect(render(session).savedProjects[0].accent).toBe("optimistic");
+});
+it("quota failure on delete preserves the card and pending count", async () => {
+  storage();
+  const session = { login: "delete-quota", token: "test" };
+  vi.mocked(fetchSavedProjects).mockResolvedValueOnce([project]);
+  await render(session).flushPending();
+  vi.stubGlobal("localStorage", {
+    getItem: () => null,
+    setItem: () => {
+      throw new Error("quota");
+    }
+  });
+  expect(await render(session).removeProject("p", "test")).toBe(false);
+  const hook = render(session);
+  expect(hook.savedProjects).toEqual([project]);
+  expect(hook.pendingCount).toBe(0);
+});
+it("permanent create/update failures retain the operation and its tail", async () => {
+  for (const kind of ["create", "update"] as const) {
+    const op = { kind, id: "p", project, queuedAt: 1 };
+    const tail = { kind: "delete" as const, id: "p", queuedAt: 2 };
+    const reject = vi.fn().mockRejectedValue(new Error("400"));
+    const result = await flushOps([op, tail], {
+      create: reject,
+      update: reject,
+      remove: vi.fn(),
+      isPermanent: () => true,
+      isAuth: () => false,
+      isNotFound: () => false
+    });
+    expect(result.remaining).toEqual([op, tail]);
+  }
 });

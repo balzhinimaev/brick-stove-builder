@@ -56,6 +56,10 @@ export function useStudioState() {
   // Recognise restored editable copies by their hardware IDs, not by a claim that their geometry is unchanged.
   const showTeplushkaGuide = demoProjectId === "russian-stove-hob" || Object.values(teplushkaState.gates).some(Boolean);
   const session = useSession(t);
+  const activeSessionRef = useRef(session.session);
+  activeSessionRef.current = session.session;
+  const isActiveSession = (captured: typeof session.session) =>
+    captured?.login === activeSessionRef.current?.login && captured?.token === activeSessionRef.current?.token;
   /**
    * Какой СВОЙ сохранённый проект сейчас открыт в редакторе. Пока он задан,
    * «Сохранить проект» обновляет документ вместо создания дубля.
@@ -163,12 +167,14 @@ export function useStudioState() {
       setScreen("auth");
       return;
     }
+    const capturedSession = session.session;
     let local: Awaited<ReturnType<typeof localWorkspace.flush>>;
     try {
       local = await localWorkspace.flush();
     } catch {
       return;
     }
+    if (!isActiveSession(capturedSession)) return;
     const localId = local.id,
       remoteId = local.remoteId;
     const editingOwn = savedProjects.find((item) => item.id === remoteId);
@@ -196,12 +202,14 @@ export function useStudioState() {
     // null — постоянный отказ сервера (или разлогин), сохранение не удалось
     if (remoteId) {
       const saved = await updateProject(remoteId, project, session.session.token);
+      if (!isActiveSession(capturedSession)) return;
       if (!saved) {
         window.alert(t("apiUnavailable"));
         return;
       }
     } else {
       const saved = await saveProject(project, session.session.token);
+      if (!isActiveSession(capturedSession)) return;
       if (!saved) {
         window.alert(t("apiUnavailable"));
         return;
@@ -213,7 +221,8 @@ export function useStudioState() {
 
   const deleteProject = async (project: ReadyProject) => {
     if (!session.session) return;
-    await removeProject(project.id, session.session.token);
+    const capturedSession = session.session;
+    if (!(await removeProject(project.id, capturedSession.token)) || !isActiveSession(capturedSession)) return;
     if (currentProjectId === project.id) setCurrentProjectId(null);
   };
 
@@ -222,8 +231,10 @@ export function useStudioState() {
       window.alert(t("authLoginFirst"));
       return;
     }
+    const capturedSession = session.session;
     try {
-      replaceProject(await publishProjectApi(project.id, fields, session.session.token));
+      const saved = await publishProjectApi(project.id, fields, capturedSession.token);
+      if (isActiveSession(capturedSession)) replaceProject(saved);
     } catch {
       window.alert(t("apiUnavailable"));
     }
@@ -231,8 +242,10 @@ export function useStudioState() {
 
   const unpublishSavedProject = async (project: ReadyProject) => {
     if (!session.session) return;
+    const capturedSession = session.session;
     try {
-      replaceProject(await unpublishProjectApi(project.id, session.session.token));
+      const saved = await unpublishProjectApi(project.id, capturedSession.token);
+      if (isActiveSession(capturedSession)) replaceProject(saved);
     } catch {
       window.alert(t("apiUnavailable"));
     }

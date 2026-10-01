@@ -187,6 +187,9 @@ Keyboard: **R** rotates the selected tool, **B** selects brick, **E** selects er
 **Ctrl/Cmd+Z** undoes and **Ctrl/Cmd+Shift+Z** redoes. **Ctrl/Cmd+S** saves to the local library (including Russian keyboard layout and focused forms).
 Other form shortcuts remain native. Account changes always join the ordered offline queue;
 if the browser cannot persist that queue, the UI reports failure instead of confirming a save.
+Rejected create/update operations remain pending (including permanent HTTP failures); only
+deleting an already-missing project (404) is acknowledged. Session-token and list-revision
+guards prevent late responses from replacing newer account state.
 The Set position button and X/Z controls provide a placement route without canvas tapping.
 X/Z fields accept millimetres independently of grid snapping, so custom cuts can be
 aligned precisely even when an edge falls between the 62.5 mm grid lines.

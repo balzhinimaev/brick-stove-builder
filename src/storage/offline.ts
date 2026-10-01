@@ -64,10 +64,11 @@ export type FlushExecutor = {
   create: (project: ReadyProject) => Promise<ReadyProject>;
   update: (id: string, project: ReadyProject) => Promise<ReadyProject>;
   remove: (id: string) => Promise<void>;
-  /** Ошибка постоянная (404/400…): ретрай бессмысленен, операция выбрасывается. */
+  /** Permanent failures remain pending for recovery, never silently acknowledged. */
   isPermanent: (error: unknown) => boolean;
   /** 401: токен недействителен — очередь замирает до перелогина. */
   isAuth: (error: unknown) => boolean;
+  isNotFound?: (error: unknown) => boolean;
 };
 
 export type FlushResult = {
@@ -83,8 +84,7 @@ export type FlushResult = {
  * - операции выполняются строго по порядку;
  * - транзиентная ошибка (сеть/5xx/429) прерывает прокачку — упавшая операция
  *   и ВСЁ после неё остаются в очереди (иначе старый update перегонит новый);
- * - постоянная ошибка (404/400) выбрасывает только эту операцию: повтор
- *   не поможет, а операция-отрава навсегда заблокировала бы очередь;
+ * - permanent failures retain the failed operation and tail; only delete 404 is complete;
  * - 401 останавливает всё до перелогина.
  * Чистая функция от (ops, executor) — покрыта юнит-тестами.
  */
@@ -104,7 +104,7 @@ export async function flushOps(ops: PendingOp[], exec: FlushExecutor): Promise<F
       }
     } catch (error) {
       if (exec.isAuth(error)) return { remaining: remapPendingOps(ops.slice(i), idMap), idMap, authFailed: true };
-      if (exec.isPermanent(error)) continue;
+      if (op.kind === "delete" && exec.isNotFound?.(error)) continue;
       return { remaining: remapPendingOps(ops.slice(i), idMap), idMap, authFailed: false };
     }
   }

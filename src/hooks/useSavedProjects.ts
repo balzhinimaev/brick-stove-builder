@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ApiError,
   createSavedProject,
   deleteSavedProject,
   fetchSavedProjects,
@@ -30,7 +31,8 @@ function makeExecutor(token: string): FlushExecutor {
     update: (id, project) => updateSavedProject(id, project, token),
     remove: (id) => deleteSavedProject(id, token),
     isPermanent: isPermanentError,
-    isAuth: isAuthError
+    isAuth: isAuthError,
+    isNotFound: (error) => error instanceof ApiError && error.status === 404
   };
 }
 
@@ -49,6 +51,9 @@ export function useSavedProjects(
 ) {
   const [savedProjects, setSavedProjects] = useState<ReadyProject[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const revision = useRef(0);
+  const callbacks = useRef({ onIdRemap, onAuthFailure });
+  callbacks.current = { onIdRemap, onAuthFailure };
   const flushing = useRef(false);
   const rerunAfterFlush = useRef(false);
   const retryTimer = useRef<number | null>(null);
@@ -88,6 +93,7 @@ export function useSavedProjects(
       rerunAfterFlush.current = true;
       return;
     }
+    const isCurrent = () => active.login === sessionRef.current?.login && active.token === sessionRef.current?.token;
     flushing.current = true;
     try {
       const ops = loadPendingOps(active.login);
@@ -99,21 +105,22 @@ export function useSavedProjects(
         // а не перезаписываем очередь снапшотом.
         const addedMeanwhile = loadPendingOps(active.login).slice(ops.length);
         const nextOps = [...remaining, ...remapPendingOps(addedMeanwhile, idMap)];
-        if (!savePendingOps(active.login, nextOps) && active.login === loginRef.current) {
+        if (!savePendingOps(active.login, nextOps) && isCurrent()) {
           scheduleRetry();
           window.alert(
             "Не удалось записать состояние синхронизации. Очередь сохранена только в памяти этой вкладки; не закрывайте её до повторной синхронизации."
           );
         }
-        if (active.login === loginRef.current) setPendingCount(nextOps.length);
+        if (isCurrent()) setPendingCount(nextOps.length);
         if (Object.keys(idMap).length) {
-          persistList(active.login, (current) =>
-            current.map((item) => (idMap[item.id] ? { ...item, id: idMap[item.id] } : item))
-          );
-          if (active.login === loginRef.current) onIdRemap?.(idMap);
+          if (isCurrent())
+            persistList(active.login, (current) =>
+              current.map((item) => (idMap[item.id] ? { ...item, id: idMap[item.id] } : item))
+            );
+          if (isCurrent()) callbacks.current.onIdRemap?.(idMap);
         }
         if (authFailed) {
-          if (active.token === sessionRef.current?.token) onAuthFailure?.();
+          if (isCurrent()) callbacks.current.onAuthFailure?.();
           return;
         }
         if (nextOps.length) {
@@ -123,11 +130,14 @@ export function useSavedProjects(
       }
       // Очередь пуста — серверный список авторитетен, в том числе пустой
       // (проект могли удалить с другого устройства).
+      if (!isCurrent()) return;
+      const requestedRevision = revision.current;
       const fresh = await fetchSavedProjects(active.token);
-      if (!loadPendingOps(active.login).length) persistList(active.login, () => fresh);
+      if (isCurrent() && requestedRevision === revision.current && !loadPendingOps(active.login).length)
+        persistList(active.login, () => fresh);
     } catch (error) {
       if (isAuthError(error)) {
-        if (active.token === sessionRef.current?.token) onAuthFailure?.();
+        if (isCurrent()) callbacks.current.onAuthFailure?.();
         return;
       }
       scheduleRetry();
@@ -138,11 +148,11 @@ export function useSavedProjects(
         void flushRef.current();
       }
     }
-  }, [onIdRemap, onAuthFailure, persistList, scheduleRetry]);
+  }, [persistList, scheduleRetry]);
   flushRef.current = flushPending;
 
   useEffect(() => {
-    if (!currentLogin) {
+    if (!currentLogin || !session?.token) {
       setSavedProjects([]);
       setPendingCount(0);
       return;
@@ -161,14 +171,16 @@ export function useSavedProjects(
         retryTimer.current = null;
       }
     };
-  }, [currentLogin]);
+  }, [currentLogin, session?.token]);
 
   // Every mutation joins the same writer, including when the network is online.
   const queue = useCallback((op: PendingOp, token: string) => {
     const active = sessionRef.current;
     if (!active || active.token !== token) return false;
     try {
-      setPendingCount(enqueuePendingOp(active.login, op).length);
+      const ops = enqueuePendingOp(active.login, op);
+      revision.current++;
+      setPendingCount(ops.length);
       return true;
     } catch {
       window.alert(
@@ -200,15 +212,17 @@ export function useSavedProjects(
 
   const removeProject = useCallback(
     async (id: string, token: string) => {
-      if (!queue({ kind: "delete", id, queuedAt: Date.now() }, token)) return;
+      if (!queue({ kind: "delete", id, queuedAt: Date.now() }, token)) return false;
       persistList(loginRef.current, (current) => current.filter((item) => item.id !== id));
       void flushRef.current();
+      return true;
     },
     [persistList, queue]
   );
 
   const replaceProject = useCallback(
     (project: ReadyProject) => {
+      revision.current++;
       persistList(loginRef.current, (current) => current.map((item) => (item.id === project.id ? project : item)));
     },
     [persistList]

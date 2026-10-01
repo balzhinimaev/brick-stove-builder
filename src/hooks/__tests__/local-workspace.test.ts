@@ -2,7 +2,8 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { DraftSnapshot } from "../../domain/editor";
 import { initialEditorState } from "../../domain/editor/state";
-import { indexedWorkspace } from "../../storage/workspace";
+import * as workspaceStorage from "../../storage/workspace";
+import { indexedWorkspace, newLocalProject } from "../../storage/workspace";
 
 // Existing project practice: drive hook state/effects in Node, without DOM/browser rendering.
 const hooks = vi.hoisted(() => ({
@@ -44,11 +45,11 @@ vi.mock("react", async (original) => ({
 }));
 import { useLocalWorkspace } from "../useLocalWorkspace";
 
-let snapshot: DraftSnapshot, factory: IDBFactory, navigated: boolean | undefined;
+let snapshot: DraftSnapshot, factory: IDBFactory, navigated: boolean | undefined, login: string;
 function render() {
   hooks.cursor = 0;
   // biome-ignore lint/correctness/useHookAtTopLevel: this Node harness explicitly owns and replays the mocked hook slots; no React component is rendered.
-  const workspace = useLocalWorkspace("", snapshot, (next, navigate) => {
+  const workspace = useLocalWorkspace(login, snapshot, (next, navigate) => {
     snapshot = next;
     navigated = navigate;
   });
@@ -78,6 +79,7 @@ beforeEach(() => {
   snapshot = initialEditorState();
   factory = new IDBFactory();
   navigated = undefined;
+  login = "";
   vi.stubGlobal("indexedDB", factory);
   vi.stubGlobal("localStorage", { getItem: () => null });
   vi.stubGlobal("window", { addEventListener: () => {}, removeEventListener: () => {}, prompt: () => "Safe copy" });
@@ -85,7 +87,116 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+it.each(["active", "read"] as const)("ignores manual save while initial %s lookup is pending", async (method) => {
+  const store = indexedWorkspace(factory);
+  const existing = newLocalProject("guest", "Existing stove", initialEditorState());
+  await store.write(existing, true);
+  const gate = deferred();
+  const original = store[method];
+  const write = vi.fn(store.write);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
+    ...store,
+    write,
+    [method]: async (id: string) => {
+      await gate.promise;
+      return original(id);
+    }
+  });
+  snapshot = { ...initialEditorState(), rows: {} };
+  const value = render();
+  expect(value.ready).toBe(false);
+  const saving = value.save();
+  gate.resolve();
+  await saving;
+  const loaded = await boot();
+  expect(loaded.info?.id).toBe(existing.id);
+  expect(snapshot.rows).toEqual(existing.snapshot.rows);
+  expect((await store.read(existing.id))?.snapshot).toEqual(existing.snapshot);
+  expect(write).not.toHaveBeenCalled();
+});
+
+it("ignores current and stale save callbacks while another account is hydrating", async () => {
+  const store = indexedWorkspace(factory);
+  const guest = newLocalProject("guest", "Guest stove", initialEditorState());
+  const account = newLocalProject("alice", "Account stove", { ...initialEditorState(), rows: {} });
+  await store.write(guest, true);
+  await store.write(account, true);
+  const gate = deferred();
+  const write = vi.fn(store.write);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
+    ...store,
+    write,
+    active: async (ns) => {
+      if (ns === "alice") await gate.promise;
+      return store.active(ns);
+    }
+  });
+  const oldSave = (await boot()).save;
+  login = "alice";
+  // This render still has the previous account's ready state until its effect runs.
+  const value = render();
+  expect(value.ready).toBe(true);
+  const pending = Promise.all([oldSave(), value.save()]);
+  gate.resolve();
+  await pending;
+  await boot();
+  expect((await store.read(account.id))?.snapshot).toEqual(account.snapshot);
+  expect(write.mock.calls.filter(([doc]) => doc.id === account.id)).toHaveLength(0);
+});
+
+it("ignores manual save while a project switch persists the outgoing edits", async () => {
+  const store = indexedWorkspace(factory);
+  const write = vi.fn(store.write);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({ ...store, write });
+  let value = await boot();
+  await value.save();
+  value = render();
+  const id = value.info!.id;
+  snapshot = { ...snapshot, lockedRows: [] };
+  value = render();
+  const gate = deferred();
+  write.mockClear();
+  write.mockImplementationOnce(async (...args) => {
+    await gate.promise;
+    await store.write(...args);
+  });
+  const switching = value.create("Other stove", { ...initialEditorState(), rows: {} });
+  const saving = value.save();
+  gate.resolve();
+  expect(await switching).toBe(true);
+  await saving;
+  value = render();
+  expect(value.info?.id).not.toBe(id);
+  expect(snapshot.rows).toEqual({});
+  expect(write.mock.calls.filter(([doc]) => doc.id === id)).toHaveLength(1);
+});
+
+it("allows explicit recovery save after loading fails", async () => {
+  const store = indexedWorkspace(factory);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
+    ...store,
+    active: vi.fn().mockRejectedValueOnce(new Error("Temporarily unavailable"))
+  });
+  let value = await boot();
+  expect(value.state).toBe("error");
+  snapshot = { ...snapshot, lockedRows: [] };
+  value = render();
+  await value.save();
+  value = render();
+  expect(value.state).toBe("saved");
+  expect((await store.read(value.info!.id))?.snapshot.lockedRows).toEqual([]);
 });
 
 it("migrates the old draft without deleting it or overriding a showcase deep-link", async () => {

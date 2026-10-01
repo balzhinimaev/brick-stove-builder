@@ -33,6 +33,7 @@ export function useLocalWorkspace(
   loadRef.current = onLoad;
   const scope = useRef(namespace);
   scope.current = namespace;
+  const readyScope = useRef<string | null>(null);
   const hydrated = useRef(false);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -61,6 +62,7 @@ export function useLocalWorkspace(
 
   useEffect(() => {
     let alive = true;
+    readyScope.current = null;
     hydrated.current = false;
     setReady(false);
     setState("loading");
@@ -95,6 +97,7 @@ export function useLocalWorkspace(
       }
       await refresh(namespace);
       if (alive) {
+        readyScope.current = namespace;
         hydrated.current = true;
         setReady(true);
         setState("saved");
@@ -103,6 +106,7 @@ export function useLocalWorkspace(
     }).catch((e) => {
       if (alive) {
         fail(e);
+        readyScope.current = namespace;
         setReady(true);
       }
     });
@@ -229,11 +233,14 @@ export function useLocalWorkspace(
     }
   };
   const save = async () => {
+    // Check live readiness, including calls held by hotkeys across account changes.
+    // A failed load still permits an explicit recovery save after it has settled.
+    if (scope.current !== namespace || readyScope.current !== namespace || switching.current) return;
     try {
       await flush(true);
-      hydrated.current = true;
+      if (scope.current === namespace && readyScope.current === namespace) hydrated.current = true;
     } catch (e) {
-      fail(e);
+      if (scope.current === namespace) fail(e);
     }
   };
   const saveCopy = async () => {

@@ -77,6 +77,7 @@ export type FlushResult = {
   /** Временный id офлайн-созданного проекта → серверный id. */
   idMap: Record<string, string>;
   authFailed: boolean;
+  permanentFailure?: boolean;
 };
 
 /**
@@ -105,7 +106,12 @@ export async function flushOps(ops: PendingOp[], exec: FlushExecutor): Promise<F
     } catch (error) {
       if (exec.isAuth(error)) return { remaining: remapPendingOps(ops.slice(i), idMap), idMap, authFailed: true };
       if (op.kind === "delete" && exec.isNotFound?.(error)) continue;
-      return { remaining: remapPendingOps(ops.slice(i), idMap), idMap, authFailed: false };
+      return {
+        remaining: remapPendingOps(ops.slice(i), idMap),
+        idMap,
+        authFailed: false,
+        permanentFailure: exec.isPermanent(error)
+      };
     }
   }
   return { remaining: [], idMap, authFailed: false };

@@ -189,7 +189,11 @@ Other form shortcuts remain native. Account changes always join the ordered offl
 if the browser cannot persist that queue, the UI reports failure instead of confirming a save.
 Rejected create/update operations remain pending (including permanent HTTP failures); only
 deleting an already-missing project (404) is acknowledged. Session-token and list-revision
-guards prevent late responses from replacing newer account state.
+guards prevent late responses from replacing newer account state. Permanent server rejections
+are shown in the header and stop automatic retries without discarding queued changes.
+A failed queue checkpoint (even an empty queue) remains visibly unconfirmed until browser
+storage recovers; keep the tab open and export a project backup. Sign-in rate limits
+have a separate translated message.
 The Set position button and X/Z controls provide a placement route without canvas tapping.
 X/Z fields accept millimetres independently of grid snapping, so custom cuts can be
 aligned precisely even when an edge falls between the 62.5 mm grid lines.

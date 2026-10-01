@@ -24,6 +24,7 @@ import type { ReadyProject } from "../domain/types";
 
 /** Пауза перед повтором синка после неудачи (сервер моргнул без потери сети). */
 const RETRY_MS = 30_000;
+export type SyncIssue = "syncRejected" | "syncCheckpointFailed" | null;
 
 function makeExecutor(token: string): FlushExecutor {
   return {
@@ -51,6 +52,7 @@ export function useSavedProjects(
 ) {
   const [savedProjects, setSavedProjects] = useState<ReadyProject[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [syncIssue, setSyncIssue] = useState<SyncIssue>(null);
   const revision = useRef(0);
   const callbacks = useRef({ onIdRemap, onAuthFailure });
   callbacks.current = { onIdRemap, onAuthFailure };
@@ -98,20 +100,26 @@ export function useSavedProjects(
     try {
       const ops = loadPendingOps(active.login);
       // Retry an earlier failed checkpoint even when its in-memory queue is empty.
-      if (!savePendingOps(active.login, ops)) scheduleRetry();
+      if (!savePendingOps(active.login, ops)) {
+        if (isCurrent()) setSyncIssue("syncCheckpointFailed");
+        scheduleRetry();
+        return;
+      }
+      if (isCurrent()) {
+        setSyncIssue(null);
+        setPendingCount(ops.length);
+      }
       if (ops.length) {
-        const { remaining, idMap, authFailed } = await flushOps(ops, makeExecutor(active.token));
+        const { remaining, idMap, authFailed, permanentFailure } = await flushOps(ops, makeExecutor(active.token));
         // Пока шла прокачка, пользователь мог насохранять ещё — сливаем хвосты,
         // а не перезаписываем очередь снапшотом.
         const addedMeanwhile = loadPendingOps(active.login).slice(ops.length);
         const nextOps = [...remaining, ...remapPendingOps(addedMeanwhile, idMap)];
-        if (!savePendingOps(active.login, nextOps) && isCurrent()) {
-          scheduleRetry();
-          window.alert(
-            "Не удалось записать состояние синхронизации. Очередь сохранена только в памяти этой вкладки; не закрывайте её до повторной синхронизации."
-          );
+        const checkpointSaved = savePendingOps(active.login, nextOps);
+        if (isCurrent()) {
+          setPendingCount(nextOps.length);
+          setSyncIssue(!checkpointSaved ? "syncCheckpointFailed" : permanentFailure ? "syncRejected" : null);
         }
-        if (isCurrent()) setPendingCount(nextOps.length);
         if (Object.keys(idMap).length) {
           if (isCurrent())
             persistList(active.login, (current) =>
@@ -121,6 +129,19 @@ export function useSavedProjects(
         }
         if (authFailed) {
           if (isCurrent()) callbacks.current.onAuthFailure?.();
+          return;
+        }
+        if (!checkpointSaved) {
+          scheduleRetry();
+          return;
+        }
+        if (permanentFailure && isCurrent()) {
+          // Keep the rejected data, but stop automatic retries until a new user/online signal.
+          if (retryTimer.current !== null) {
+            window.clearTimeout(retryTimer.current);
+            retryTimer.current = null;
+          }
+          rerunAfterFlush.current = false;
           return;
         }
         if (nextOps.length) {
@@ -152,6 +173,7 @@ export function useSavedProjects(
   flushRef.current = flushPending;
 
   useEffect(() => {
+    setSyncIssue(null);
     if (!currentLogin || !session?.token) {
       setSavedProjects([]);
       setPendingCount(0);
@@ -228,5 +250,14 @@ export function useSavedProjects(
     [persistList]
   );
 
-  return { savedProjects, pendingCount, saveProject, updateProject, removeProject, replaceProject, flushPending };
+  return {
+    savedProjects,
+    pendingCount,
+    syncIssue,
+    saveProject,
+    updateProject,
+    removeProject,
+    replaceProject,
+    flushPending
+  };
 }

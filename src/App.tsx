@@ -41,6 +41,7 @@ export default function App() {
           onSignIn={() => studio.setScreen("auth")}
           autosaveState={studio.autosaveState}
           pendingCount={studio.pendingCount}
+          syncIssue={studio.syncIssue}
         />
         {screen === "builder" && studio.showTeplushkaGuide ? (
           <details className="studio-top-guide">

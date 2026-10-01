@@ -37,7 +37,7 @@ vi.mock("../../api/client", () => ({
   deleteSavedProject: vi.fn(),
   fetchSavedProjects: vi.fn(async () => []),
   isAuthError: (e: unknown) => e === "old401",
-  isPermanentError: () => false
+  isPermanentError: (e: unknown) => e === "permanent400"
 }));
 const project = { id: "p", accent: "v1" } as ReadyProject;
 function storage() {
@@ -46,7 +46,7 @@ function storage() {
     getItem: (k: string) => data.get(k),
     setItem: (k: string, v: string) => data.set(k, v)
   });
-  vi.stubGlobal("window", { alert: vi.fn(), setTimeout: vi.fn(() => 1) });
+  vi.stubGlobal("window", { alert: vi.fn(), setTimeout: vi.fn(() => 1), clearTimeout: vi.fn() });
 }
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -114,7 +114,8 @@ it("successful create remaps failed tail and concurrently queued operations for 
   expect(exec.remove).toHaveBeenCalledWith("remote");
 });
 it("auth distinguishes credentials from unavailable service", () => {
-  for (const status of [429, 500, 503]) expect(authFailureKey("login", status)).toBe("authUnavailable");
+  for (const status of [500, 503]) expect(authFailureKey("login", status)).toBe("authUnavailable");
+  for (const mode of ["login", "register"] as const) expect(authFailureKey(mode, 429)).toBe("authRateLimited");
   expect(authFailureKey("login", 401)).toBe("authBadCredentials");
   expect(authFailureKey("register", 409)).toBe("authTaken");
 });
@@ -231,5 +232,51 @@ it("permanent create/update failures retain the operation and its tail", async (
       isNotFound: () => false
     });
     expect(result.remaining).toEqual([op, tail]);
+    expect(result.permanentFailure).toBe(true);
   }
+});
+
+it("permanent rejection is visible and does not schedule silent retries", async () => {
+  storage();
+  const session = { login: "visible-rejection", token: "test" };
+  enqueuePendingOp(session.login, { kind: "update", id: "p", project, queuedAt: 1 });
+  vi.mocked(updateSavedProject).mockRejectedValueOnce("permanent400");
+  await render(session).flushPending();
+  const hook = render(session);
+  expect(hook.syncIssue).toBe("syncRejected");
+  expect(hook.pendingCount).toBe(1);
+  expect(loadPendingOps(session.login)).toHaveLength(1);
+  expect(window.setTimeout).not.toHaveBeenCalled();
+  expect(fetchSavedProjects).not.toHaveBeenCalled();
+});
+
+it("failed empty checkpoint is not durable success and recovers without replaying the write", async () => {
+  storage();
+  const session = { login: "empty-checkpoint-quota", token: "test" };
+  enqueuePendingOp(session.login, { kind: "update", id: "p", project, queuedAt: 1 });
+  const originalStorage = localStorage;
+  const durableBefore = localStorage.getItem("brick-stove-pending-ops:" + session.login);
+  vi.mocked(updateSavedProject).mockImplementationOnce(async (_id, p) => {
+    vi.stubGlobal("localStorage", {
+      getItem: originalStorage.getItem,
+      setItem: () => {
+        throw new Error("quota on clear");
+      }
+    });
+    return p;
+  });
+  await render(session).flushPending();
+  expect(loadPendingOps(session.login)).toEqual([]);
+  expect(localStorage.getItem("brick-stove-pending-ops:" + session.login)).toBe(durableBefore);
+  expect(render(session).syncIssue).toBe("syncCheckpointFailed");
+  expect(fetchSavedProjects).not.toHaveBeenCalled();
+  await render(session).flushPending();
+  expect(render(session).syncIssue).toBe("syncCheckpointFailed");
+  expect(fetchSavedProjects).not.toHaveBeenCalled();
+  vi.stubGlobal("localStorage", originalStorage);
+  await render(session).flushPending();
+  expect(render(session).syncIssue).toBeNull();
+  expect(localStorage.getItem("brick-stove-pending-ops:" + session.login)).toBe("[]");
+  expect(updateSavedProject).toHaveBeenCalledTimes(1);
+  expect(fetchSavedProjects).toHaveBeenCalledTimes(1);
 });

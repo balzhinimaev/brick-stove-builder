@@ -1799,3 +1799,63 @@ body {
   font-size: 18px;
   font-weight: 650;
 }
+
+.assembly-movie {
+  width: min(1100px, 96vw);
+  max-height: 94dvh;
+  overflow: auto;
+  border: 1px solid #bbb;
+  border-radius: 16px;
+  padding: 18px;
+  background: #f5f5ef;
+  color: #252a26;
+}
+.assembly-movie::backdrop {
+  background: #142019b8;
+}
+.assembly-movie header,
+.assembly-movie-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.assembly-movie h2,
+.assembly-movie p {
+  margin: 6px 0 12px;
+}
+.assembly-movie button,
+.assembly-movie select {
+  min-height: 44px;
+}
+.assembly-movie-scene {
+  height: min(55dvh, 600px);
+  min-height: 220px;
+  touch-action: none;
+}
+.assembly-movie-controls {
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+.assembly-movie-scrub {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.assembly-movie-scrub input {
+  width: 100%;
+  min-height: 32px;
+}
+@media (max-width: 600px) {
+  .assembly-movie {
+    padding: 10px;
+    width: 98vw;
+  }
+  .assembly-movie-scene {
+    height: 42dvh;
+  }
+}
+.assembly-editor-content {
+  display: contents;
+}

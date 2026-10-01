@@ -4,7 +4,7 @@ import { ExactSection } from "./ExactSection";
 import { partNumbers } from "../domain/masonrySections";
 import { ProjectBar } from "./ProjectBar";
 import type { LocalWorkspace } from "../hooks/useLocalWorkspace";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import type { PlacementPoint, PlacementPreview } from "../domain/editor/preview";
 import { isInsideGrid } from "../domain/geometry";
 import type {
@@ -30,6 +30,8 @@ import { MasonryReviewPanel } from "./MasonryReviewPanel";
 import { MaterialsSummary } from "./MaterialsSummary";
 import { PrintOrder } from "./PrintOrder";
 import { PhysicsReview } from "./PhysicsReview";
+
+const AssemblyMovie = lazy(() => import("./AssemblyMovie"));
 
 const ThreeStack = lazy(() => import("./three/ThreeStack").then((module) => ({ default: module.ThreeStack })));
 
@@ -136,6 +138,12 @@ export function BuilderScreen(props: BuilderScreenProps) {
     },
     onGates: props.setDamperOpenings
   };
+  const movieTrigger = useRef<HTMLButtonElement>(null);
+  const [movieOpen, setMovieOpen] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Project replacement closes the read-only player.
+  useEffect(() => {
+    setMovieOpen(false);
+  }, [props.sceneRevision]);
   const [cutterOpen, setCutterOpen] = useState(false);
   const [panel, setPanel] = useState<
     "tools" | "rows" | "materials" | "part" | "section" | "review" | "guide" | "physics"
@@ -195,6 +203,10 @@ export function BuilderScreen(props: BuilderScreenProps) {
   }, [printReady]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (movieOpen) {
+        if (isSaveShortcut(event)) event.preventDefault();
+        return;
+      }
       if (isSaveShortcut(event)) {
         event.preventDefault();
         if (!event.repeat) void props.saveCurrentProject();
@@ -225,538 +237,582 @@ export function BuilderScreen(props: BuilderScreenProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [undo, redo, orientation, setOrientation, setActiveTool, cutterOpen, props.saveCurrentProject]);
+  }, [undo, redo, orientation, setOrientation, setActiveTool, cutterOpen, movieOpen, props.saveCurrentProject]);
   return (
     <main className="studio-editor">
-      {props.workspace?.busy && (
-        <output className="workspace-transition">Сохраняю текущую работу и открываю проект…</output>
-      )}
-      {props.workspace && <ProjectBar workspace={props.workspace} onServerSave={props.onServerSave} />}
-      <div className="studio-commandbar">
-        <div className="studio-row-switch">
-          <button
-            type="button"
-            disabled={currentRow <= 1}
-            aria-label={t("previousRow")}
-            onClick={() => setCurrentRow(currentRow - 1)}
-          >
-            ‹
-          </button>
-          <label>
-            {t("currentRow")}{" "}
-            <select
-              value={currentRow}
-              onChange={(event) => setCurrentRow(Number(event.target.value))}
-              aria-label={t("currentRow")}
+      <div className="assembly-editor-content" inert={movieOpen}>
+        {props.workspace?.busy && (
+          <output className="workspace-transition">Сохраняю текущую работу и открываю проект…</output>
+        )}
+        {props.workspace && <ProjectBar workspace={props.workspace} onServerSave={props.onServerSave} />}
+        <div className="studio-commandbar">
+          <div className="studio-row-switch">
+            <button
+              type="button"
+              disabled={currentRow <= 1}
+              aria-label={t("previousRow")}
+              onClick={() => setCurrentRow(currentRow - 1)}
             >
-              {Array.from({ length: rowCount }, (_, i) => i + 1).map((row) => (
-                <option key={row} value={row}>
-                  {row}
-                  {lockedRows.includes(row) ? " ✓" : ""}
-                </option>
-              ))}
-            </select>
-            <span className="studio-muted"> / {rowCount}</span>
-          </label>
-          <button
-            type="button"
-            disabled={currentRow >= rowCount}
-            aria-label={t("nextRow")}
-            onClick={() => setCurrentRow(currentRow + 1)}
-          >
-            ›
-          </button>
-          <button type="button" onClick={props.addRow}>
-            {t("addRow")}
-          </button>
-        </div>
-        <div className="studio-history">
-          <button
-            type="button"
-            onClick={undo}
-            disabled={!props.canUndo}
-            aria-label={t("undo")}
-            title={`${t("undo")} · Ctrl+Z`}
-          >
-            ↶
-          </button>
-          <button
-            type="button"
-            onClick={redo}
-            disabled={!props.canRedo}
-            aria-label={t("redo")}
-            title={`${t("redo")} · Ctrl+Shift+Z`}
-          >
-            ↷
-          </button>
-          {!props.workspace && (
-            <button type="button" className="studio-primary" onClick={props.saveCurrentProject}>
-              {t("saveProject")}
+              ‹
             </button>
-          )}
-        </div>
-      </div>
-      <div className="workspace-modes">
-        <button type="button" aria-pressed={selectParts} onClick={() => setSelectParts(true)}>
-          Выбор детали
-        </button>
-        <button
-          type="button"
-          aria-pressed={!selectParts}
-          onClick={() => {
-            setSelectParts(false);
-            setManualSection(null);
-            setPanel("tools");
-            setRowMode("through");
-            setIsolated(false);
-            setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
-            props.onExitSection?.();
-          }}
-        >
-          Кладка
-        </button>
-        {masonryIds.length > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              setMasonrySelection(null);
-              setIsolated(false);
-              setFocusRequest(0);
-            }}
-          >
-            Снять выбор
-          </button>
-        )}
-        {isolated && (
-          <button
-            type="button"
-            onClick={() => {
-              setIsolated(false);
-              setFocusRequest(0);
-            }}
-          >
-            Снять изоляцию
-          </button>
-        )}
-      </div>
-      <div className="studio-layout">
-        <section className="studio-viewport" aria-label={t("editorTitle")}>
-          <div className="viewport-switch">
-            <button type="button" aria-pressed={!twoD} onClick={() => setTwoD(false)}>
-              3D
+            <label>
+              {t("currentRow")}{" "}
+              <select
+                value={currentRow}
+                onChange={(event) => setCurrentRow(Number(event.target.value))}
+                aria-label={t("currentRow")}
+              >
+                {Array.from({ length: rowCount }, (_, i) => i + 1).map((row) => (
+                  <option key={row} value={row}>
+                    {row}
+                    {lockedRows.includes(row) ? " ✓" : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="studio-muted"> / {rowCount}</span>
+            </label>
+            <button
+              type="button"
+              disabled={currentRow >= rowCount}
+              aria-label={t("nextRow")}
+              onClick={() => setCurrentRow(currentRow + 1)}
+            >
+              ›
             </button>
-            <button type="button" aria-pressed={twoD} onClick={() => setTwoD(true)}>
-              Точное сечение · 2D
+            <button type="button" onClick={props.addRow}>
+              {t("addRow")}
             </button>
           </div>
-          {twoD ? (
-            <ExactSection
-              bricks={physicsDocument}
-              grid={grid}
-              row={currentRow}
-              offset={sectionOffset}
-              selectedIds={masonryIds}
-              onSelect={selectPart}
-              previous={ghostPrevious}
-              measurement
-            />
-          ) : (
-            <ErrorBoundary
-              key={sceneKey}
-              fallback={
-                <div className="studio-fallback">
-                  <p>{t("sceneError")}</p>
-                  <button type="button" onClick={() => setSceneKey((k) => k + 1)}>
-                    {t("reloadScene")}
-                  </button>
-                  <button type="button" onClick={() => setTwoD(true)}>
-                    Продолжить в 2D
-                  </button>
-                </div>
-              }
+          <div className="studio-history">
+            <button
+              type="button"
+              onClick={undo}
+              disabled={!props.canUndo}
+              aria-label={t("undo")}
+              title={`${t("undo")} · Ctrl+Z`}
             >
-              <Suspense fallback={<div className="studio-fallback">{t("loadingScene")}</div>}>
-                <ThreeStack
-                  key={props.sceneRevision}
-                  foundationHeight={(props.parameters.foundationThickness * 10) / 125}
-                  grid={grid}
-                  bricks={visibleDocument}
-                  currentRow={currentRow}
-                  locked={locked}
-                  t={t}
-                  snapStep={props.snapStep}
-                  previewAt={props.previewAt}
-                  placeAt={props.placeAt}
-                  rotateBrick={() => setOrientation(orientation === "h" ? "v" : "h")}
-                  houseContext={isHouse && houseContext}
-                  highlightedIds={masonryIds}
-                  selectParts={selectParts}
-                  onSelectPart={(id) => {
-                    const b = physicsDocument.find((b) => b.id === id);
-                    if (b) {
-                      selectPart([id], b.row);
-                      setPanel("part");
-                      setInspectorExpanded(true);
+              ↶
+            </button>
+            <button
+              type="button"
+              onClick={redo}
+              disabled={!props.canRedo}
+              aria-label={t("redo")}
+              title={`${t("redo")} · Ctrl+Shift+Z`}
+            >
+              ↷
+            </button>
+            {!props.workspace && (
+              <button type="button" className="studio-primary" onClick={props.saveCurrentProject}>
+                {t("saveProject")}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="workspace-modes">
+          <button type="button" aria-pressed={selectParts} onClick={() => setSelectParts(true)}>
+            Выбор детали
+          </button>
+          <button
+            type="button"
+            aria-pressed={!selectParts}
+            onClick={() => {
+              setSelectParts(false);
+              setManualSection(null);
+              setPanel("tools");
+              setRowMode("through");
+              setIsolated(false);
+              setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+              props.onExitSection?.();
+            }}
+          >
+            Кладка
+          </button>
+          {masonryIds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setMasonrySelection(null);
+                setIsolated(false);
+                setFocusRequest(0);
+              }}
+            >
+              Снять выбор
+            </button>
+          )}
+          {isolated && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsolated(false);
+                setFocusRequest(0);
+              }}
+            >
+              Снять изоляцию
+            </button>
+          )}
+        </div>
+        <div className="studio-layout">
+          <section className="studio-viewport" aria-label={t("editorTitle")}>
+            <div className="viewport-switch">
+              <button ref={movieTrigger} type="button" onClick={() => setMovieOpen(true)}>
+                Кино сборки
+              </button>
+              <button type="button" aria-pressed={!twoD} onClick={() => setTwoD(false)}>
+                3D
+              </button>
+              <button type="button" aria-pressed={twoD} onClick={() => setTwoD(true)}>
+                Точное сечение · 2D
+              </button>
+            </div>
+            {movieOpen ? (
+              <p className="studio-fallback">Открыто кино сборки</p>
+            ) : twoD ? (
+              <ExactSection
+                bricks={physicsDocument}
+                grid={grid}
+                row={currentRow}
+                offset={sectionOffset}
+                selectedIds={masonryIds}
+                onSelect={selectPart}
+                previous={ghostPrevious}
+                measurement
+              />
+            ) : (
+              <ErrorBoundary
+                key={sceneKey}
+                fallback={
+                  <div className="studio-fallback">
+                    <p>{t("sceneError")}</p>
+                    <button type="button" onClick={() => setSceneKey((k) => k + 1)}>
+                      {t("reloadScene")}
+                    </button>
+                    <button type="button" onClick={() => setTwoD(true)}>
+                      Продолжить в 2D
+                    </button>
+                  </div>
+                }
+              >
+                <Suspense fallback={<div className="studio-fallback">{t("loadingScene")}</div>}>
+                  <ThreeStack
+                    key={props.sceneRevision}
+                    foundationHeight={(props.parameters.foundationThickness * 10) / 125}
+                    grid={grid}
+                    bricks={visibleDocument}
+                    currentRow={currentRow}
+                    locked={locked}
+                    t={t}
+                    snapStep={props.snapStep}
+                    previewAt={props.previewAt}
+                    placeAt={props.placeAt}
+                    rotateBrick={() => setOrientation(orientation === "h" ? "v" : "h")}
+                    houseContext={isHouse && houseContext}
+                    highlightedIds={masonryIds}
+                    selectParts={selectParts}
+                    onSelectPart={(id) => {
+                      const b = physicsDocument.find((b) => b.id === id);
+                      if (b) {
+                        selectPart([id], b.row);
+                        setPanel("part");
+                        setInspectorExpanded(true);
+                      }
+                    }}
+                    rowMode={rowMode}
+                    ghostPrevious={ghostPrevious}
+                    isolateIds={isolated ? masonryIds : undefined}
+                    focusRequest={focusRequest}
+                    inspection={manualSection ?? (isHouse ? houseInspection : props.inspection)}
+                    onExitSection={
+                      isHouse
+                        ? () => {
+                            setHouseContext(false);
+                            setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+                          }
+                        : props.onExitSection
+                    }
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          </section>
+          <aside className={`studio-inspector${inspectorExpanded ? " is-expanded" : ""}`}>
+            <button
+              className="mobile-inspector-toggle"
+              type="button"
+              aria-expanded={inspectorExpanded}
+              onClick={() => setInspectorExpanded(!inspectorExpanded)}
+            >
+              {inspectorExpanded ? "Свернуть панель ↓" : "Инструменты и свойства ↑"}
+            </button>
+            <fieldset className="studio-panel-tabs" aria-label={t("editorPanels")}>
+              {(
+                [
+                  ["rows", "Ряды"],
+                  ["part", "Деталь"],
+                  ["section", "Сечение"],
+                  ["tools", "Кладка"],
+                  ["review", "Проверки"],
+                  ["materials", "Выпуск"],
+                  ["physics", "Физика"],
+                  ["guide", "О проекте"]
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={panel === key}
+                  onClick={() => {
+                    setInspectorExpanded(true);
+                    setPanel(key);
+                    if (key === "physics") setHasPhysics(true);
+                    if (key === "tools") {
+                      setSelectParts(false);
+                      setManualSection(null);
+                      setRowMode("through");
+                      setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+                      props.onExitSection?.();
                     }
                   }}
-                  rowMode={rowMode}
-                  ghostPrevious={ghostPrevious}
-                  isolateIds={isolated ? masonryIds : undefined}
-                  focusRequest={focusRequest}
-                  inspection={manualSection ?? (isHouse ? houseInspection : props.inspection)}
-                  onExitSection={
-                    isHouse
-                      ? () => {
-                          setHouseContext(false);
-                          setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
-                        }
-                      : props.onExitSection
-                  }
-                />
-              </Suspense>
-            </ErrorBoundary>
-          )}
-        </section>
-        <aside className={`studio-inspector${inspectorExpanded ? " is-expanded" : ""}`}>
-          <button
-            className="mobile-inspector-toggle"
-            type="button"
-            aria-expanded={inspectorExpanded}
-            onClick={() => setInspectorExpanded(!inspectorExpanded)}
-          >
-            {inspectorExpanded ? "Свернуть панель ↓" : "Инструменты и свойства ↑"}
-          </button>
-          <fieldset className="studio-panel-tabs" aria-label={t("editorPanels")}>
-            {(
-              [
-                ["rows", "Ряды"],
-                ["part", "Деталь"],
-                ["section", "Сечение"],
-                ["tools", "Кладка"],
-                ["review", "Проверки"],
-                ["materials", "Выпуск"],
-                ["physics", "Физика"],
-                ["guide", "О проекте"]
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={panel === key}
-                onClick={() => {
-                  setInspectorExpanded(true);
-                  setPanel(key);
-                  if (key === "physics") setHasPhysics(true);
-                  if (key === "tools") {
-                    setSelectParts(false);
-                    setManualSection(null);
-                    setRowMode("through");
-                    setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
-                    props.onExitSection?.();
-                  }
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </fieldset>
-          <div className="studio-panel-content">
-            {panel === "part" &&
-              (selectedPart && props.editPart && props.removePart ? (
-                <PartInspector
-                  key={JSON.stringify(selectedPart)}
-                  brick={selectedPart}
-                  number={numbers.get(selectedPart.id) ?? selectedPart.id}
-                  locked={lockedRows.includes(selectedPart.row)}
-                  rowCount={rowCount}
-                  onEdit={props.editPart}
-                  onRemove={props.removePart}
-                  onFocus={() => {
-                    setFocusRequest((v) => v + 1);
-                    setTwoD(false);
-                  }}
-                  onIsolate={() => {
-                    setIsolated(!isolated);
-                    setFocusRequest((v) => v + 1);
-                  }}
-                  isolated={isolated}
-                  onReview={() => setPanel("review")}
-                  onInstallationRow={() => setCurrentRow(selectedPart.row)}
-                />
-              ) : (
-                <p>Выберите кирпич в 3D или на сечении. Его размеры, материал и правки появятся здесь.</p>
+                >
+                  {label}
+                </button>
               ))}
-            {panel === "section" && (
-              <>
-                <fieldset className="part-fields">
-                  <legend>Вертикальный разрез 3D</legend>
-                  <label>
-                    Плоскость
-                    <select
-                      value={manualSection?.section ?? "whole"}
-                      onChange={(e) => {
-                        setManualSection({
-                          section: e.target.value as TeplushkaInspection["section"],
-                          fraction: 0.4,
-                          courseOnly: true,
-                          coordinateMm: e.target.value === "side" ? grid.cols * 62.5 : grid.rows * 62.5
-                        });
-                        setSelectParts(true);
-                      }}
-                    >
-                      <option value="whole">Без разреза</option>
-                      <option value="front">Y · спереди</option>
-                      <option value="side">X · сбоку</option>
-                    </select>
-                  </label>
-                  {manualSection && manualSection.section !== "whole" && (
-                    <label>
-                      Координата, мм
-                      <input
-                        type="number"
-                        min="0"
-                        max={(manualSection.section === "side" ? grid.cols : grid.rows) * 125}
-                        step="1"
-                        value={manualSection.coordinateMm ?? 0}
-                        onChange={(e) => {
-                          if (Number.isFinite(e.target.valueAsNumber))
-                            setManualSection({
-                              ...manualSection,
-                              coordinateMm: Math.max(
-                                0,
-                                Math.min(
-                                  (manualSection.section === "side" ? grid.cols : grid.rows) * 125,
-                                  e.target.valueAsNumber
-                                )
-                              )
-                            });
-                        }}
-                      />
-                    </label>
-                  )}
-                </fieldset>
-                <label>
-                  Высота в ряду, мм{" "}
-                  <input
-                    type="number"
-                    min="0.1"
-                    max="64.9"
-                    step="0.1"
-                    value={sectionOffset}
-                    onChange={(e) => {
-                      if (Number.isFinite(e.target.valueAsNumber))
-                        setSectionOffset(Math.max(0.1, Math.min(64.9, e.target.valueAsNumber)));
+            </fieldset>
+            <div className="studio-panel-content">
+              {panel === "part" &&
+                (selectedPart && props.editPart && props.removePart ? (
+                  <PartInspector
+                    key={JSON.stringify(selectedPart)}
+                    brick={selectedPart}
+                    number={numbers.get(selectedPart.id) ?? selectedPart.id}
+                    locked={lockedRows.includes(selectedPart.row)}
+                    rowCount={rowCount}
+                    onEdit={props.editPart}
+                    onRemove={props.removePart}
+                    onFocus={() => {
+                      setFocusRequest((v) => v + 1);
+                      setTwoD(false);
                     }}
+                    onIsolate={() => {
+                      setIsolated(!isolated);
+                      setFocusRequest((v) => v + 1);
+                    }}
+                    isolated={isolated}
+                    onReview={() => setPanel("review")}
+                    onInstallationRow={() => setCurrentRow(selectedPart.row)}
                   />
-                </label>
-                <ExactSection
-                  bricks={physicsDocument}
-                  grid={grid}
-                  row={currentRow}
-                  offset={sectionOffset}
-                  selectedIds={masonryIds}
-                  onSelect={selectPart}
-                  previous={ghostPrevious}
-                  measurement
-                />
-                <p>Сечение включает детали из нижних рядов. Ряд установки указан в карточке детали.</p>
-              </>
-            )}
-            {panel === "guide" && isHouse && (
-              <HouseRussianGuide
-                controls={houseControls}
-                project={{
-                  rows,
-                  parameters: props.parameters,
-                  title: {
-                    ru: visibleDocument.some((b) => b.id.startsWith("rp54-r2-"))
-                      ? "Русская печь · дом 6×9 · R2"
-                      : "Русская печь · дом 6×9 · R1",
-                    en: "",
-                    lt: ""
-                  }
-                }}
-              />
-            )}
-            {panel === "review" && (
-              <MasonryReviewPanel
-                key={props.sceneRevision}
-                bricks={visibleDocument}
-                grid={grid}
-                currentRow={currentRow}
-                selectedIds={masonryIds.filter((id) => visibleDocument.some((b) => b.id === id))}
-                onClear={() => {
-                  setMasonrySelection(null);
-                  setIsolated(false);
-                  setFocusRequest(0);
-                }}
-                onSelect={(ids, row) => {
-                  selectPart(ids, row);
-                  setRowMode("through");
-                  setFocusRequest((n) => n + 1);
-                  setHouseContext(false);
-                  setCurrentRow(row);
-                  setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
-                }}
-              />
-            )}
-            <div hidden={panel !== "physics"}>
-              {hasPhysics && (
-                <PhysicsReview
-                  active={panel === "physics"}
-                  initiallyOpen
-                  key={props.sceneRevision}
-                  bricks={physicsDocument}
-                  grid={grid}
-                  rowCount={rowCount}
-                  onSelect={(ids, row) => {
-                    selectPart(ids, row);
-                    setRowMode("through");
-                    setFocusRequest((n) => n + 1);
-                    setCurrentRow(row);
-                    if (isHouse) {
-                      setHouseContext(false);
-                      setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+                ) : (
+                  <p>Выберите кирпич в 3D или на сечении. Его размеры, материал и правки появятся здесь.</p>
+                ))}
+              {panel === "section" && (
+                <>
+                  <fieldset className="part-fields">
+                    <legend>Вертикальный разрез 3D</legend>
+                    <label>
+                      Плоскость
+                      <select
+                        value={manualSection?.section ?? "whole"}
+                        onChange={(e) => {
+                          setManualSection({
+                            section: e.target.value as TeplushkaInspection["section"],
+                            fraction: 0.4,
+                            courseOnly: true,
+                            coordinateMm: e.target.value === "side" ? grid.cols * 62.5 : grid.rows * 62.5
+                          });
+                          setSelectParts(true);
+                        }}
+                      >
+                        <option value="whole">Без разреза</option>
+                        <option value="front">Y · спереди</option>
+                        <option value="side">X · сбоку</option>
+                      </select>
+                    </label>
+                    {manualSection && manualSection.section !== "whole" && (
+                      <label>
+                        Координата, мм
+                        <input
+                          type="number"
+                          min="0"
+                          max={(manualSection.section === "side" ? grid.cols : grid.rows) * 125}
+                          step="1"
+                          value={manualSection.coordinateMm ?? 0}
+                          onChange={(e) => {
+                            if (Number.isFinite(e.target.valueAsNumber))
+                              setManualSection({
+                                ...manualSection,
+                                coordinateMm: Math.max(
+                                  0,
+                                  Math.min(
+                                    (manualSection.section === "side" ? grid.cols : grid.rows) * 125,
+                                    e.target.valueAsNumber
+                                  )
+                                )
+                              });
+                          }}
+                        />
+                      </label>
+                    )}
+                  </fieldset>
+                  <label>
+                    Высота в ряду, мм{" "}
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="64.9"
+                      step="0.1"
+                      value={sectionOffset}
+                      onChange={(e) => {
+                        if (Number.isFinite(e.target.valueAsNumber))
+                          setSectionOffset(Math.max(0.1, Math.min(64.9, e.target.valueAsNumber)));
+                      }}
+                    />
+                  </label>
+                  <ExactSection
+                    bricks={physicsDocument}
+                    grid={grid}
+                    row={currentRow}
+                    offset={sectionOffset}
+                    selectedIds={masonryIds}
+                    onSelect={selectPart}
+                    previous={ghostPrevious}
+                    measurement
+                  />
+                  <p>Сечение включает детали из нижних рядов. Ряд установки указан в карточке детали.</p>
+                </>
+              )}
+              {panel === "guide" && isHouse && (
+                <HouseRussianGuide
+                  controls={houseControls}
+                  project={{
+                    rows,
+                    parameters: props.parameters,
+                    title: {
+                      ru: visibleDocument.some((b) => b.id.startsWith("rp54-r2-"))
+                        ? "Русская печь · дом 6×9 · R2"
+                        : "Русская печь · дом 6×9 · R1",
+                      en: "",
+                      lt: ""
                     }
                   }}
                 />
               )}
-            </div>
+              {panel === "review" && (
+                <MasonryReviewPanel
+                  key={props.sceneRevision}
+                  bricks={visibleDocument}
+                  grid={grid}
+                  currentRow={currentRow}
+                  selectedIds={masonryIds.filter((id) => visibleDocument.some((b) => b.id === id))}
+                  onClear={() => {
+                    setMasonrySelection(null);
+                    setIsolated(false);
+                    setFocusRequest(0);
+                  }}
+                  onSelect={(ids, row) => {
+                    selectPart(ids, row);
+                    setRowMode("through");
+                    setFocusRequest((n) => n + 1);
+                    setHouseContext(false);
+                    setCurrentRow(row);
+                    setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+                  }}
+                />
+              )}
+              <div hidden={panel !== "physics"}>
+                {hasPhysics && (
+                  <PhysicsReview
+                    active={panel === "physics" && !movieOpen}
+                    initiallyOpen
+                    key={props.sceneRevision}
+                    bricks={physicsDocument}
+                    grid={grid}
+                    rowCount={rowCount}
+                    onSelect={(ids, row) => {
+                      selectPart(ids, row);
+                      setRowMode("through");
+                      setFocusRequest((n) => n + 1);
+                      setCurrentRow(row);
+                      if (isHouse) {
+                        setHouseContext(false);
+                        setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+                      }
+                    }}
+                  />
+                )}
+              </div>
 
-            {panel === "tools" && (
-              <Toolbox
-                t={t}
-                activeTool={activeTool}
-                setActiveTool={setActiveTool}
-                orientation={orientation}
-                setOrientation={setOrientation}
-                notchCorner={props.notchCorner}
-                setNotchCorner={props.setNotchCorner}
-                rebateDepthMm={props.rebateDepthMm}
-                setRebateDepth={props.setRebateDepth}
-                plateThicknessMm={props.plateSpec.thicknessMm ?? 14}
-                snapStep={props.snapStep}
-                setSnapStep={props.setSnapStep}
-                customBricks={customBricks}
-                activeCustom={activeTool === "custom" ? props.customBrick : null}
-                onPickCustom={props.pickCustomBrick}
-                onRemoveCustom={removeCustomBrick}
-                onOpenCutter={() => setCutterOpen(true)}
-                plateSpec={props.plateSpec}
-                setPlateSize={props.setPlateSize}
-                doorSpec={props.doorSpec}
-                setDoorSize={props.setDoorSize}
-                damperSpec={props.damperSpec}
-                setDamperSize={props.setDamperSize}
-                grateSpec={props.grateSpec}
-                setGrateSize={props.setGrateSize}
-              />
-            )}
-            {panel === "rows" && (
-              <div className="studio-rows">
-                <div className="studio-segment">
-                  {(
-                    [
-                      ["row", "Только ряд"],
-                      ["through", "До ряда"],
-                      ["all", "Вся печь"]
-                    ] as const
-                  ).map(([key, label]) => (
-                    <button
-                      type="button"
-                      key={key}
-                      aria-pressed={rowMode === key}
-                      onClick={() => {
-                        setRowMode(key);
-                        setIsolated(false);
-                        setFocusRequest(0);
-                      }}
-                    >
-                      {label}
+              {panel === "tools" && (
+                <Toolbox
+                  t={t}
+                  activeTool={activeTool}
+                  setActiveTool={setActiveTool}
+                  orientation={orientation}
+                  setOrientation={setOrientation}
+                  notchCorner={props.notchCorner}
+                  setNotchCorner={props.setNotchCorner}
+                  rebateDepthMm={props.rebateDepthMm}
+                  setRebateDepth={props.setRebateDepth}
+                  plateThicknessMm={props.plateSpec.thicknessMm ?? 14}
+                  snapStep={props.snapStep}
+                  setSnapStep={props.setSnapStep}
+                  customBricks={customBricks}
+                  activeCustom={activeTool === "custom" ? props.customBrick : null}
+                  onPickCustom={props.pickCustomBrick}
+                  onRemoveCustom={removeCustomBrick}
+                  onOpenCutter={() => setCutterOpen(true)}
+                  plateSpec={props.plateSpec}
+                  setPlateSize={props.setPlateSize}
+                  doorSpec={props.doorSpec}
+                  setDoorSize={props.setDoorSize}
+                  damperSpec={props.damperSpec}
+                  setDamperSize={props.setDamperSize}
+                  grateSpec={props.grateSpec}
+                  setGrateSize={props.setGrateSize}
+                />
+              )}
+              {panel === "rows" && (
+                <div className="studio-rows">
+                  <div className="studio-segment">
+                    {(
+                      [
+                        ["row", "Только ряд"],
+                        ["through", "До ряда"],
+                        ["all", "Вся печь"]
+                      ] as const
+                    ).map(([key, label]) => (
+                      <button
+                        type="button"
+                        key={key}
+                        aria-pressed={rowMode === key}
+                        onClick={() => {
+                          setRowMode(key);
+                          setIsolated(false);
+                          setFocusRequest(0);
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="studio-check">
+                    <input
+                      type="checkbox"
+                      checked={ghostPrevious}
+                      onChange={(e) => setGhostPrevious(e.target.checked)}
+                    />{" "}
+                    Подложка предыдущего ряда
+                  </label>
+                  {isHouse && (
+                    <div className="part-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentRow(29);
+                          setRowMode("through");
+                        }}
+                      >
+                        Корпус · 1–29
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentRow(30);
+                          setRowMode("row");
+                        }}
+                      >
+                        Труба · 30–89
+                      </button>
+                    </div>
+                  )}
+                  <p className="studio-muted">
+                    В списке — детали, устанавливаемые в ряду. На сечении видны и детали снизу.
+                  </p>
+                  <div className="studio-row-list">
+                    {Array.from({ length: rowCount }, (_, i) => i + 1).map((row) => (
+                      <button
+                        key={row}
+                        type="button"
+                        aria-pressed={row === currentRow}
+                        onClick={() => setCurrentRow(row)}
+                      >
+                        <span>
+                          {t("currentRow")} {row} {lockedRows.includes(row) ? "✓" : ""}
+                        </span>
+                        <span className="studio-muted">{(rows[row] ?? []).length}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="studio-row-actions">
+                    <button type="button" disabled={locked || currentRow === 1} onClick={props.copyPreviousRow}>
+                      {t("copyPrev")}
                     </button>
-                  ))}
-                </div>
-                <label className="studio-check">
-                  <input type="checkbox" checked={ghostPrevious} onChange={(e) => setGhostPrevious(e.target.checked)} />{" "}
-                  Подложка предыдущего ряда
-                </label>
-                {isHouse && (
-                  <div className="part-actions">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCurrentRow(29);
-                        setRowMode("through");
-                      }}
-                    >
-                      Корпус · 1–29
+                    <button type="button" disabled={locked} onClick={props.fillCurrentRow}>
+                      {t("fillRow")}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCurrentRow(30);
-                        setRowMode("row");
-                      }}
-                    >
-                      Труба · 30–89
+                    <button type="button" disabled={locked} onClick={props.clearCurrentRow}>
+                      {t("clearRow")}
+                    </button>
+                    <button type="button" disabled={locked || rowCount === 1} onClick={props.deleteCurrentRow}>
+                      {t("deleteRow")}
                     </button>
                   </div>
-                )}
-                <p className="studio-muted">
-                  В списке — детали, устанавливаемые в ряду. На сечении видны и детали снизу.
-                </p>
-                <div className="studio-row-list">
-                  {Array.from({ length: rowCount }, (_, i) => i + 1).map((row) => (
-                    <button
-                      key={row}
-                      type="button"
-                      aria-pressed={row === currentRow}
-                      onClick={() => setCurrentRow(row)}
-                    >
-                      <span>
-                        {t("currentRow")} {row} {lockedRows.includes(row) ? "✓" : ""}
-                      </span>
-                      <span className="studio-muted">{(rows[row] ?? []).length}</span>
+                </div>
+              )}
+              {panel === "materials" && (
+                <>
+                  <MaterialsSummary materials={props.materials} t={t} />
+                  <label className="studio-check">
+                    <input type="checkbox" checked={printRow} onChange={(e) => setPrintRow(e.target.checked)} /> Только
+                    текущий ряд
+                  </label>
+                  {!isNativeApp() && (
+                    <button type="button" onClick={print}>
+                      Подготовить точную порядовку
                     </button>
-                  ))}
-                </div>
-                <div className="studio-row-actions">
-                  <button type="button" disabled={locked || currentRow === 1} onClick={props.copyPreviousRow}>
-                    {t("copyPrev")}
-                  </button>
-                  <button type="button" disabled={locked} onClick={props.fillCurrentRow}>
-                    {t("fillRow")}
-                  </button>
-                  <button type="button" disabled={locked} onClick={props.clearCurrentRow}>
-                    {t("clearRow")}
-                  </button>
-                  <button type="button" disabled={locked || rowCount === 1} onClick={props.deleteCurrentRow}>
-                    {t("deleteRow")}
-                  </button>
-                </div>
-              </div>
-            )}
-            {panel === "materials" && (
-              <>
-                <MaterialsSummary materials={props.materials} t={t} />
-                <label className="studio-check">
-                  <input type="checkbox" checked={printRow} onChange={(e) => setPrintRow(e.target.checked)} /> Только
-                  текущий ряд
-                </label>
-                {!isNativeApp() && (
-                  <button type="button" onClick={print}>
-                    Подготовить точную порядовку
-                  </button>
-                )}
-                <p className="studio-muted">{t("modelScaleHint")}</p>
-              </>
-            )}
-          </div>
-          <button type="button" className="studio-lock" onClick={locked ? props.unlockRow : props.lockRow}>
-            {locked ? t("unlockRow") : t("completeRow")} · {t("currentRow")} {currentRow}
-          </button>
-        </aside>
+                  )}
+                  <p className="studio-muted">{t("modelScaleHint")}</p>
+                </>
+              )}
+            </div>
+            <button type="button" className="studio-lock" onClick={locked ? props.unlockRow : props.lockRow}>
+              {locked ? t("unlockRow") : t("completeRow")} · {t("currentRow")} {currentRow}
+            </button>
+          </aside>
+        </div>
       </div>
+      {movieOpen && (
+        <ErrorBoundary
+          fallback={
+            <div role="alert">
+              Не удалось открыть кино сборки.{" "}
+              <button type="button" onClick={() => setMovieOpen(false)}>
+                Закрыть
+              </button>
+            </div>
+          }
+        >
+          <Suspense
+            fallback={
+              <output>
+                Загрузка плеера…{" "}
+                <button type="button" onClick={() => setMovieOpen(false)}>
+                  Отмена
+                </button>
+              </output>
+            }
+          >
+            <AssemblyMovie
+              returnFocus={movieTrigger.current}
+              key={props.sceneRevision}
+              bricks={physicsDocument}
+              grid={grid}
+              rowCount={rowCount}
+              foundationHeight={(props.parameters.foundationThickness * 10) / 125}
+              onClose={() => setMovieOpen(false)}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
       {cutterOpen && (
         <BrickCutter
           t={t}

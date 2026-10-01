@@ -725,7 +725,7 @@ function SectionClipping({ plane }: { plane: Plane | null }) {
   return null;
 }
 
-const Foundation = memo(function Foundation({
+export const Foundation = memo(function Foundation({
   grid,
   thickness,
   sectionActive,

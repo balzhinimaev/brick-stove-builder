@@ -1,0 +1,105 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { AssemblyPlayback, assemblyFrame, bindPlaybackVisibility } from "../builder/assemblyPlayback";
+import type { PlacedBrick } from "../../domain/types";
+import builder from "../BuilderScreen.tsx?raw";
+import movie from "../AssemblyMovie.tsx?raw";
+
+afterEach(() => vi.useRealTimers());
+describe("assembly movie lifecycle", () => {
+  it("opens still, plays by rows, pauses and stops exactly at end", () => {
+    vi.useFakeTimers();
+    const p = new AssemblyPlayback(3, vi.fn());
+    vi.advanceTimersByTime(5000);
+    expect(p.row).toBe(0);
+    p.play();
+    p.play();
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(1000);
+    expect(p.row).toBe(1);
+    p.pause();
+    vi.advanceTimersByTime(5000);
+    expect(p.row).toBe(1);
+    p.play();
+    vi.advanceTimersByTime(2000);
+    expect([p.row, p.playing, vi.getTimerCount()]).toEqual([3, false, 0]);
+    p.play();
+    expect(p.row).toBe(0);
+    p.dispose();
+  });
+  it("scrub pauses, clamps and changes neither speed nor model", () => {
+    vi.useFakeTimers();
+    const p = new AssemblyPlayback(8, vi.fn());
+    p.play();
+    p.seek(4);
+    vi.advanceTimersByTime(2000);
+    expect([p.row, p.playing]).toEqual([4, false]);
+    p.seek(99);
+    expect(p.row).toBe(8);
+    p.seek(-10);
+    expect(p.row).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("speed changes replace the clock and preserve current row", () => {
+    vi.useFakeTimers();
+    const p = new AssemblyPlayback(8, vi.fn());
+    p.setSpeed(0.5);
+    p.play();
+    vi.advanceTimersByTime(1999);
+    expect(p.row).toBe(0);
+    vi.advanceTimersByTime(1);
+    expect(p.row).toBe(1);
+    p.setSpeed(2);
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(500);
+    expect(p.row).toBe(2);
+    p.pause();
+    p.setSpeed(1);
+    expect(vi.getTimerCount()).toBe(0);
+    p.dispose();
+  });
+  it("hidden tab pauses without resuming; unmount removes listener and timer", () => {
+    vi.useFakeTimers();
+    const target = Object.assign(new EventTarget(), { hidden: false });
+    const remove = vi.spyOn(target, "removeEventListener");
+    const p = new AssemblyPlayback(10, vi.fn());
+    const cleanup = bindPlaybackVisibility(p, target);
+    p.play();
+    target.hidden = true;
+    target.dispatchEvent(new Event("visibilitychange"));
+    expect(p.playing).toBe(false);
+    target.hidden = false;
+    target.dispatchEvent(new Event("visibilitychange"));
+    expect(p.playing).toBe(false);
+    p.play();
+    cleanup();
+    expect(remove).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(p.playing).toBe(false);
+  });
+  it("empty model never starts a clock", () => {
+    vi.useFakeTimers();
+    const p = new AssemblyPlayback(0, vi.fn());
+    p.play();
+    expect([p.row, p.playing, vi.getTimerCount()]).toEqual([0, false, 0]);
+  });
+  it("projects installation rows without mutating frozen editor data", () => {
+    const bricks = [1, 3, 3].map((row, i) => Object.freeze({ id: String(i), row }) as PlacedBrick);
+    Object.freeze(bricks);
+    const original = JSON.stringify(bricks);
+    expect(assemblyFrame(bricks, 0).visible).toEqual([]);
+    expect(assemblyFrame(bricks, 2)).toEqual({ visible: [bricks[0]], fresh: [] });
+    expect(assemblyFrame(bricks, 3).fresh).toEqual(bricks.slice(1));
+    expect(JSON.stringify(bricks)).toBe(original);
+  });
+  it("integrates lazy read-only modal, blocks editor shortcuts before save and replaces editor Canvas", () => {
+    expect(builder.indexOf("if (movieOpen)")).toBeLessThan(builder.indexOf("if (isSaveShortcut(event)) {"));
+    expect(builder).toContain("movieOpen ? (");
+    expect(builder).toContain("setMovieOpen(false);");
+    expect(builder).toContain("[props.sceneRevision]");
+    expect(movie).toContain("element?.showModal()");
+    expect(movie).toContain("previous.focus()");
+    expect(movie).toContain("onCancel={onClose}");
+    expect(movie).not.toMatch(/previewAt|placeAt|setCurrentRow|saveCurrentProject|onSelectPart/);
+    expect(movie).toContain("[bricks, grid, foundationHeight]");
+  });
+});

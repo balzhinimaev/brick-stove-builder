@@ -15,6 +15,7 @@ import {
 import { calculatorText } from "./stoveCalculatorText";
 import { uniqueId } from "../lib/id";
 import { orderReferenceHtml } from "../domain/orderReferenceHtml";
+import { downloadFile } from "../storage/projectFile";
 
 const DIMENSION_FIELDS: (keyof CalculatorInput)[] = [
   "ceilingHeightMm",
@@ -24,18 +25,6 @@ const DIMENSION_FIELDS: (keyof CalculatorInput)[] = [
   "availableDepthMm"
 ];
 const HEAT_FIELDS: (keyof CalculatorInput)[] = ["areaM2", "indoorC", "outdoorC", "transmissionWK", "airChangesPerHour"];
-
-function download(body: string, mime: string, name: string) {
-  const url = URL.createObjectURL(new Blob([body], { type: mime }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  // Keep the object URL alive until the browser has accepted the download.
-  window.setTimeout(() => URL.revokeObjectURL(url), 30000);
-}
 
 export function StoveCalculator({
   locale,
@@ -59,9 +48,10 @@ export function StoveCalculator({
       const order = generateOrderReference(id, input, uniqueId(`calculated-${id}`));
       if (target === "editor") onOpen(order.project);
       else if (target === "html")
-        download(orderReferenceHtml(order, locale), "text/html;charset=utf-8", `${id}-reference-sections.html`);
-      else if (target === "csv") download(orderPartsCsv(order), "text/csv;charset=utf-8", `${id}-reference-parts.csv`);
-      else download(JSON.stringify(order, null, 2), "application/json", `${id}-reference-order.json`);
+        downloadFile(`${id}-reference-sections.html`, orderReferenceHtml(order, locale), "text/html;charset=utf-8");
+      else if (target === "csv")
+        downloadFile(`${id}-reference-parts.csv`, orderPartsCsv(order), "text/csv;charset=utf-8");
+      else downloadFile(`${id}-reference-order.json`, JSON.stringify(order, null, 2));
     } catch {
       setError(t("fail"));
     }

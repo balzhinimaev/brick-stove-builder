@@ -145,6 +145,13 @@ export function downloadFile(name: string, body: string, mime = "application/jso
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  try {
+    // Attach the link for browsers that do not download from detached anchors.
+    document.body.append(a);
+    a.click();
+  } finally {
+    a.remove();
+    // Allow the browser to accept a large backup before releasing its URL.
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
 }

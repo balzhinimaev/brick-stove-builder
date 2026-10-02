@@ -73,13 +73,14 @@ export function LocalProjectsPanel({ workspace, onContinue }: { workspace: Local
               </small>
             </div>
             {item.parentId === workspace.info?.id && (
-              <button type="button" onClick={() => compare(item)}>
+              <button type="button" aria-label={`Сравнить: ${item.title}`} onClick={() => compare(item)}>
                 Сравнить
               </button>
             )}
             <button
               type="button"
               disabled={workspace.busy}
+              aria-label={`${item.kind === "checkpoint" ? "Восстановить копию" : "Открыть"}: ${item.title}`}
               onClick={() => (item.id === workspace.info?.id ? onContinue() : workspace.open(item))}
             >
               {item.kind === "checkpoint" ? "Восстановить копию" : "Открыть"}

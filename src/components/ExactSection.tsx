@@ -63,9 +63,7 @@ export function ExactSection({
           setPoints((p) => (p.length === 1 ? [...p, { x: local.x, y: local.y }] : [{ x: local.x, y: local.y }]));
         }}
       >
-        <title>
-          Сечение ряда {row}, Z = {z} мм
-        </title>
+        <title>{`Сечение ряда ${row}, Z = ${z} мм`}</title>
         {underneath.map((s) => (
           <path
             key={`prev-${s.brick.id}`}
@@ -103,9 +101,7 @@ export function ExactSection({
                 }
               }}
             >
-              <title>
-                № {labels.get(s.brick.id)} · {s.brick.custom?.name ?? s.brick.kind} · установка в ряду {s.brick.row}
-              </title>
+              <title>{`№ ${labels.get(s.brick.id)} · ${s.brick.custom?.name ?? s.brick.kind} · установка в ряду ${s.brick.row}`}</title>
             </path>
             <path
               d={s.outline}

@@ -133,7 +133,7 @@ export function MasonryReviewPanel({
               <span>Z = {mmLabel(z)} мм</span>
             </header>
             <svg viewBox={viewBox} aria-label={`Сечение кладки ряда ${currentRow}`}>
-              <title>Сечение кладки ряда {currentRow}</title>
+              <title>{`Сечение кладки ряда ${currentRow}`}</title>
               {sections.map(({ brick, path, outline }) => (
                 // biome-ignore lint/a11y/useSemanticElements: SVG groups cannot contain HTML buttons; retain keyboard activation and button semantics.
                 <g
@@ -150,9 +150,7 @@ export function MasonryReviewPanel({
                     }
                   }}
                 >
-                  <title>
-                    {brick.id} · {brick.custom?.name ?? brick.kind}
-                  </title>
+                  <title>{`${brick.id} · ${brick.custom?.name ?? brick.kind}`}</title>
                   <path
                     d={path}
                     fill={

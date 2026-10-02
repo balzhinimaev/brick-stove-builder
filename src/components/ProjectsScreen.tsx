@@ -265,7 +265,12 @@ export function ProjectOrderPreview({
           {t("currentRow")} 1 → {rowCount}
         </div>
       </div>
-      <button type="button" onClick={() => setExpanded(!expanded)} className="min-h-11 rounded-lg border px-3">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+        className="min-h-11 rounded-lg border px-3"
+      >
         {expanded ? "Свернуть ряды" : "Посмотреть порядовку"}
       </button>
       {expanded && (

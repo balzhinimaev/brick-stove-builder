@@ -52,12 +52,17 @@ export function validateSnapshot(value: unknown): asserts value is DraftSnapshot
         b.row !== r ||
         !finite(b.x, -1000, 10000) ||
         !finite(b.y, -1000, 10000) ||
-        !kinds.has(String(b.kind)) ||
-        !["h", "v"].includes(String(b.orientation))
+        typeof b.kind !== "string" ||
+        !kinds.has(b.kind) ||
+        typeof b.orientation !== "string" ||
+        !["h", "v"].includes(b.orientation)
       )
         fail(`некорректная деталь ${b.id}`);
       if (b.damperOpen !== undefined && !finite(b.damperOpen, 0, 1)) fail("некорректная задвижка");
-      if (b.notchCorner !== undefined && !["nw", "ne", "sw", "se", "n", "e", "s", "w"].includes(String(b.notchCorner)))
+      if (
+        b.notchCorner !== undefined &&
+        (typeof b.notchCorner !== "string" || !["nw", "ne", "sw", "se", "n", "e", "s", "w"].includes(b.notchCorner))
+      )
         fail("некорректный угол выреза");
       if (b.custom !== undefined) {
         if (!record(b.custom)) fail("некорректная форма");
@@ -83,7 +88,10 @@ export function validateSnapshot(value: unknown): asserts value is DraftSnapshot
             fail("вырез за пределами детали");
         }
         if (c.material !== undefined && c.material !== "steel") fail("неизвестный материал");
-        if (c.cutFrom !== undefined && !["standard", "cut", "firebrick"].includes(String(c.cutFrom)))
+        if (
+          c.cutFrom !== undefined &&
+          (typeof c.cutFrom !== "string" || !["standard", "cut", "firebrick"].includes(c.cutFrom))
+        )
           fail("неизвестная заготовка");
         for (const k of ["flush", "ledge"])
           if (c[k] !== undefined && typeof c[k] !== "boolean") fail(`некорректное поле ${k}`);

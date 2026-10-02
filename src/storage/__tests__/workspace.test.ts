@@ -59,6 +59,37 @@ describe("local project library (Node IndexedDB, no browser)", () => {
     }
   });
 
+  it.each(["kind", "orientation", "notchCorner", "cutFrom"])(
+    "rejects array-valued %s in imported JSON instead of coercing it to a valid enum",
+    (field) => {
+      const snapshot = {
+        ...initialEditorState(),
+        rows: {
+          1: [
+            {
+              id: "imported-brick",
+              row: 1,
+              x: 0,
+              y: 0,
+              kind: "custom",
+              orientation: "h",
+              notchCorner: "nw",
+              custom: { name: "Cut brick", w: 2, h: 1, cutFrom: "standard" }
+            }
+          ]
+        }
+      };
+      const file = { format: PROJECT_FILE_FORMAT, title: "Import", revision: 1, snapshot };
+      expect(parseProjectFile(JSON.stringify(file)).snapshot).toEqual(snapshot);
+      const brick = snapshot.rows[1][0];
+      const target = (field === "cutFrom" ? brick.custom : brick) as Record<string, unknown>;
+      target[field] = [target[field]];
+      const raw = JSON.stringify(file);
+      expect(() => parseProjectFile(raw)).toThrow("Файл проекта:");
+      expect(JSON.stringify(file)).toBe(raw);
+    }
+  );
+
   it("rejects report files, malformed geometry, duplicate IDs and nonfinite coordinates without silently repairing", () => {
     expect(() => parseProjectFile('{"format":"masonry-part-schedule-v1"}')).toThrow("полный файл");
     const snapshot = initialEditorState();

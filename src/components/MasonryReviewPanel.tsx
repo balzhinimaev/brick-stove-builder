@@ -12,6 +12,8 @@ import {
 import { THIN_PART_MM } from "../domain/masonryLayout";
 import type { GridSpec, PlacedBrick } from "../domain/types";
 
+import { downloadFile } from "../storage/projectFile";
+
 const labels: Record<MasonryIssue["kind"], string> = {
   thin: "Тонкая деталь",
   "cut-detail": "Тонкий участок выреза",
@@ -69,31 +71,23 @@ export function MasonryReviewPanel({
   const download = (format: "csv" | "json") => {
     // Exact geometry accompanies the IDs; this is a part schedule, not an
     // assertion that each model fragment consumes a purchased full brick.
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            format: "masonry-part-schedule-v1",
-            units: { planCellMm: 125, profiles: "mm", solidParts: "mm" },
-            stock: [250, 120, 65],
-            note: "Ведомость геометрии. Не закупочная смета и не подтверждение готовности к кладке. Координаты x/y и w/h в документе: ячейки по 125 мм; solidParts и profileXZ: мм.",
-            summary: { total: audit.total, full: audit.full, rectangular: audit.rectangular, shaped: audit.shaped },
-            issues: audit.issues,
-            parts: bricks.filter(isMasonryPiece)
-          },
-          null,
-          2
-        )
-      ],
-      { type: "application/json" }
-    );
-    const file = format === "csv" ? new Blob([masonryCsv(bricks)], { type: "text/csv;charset=utf-8" }) : blob;
-    const url = URL.createObjectURL(file);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `masonry-parts.${format}`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const body =
+      format === "csv"
+        ? masonryCsv(bricks)
+        : JSON.stringify(
+            {
+              format: "masonry-part-schedule-v1",
+              units: { planCellMm: 125, profiles: "mm", solidParts: "mm" },
+              stock: [250, 120, 65],
+              note: "Ведомость геометрии. Не закупочная смета и не подтверждение готовности к кладке. Координаты x/y и w/h в документе: ячейки по 125 мм; solidParts и profileXZ: мм.",
+              summary: { total: audit.total, full: audit.full, rectangular: audit.rectangular, shaped: audit.shaped },
+              issues: audit.issues,
+              parts: bricks.filter(isMasonryPiece)
+            },
+            null,
+            2
+          );
+    downloadFile(`masonry-parts.${format}`, body, format === "csv" ? "text/csv;charset=utf-8" : "application/json");
   };
   return (
     <details className="masonry-review" open>

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_PHYSICS, type BearingIssue, type PhysicsSettings } from "../domain/physics/model";
 import { usePhysics } from "../hooks/usePhysics";
+import { downloadFile } from "../storage/projectFile";
 import type { PhysicsReviewProps } from "./PhysicsReview";
 
 const PhysicsScene = lazy(() => import("./three/PhysicsScene").then((module) => ({ default: module.PhysicsScene })));
@@ -100,12 +101,7 @@ export function PhysicsPanel({ bricks, grid, rowCount, onSelect, active = true }
           }
         : null
     };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "stove-gravity-review.json";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadFile("stove-gravity-review.json", JSON.stringify(report, null, 2));
   };
   return (
     <div className="physics-panel">

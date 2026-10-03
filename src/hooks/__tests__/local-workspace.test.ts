@@ -485,3 +485,55 @@ it.each(["debounce", "visibility"])("ignores an outgoing account's failed %s aut
   expect(value.state).toBe("loading");
   expect(value.error).toBe("");
 });
+
+it.each(["saveCopy", "saveVersion"] as const)(
+  "scopes delayed %s failures to the originating account",
+  async (action) => {
+    const store = indexedWorkspace(factory);
+    const guest = newLocalProject("guest", "Guest stove", initialEditorState());
+    await store.write(guest, true);
+    const started = deferred();
+    const writeGate = deferred();
+    const loading = deferred();
+    const loadGate = deferred();
+    const write = vi.fn(store.write);
+    vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
+      ...store,
+      write,
+      active: async (ns) => {
+        if (ns === "alice") {
+          loading.resolve();
+          await loadGate.promise;
+        }
+        return store.active(ns);
+      }
+    });
+    let value = await boot();
+    write.mockImplementationOnce(async () => {
+      started.resolve();
+      await writeGate.promise;
+      throw new Error("Explicit save failed");
+    });
+    const saving = value[action]();
+    await started.promise;
+    login = "alice";
+    render();
+    writeGate.resolve();
+    await saving;
+    await loading.promise;
+    value = render();
+    loadGate.resolve();
+    await boot();
+    expect(value.state).toBe("loading");
+    expect(value.error).toBe("");
+    expect((await store.read(guest.id))?.snapshot).toEqual(guest.snapshot);
+
+    // Failures in the active account must still be visible for recovery.
+    value = render();
+    write.mockRejectedValueOnce(new Error("Current save failed"));
+    await value[action]();
+    value = render();
+    expect(value.state).toBe("error");
+    expect(value.error).toContain("Current save failed");
+  }
+);

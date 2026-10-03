@@ -267,7 +267,7 @@ export function useLocalWorkspace(
         await refresh(namespace);
       });
     } catch (e) {
-      fail(e);
+      if (scope.current === namespace) fail(e);
     }
   };
   const saveVersion = async () => {
@@ -281,7 +281,7 @@ export function useLocalWorkspace(
         await refresh(namespace);
       });
     } catch (e) {
-      fail(e);
+      if (scope.current === namespace) fail(e);
     }
   };
   const rename = async () => {

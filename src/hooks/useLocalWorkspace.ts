@@ -223,6 +223,7 @@ export function useLocalWorkspace(
         setInfo(next);
         loadRef.current(next.snapshot, true);
         await refresh(namespace);
+        if (scope.current !== namespace) return;
         setState("saved");
         setError("");
         hydrated.current = true;

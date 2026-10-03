@@ -602,3 +602,43 @@ it.each(["create", "import"] as const)(
     expect(value.error).toContain("Current save failed");
   }
 );
+
+it("does not mark another account saved when a replacement list refresh finishes", async () => {
+  const store = indexedWorkspace(factory);
+  const started = deferred();
+  const listGate = deferred();
+  const loading = deferred();
+  const loadGate = deferred();
+  const list = vi.fn(store.list);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
+    ...store,
+    list,
+    active: async (ns) => {
+      if (ns === "alice") {
+        loading.resolve();
+        await loadGate.promise;
+      }
+      return store.active(ns);
+    }
+  });
+  let value = await boot();
+  list.mockImplementationOnce(store.list).mockImplementationOnce(async (ns) => {
+    started.resolve();
+    await listGate.promise;
+    return store.list(ns);
+  });
+  const replacing = value.create("Replacement", initialEditorState());
+  await started.promise;
+  login = "alice";
+  render();
+  listGate.resolve();
+  await replacing;
+  await loading.promise;
+  value = render();
+  loadGate.resolve();
+  await boot();
+  expect(value.state).toBe("loading");
+  expect(value.ready).toBe(false);
+  expect(value.info).toBeNull();
+  expect((await store.list("guest")).some((item) => item.title === "Replacement")).toBe(true);
+});

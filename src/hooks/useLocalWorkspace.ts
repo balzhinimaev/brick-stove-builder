@@ -281,6 +281,7 @@ export function useLocalWorkspace(
     }
   };
   const rename = async () => {
+    if (scope.current !== namespace || readyScope.current !== namespace || switching.current) return;
     const title = window.prompt("Название проекта", info?.title ?? "Новая печь")?.trim();
     if (!title) return;
     try {

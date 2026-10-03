@@ -100,7 +100,7 @@ function deferred() {
 }
 
 it.each(["active", "read"] as const)(
-  "ignores save, save-copy and checkpoint while initial %s lookup is pending",
+  "ignores save, save-copy, checkpoint and rename while initial %s lookup is pending",
   async (method) => {
     const store = indexedWorkspace(factory);
     const existing = newLocalProject("guest", "Existing stove", initialEditorState());
@@ -119,7 +119,7 @@ it.each(["active", "read"] as const)(
     snapshot = { ...initialEditorState(), rows: {} };
     const value = render();
     expect(value.ready).toBe(false);
-    const saving = Promise.all([value.save(), value.saveCopy(), value.saveVersion()]);
+    const saving = Promise.all([value.save(), value.saveCopy(), value.saveVersion(), value.rename()]);
     gate.resolve();
     await saving;
     const loaded = await boot();
@@ -130,7 +130,7 @@ it.each(["active", "read"] as const)(
   }
 );
 
-it("ignores current and stale save/copy/checkpoint callbacks while another account is hydrating", async () => {
+it("ignores current and stale save/copy/checkpoint/rename callbacks while another account is hydrating", async () => {
   const store = indexedWorkspace(factory);
   const guest = newLocalProject("guest", "Guest stove", initialEditorState());
   const account = newLocalProject("alice", "Account stove", { ...initialEditorState(), rows: {} });
@@ -157,7 +157,9 @@ it("ignores current and stale save/copy/checkpoint callbacks while another accou
     oldWorkspace.saveCopy(),
     value.saveCopy(),
     oldWorkspace.saveVersion(),
-    value.saveVersion()
+    value.saveVersion(),
+    oldWorkspace.rename(),
+    value.rename()
   ]);
   gate.resolve();
   await pending;
@@ -166,7 +168,7 @@ it("ignores current and stale save/copy/checkpoint callbacks while another accou
   expect(write.mock.calls.filter(([doc]) => doc.id === account.id)).toHaveLength(0);
 });
 
-it("ignores save, save-copy and checkpoint while a project switch persists the outgoing edits", async () => {
+it("ignores save, save-copy, checkpoint and rename while a project switch persists the outgoing edits", async () => {
   const store = indexedWorkspace(factory);
   const write = vi.fn(store.write);
   vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({ ...store, write });
@@ -183,12 +185,13 @@ it("ignores save, save-copy and checkpoint while a project switch persists the o
     await store.write(...args);
   });
   const switching = value.create("Other stove", { ...initialEditorState(), rows: {} });
-  const saving = Promise.all([value.save(), value.saveCopy(), value.saveVersion()]);
+  const saving = Promise.all([value.save(), value.saveCopy(), value.saveVersion(), value.rename()]);
   gate.resolve();
   expect(await switching).toBe(true);
   await saving;
   value = render();
   expect(value.info?.id).not.toBe(id);
+  expect(value.info?.title).toBe("Other stove");
   expect(snapshot.rows).toEqual({});
   expect(write.mock.calls.filter(([doc]) => doc.id === id)).toHaveLength(1);
   expect(write.mock.calls.some(([doc]) => doc.kind === "checkpoint" && doc.title.endsWith("Safe copy"))).toBe(false);
@@ -307,4 +310,18 @@ it("saves an explicit checkpoint of the latest edits after hydration", async () 
   expect(saved?.title).toBe("Новая печь · Safe copy");
   expect((await indexedWorkspace(factory).read(saved!.id))?.snapshot).toEqual(snapshot);
   expect(value.info?.id).toBe(id);
+});
+
+it("renames the hydrated project while preserving its identity and latest edits", async () => {
+  let value = await boot();
+  await value.save();
+  value = render();
+  const id = value.info!.id;
+  snapshot = { ...snapshot, lockedRows: [] };
+  value = render();
+  await value.rename();
+  value = render();
+  expect(value.info?.id).toBe(id);
+  expect(value.info?.title).toBe("Safe copy");
+  expect((await indexedWorkspace(factory).read(id))?.snapshot).toEqual(snapshot);
 });

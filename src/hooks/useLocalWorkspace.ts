@@ -290,6 +290,7 @@ export function useLocalWorkspace(
     try {
       await flush();
       await schedule(async () => {
+        if (scope.current !== namespace) return;
         const previous = current.current;
         if (!previous) throw new Error("Нет открытого проекта");
         const next = {
@@ -298,12 +299,13 @@ export function useLocalWorkspace(
           updatedAt: Math.max(Date.now(), previous.updatedAt + 1)
         };
         await getStore().write(next, true, previous.updatedAt);
+        if (scope.current !== namespace) return;
         current.current = next;
         setInfo(next);
         await refresh(namespace);
       });
     } catch (e) {
-      fail(e);
+      if (scope.current === namespace) fail(e);
     }
   };
   const open = async (item: LocalProjectInfo) => {

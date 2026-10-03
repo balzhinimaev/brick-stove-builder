@@ -364,3 +364,34 @@ it("exports a restored long-title checkpoint as an importable project without ch
   expect(await value.importProject(download.mock.calls[0][1])).toBe(true);
   expect(snapshot).toEqual(saved.snapshot);
 });
+
+it("does not rename another account when the account changes during the outgoing save", async () => {
+  const store = indexedWorkspace(factory);
+  const guest = newLocalProject("guest", "Guest stove", initialEditorState());
+  const account = newLocalProject("alice", "Account stove", { ...initialEditorState(), rows: {} });
+  await store.write(guest, true);
+  await store.write(account, true);
+  const gate = deferred();
+  const started = deferred();
+  const write = vi.fn(store.write);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({ ...store, write });
+  let value = await boot();
+  snapshot = { ...snapshot, lockedRows: [] };
+  value = render();
+  write.mockImplementationOnce(async (...args) => {
+    started.resolve();
+    await gate.promise;
+    await store.write(...args);
+  });
+  const renaming = value.rename();
+  await started.promise;
+  login = "alice";
+  render();
+  gate.resolve();
+  await renaming;
+  value = await boot();
+  expect(value.info?.id).toBe(account.id);
+  expect(value.info?.title).toBe("Account stove");
+  expect((await store.read(account.id))?.title).toBe("Account stove");
+  expect((await store.read(guest.id))?.title).toBe("Guest stove");
+});

@@ -267,6 +267,7 @@ export function useLocalWorkspace(
     }
   };
   const saveVersion = async () => {
+    if (scope.current !== namespace || readyScope.current !== namespace || switching.current) return;
     const title = window.prompt("Название контрольной точки", "Перед правкой")?.trim();
     if (!title) return;
     try {

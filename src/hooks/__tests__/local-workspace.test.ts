@@ -100,7 +100,7 @@ function deferred() {
 }
 
 it.each(["active", "read"] as const)(
-  "ignores save and save-copy while initial %s lookup is pending",
+  "ignores save, save-copy and checkpoint while initial %s lookup is pending",
   async (method) => {
     const store = indexedWorkspace(factory);
     const existing = newLocalProject("guest", "Existing stove", initialEditorState());
@@ -119,7 +119,7 @@ it.each(["active", "read"] as const)(
     snapshot = { ...initialEditorState(), rows: {} };
     const value = render();
     expect(value.ready).toBe(false);
-    const saving = Promise.all([value.save(), value.saveCopy()]);
+    const saving = Promise.all([value.save(), value.saveCopy(), value.saveVersion()]);
     gate.resolve();
     await saving;
     const loaded = await boot();
@@ -130,7 +130,7 @@ it.each(["active", "read"] as const)(
   }
 );
 
-it("ignores current and stale save/copy callbacks while another account is hydrating", async () => {
+it("ignores current and stale save/copy/checkpoint callbacks while another account is hydrating", async () => {
   const store = indexedWorkspace(factory);
   const guest = newLocalProject("guest", "Guest stove", initialEditorState());
   const account = newLocalProject("alice", "Account stove", { ...initialEditorState(), rows: {} });
@@ -151,7 +151,14 @@ it("ignores current and stale save/copy callbacks while another account is hydra
   // This render still has the previous account's ready state until its effect runs.
   const value = render();
   expect(value.ready).toBe(true);
-  const pending = Promise.all([oldWorkspace.save(), value.save(), oldWorkspace.saveCopy(), value.saveCopy()]);
+  const pending = Promise.all([
+    oldWorkspace.save(),
+    value.save(),
+    oldWorkspace.saveCopy(),
+    value.saveCopy(),
+    oldWorkspace.saveVersion(),
+    value.saveVersion()
+  ]);
   gate.resolve();
   await pending;
   await boot();
@@ -159,7 +166,7 @@ it("ignores current and stale save/copy callbacks while another account is hydra
   expect(write.mock.calls.filter(([doc]) => doc.id === account.id)).toHaveLength(0);
 });
 
-it("ignores save and save-copy while a project switch persists the outgoing edits", async () => {
+it("ignores save, save-copy and checkpoint while a project switch persists the outgoing edits", async () => {
   const store = indexedWorkspace(factory);
   const write = vi.fn(store.write);
   vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({ ...store, write });
@@ -176,7 +183,7 @@ it("ignores save and save-copy while a project switch persists the outgoing edit
     await store.write(...args);
   });
   const switching = value.create("Other stove", { ...initialEditorState(), rows: {} });
-  const saving = Promise.all([value.save(), value.saveCopy()]);
+  const saving = Promise.all([value.save(), value.saveCopy(), value.saveVersion()]);
   gate.resolve();
   expect(await switching).toBe(true);
   await saving;
@@ -184,6 +191,7 @@ it("ignores save and save-copy while a project switch persists the outgoing edit
   expect(value.info?.id).not.toBe(id);
   expect(snapshot.rows).toEqual({});
   expect(write.mock.calls.filter(([doc]) => doc.id === id)).toHaveLength(1);
+  expect(write.mock.calls.some(([doc]) => doc.kind === "checkpoint" && doc.title.endsWith("Safe copy"))).toBe(false);
 });
 
 it("allows explicit recovery save after loading fails", async () => {
@@ -284,4 +292,19 @@ it("retains the account project identity across a restart but never copies it to
   value = render();
   expect(value.info?.remoteId).toBeUndefined();
   expect((await indexedWorkspace(factory).read(id))?.remoteId).toBe("remote-project");
+});
+
+it("saves an explicit checkpoint of the latest edits after hydration", async () => {
+  let value = await boot();
+  await value.save();
+  value = render();
+  const id = value.info!.id;
+  snapshot = { ...snapshot, lockedRows: [] };
+  value = render();
+  await value.saveVersion();
+  value = render();
+  const saved = value.projects.find((project) => project.kind === "checkpoint" && project.parentId === id);
+  expect(saved?.title).toBe("Новая печь · Safe copy");
+  expect((await indexedWorkspace(factory).read(saved!.id))?.snapshot).toEqual(snapshot);
+  expect(value.info?.id).toBe(id);
 });

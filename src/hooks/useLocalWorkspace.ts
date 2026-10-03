@@ -288,11 +288,12 @@ export function useLocalWorkspace(
     const title = window.prompt("Название проекта", info?.title ?? "Новая печь")?.trim();
     if (!title) return;
     try {
-      await flush();
+      const saved = await flush();
       await schedule(async () => {
         if (scope.current !== namespace) return;
         const previous = current.current;
-        if (!previous) throw new Error("Нет открытого проекта");
+        // A queued save-copy or project switch must not become the rename target.
+        if (!previous || previous.id !== saved.id) return;
         const next = {
           ...previous,
           title: title.slice(0, 200),

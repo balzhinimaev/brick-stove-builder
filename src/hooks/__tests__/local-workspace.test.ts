@@ -395,3 +395,34 @@ it("does not rename another account when the account changes during the outgoing
   expect((await store.read(account.id))?.title).toBe("Account stove");
   expect((await store.read(guest.id))?.title).toBe("Guest stove");
 });
+
+it("does not rename a new copy when it replaces the project during the outgoing save", async () => {
+  const store = indexedWorkspace(factory);
+  const original = newLocalProject("guest", "Original stove", initialEditorState());
+  await store.write(original, true);
+  const gate = deferred();
+  const started = deferred();
+  const write = vi.fn(store.write);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({ ...store, write });
+  let value = await boot();
+  snapshot = { ...snapshot, lockedRows: [] };
+  value = render();
+  vi.spyOn(window, "prompt").mockReturnValueOnce("Renamed original").mockReturnValueOnce("Separate copy");
+  write.mockImplementationOnce(async (...args) => {
+    started.resolve();
+    await gate.promise;
+    await store.write(...args);
+  });
+  const renaming = value.rename();
+  await started.promise;
+  const copying = value.saveCopy();
+  gate.resolve();
+  await Promise.all([renaming, copying]);
+  value = render();
+  expect(value.info?.id).not.toBe(original.id);
+  expect(value.info?.title).toBe("Separate copy");
+  expect((await store.read(value.info!.id))?.title).toBe("Separate copy");
+  expect((await store.read(original.id))?.title).toBe("Original stove");
+  expect((await store.read(original.id))?.snapshot.lockedRows).toEqual([]);
+  expect(value.state).toBe("saved");
+});

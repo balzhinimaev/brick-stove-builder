@@ -99,35 +99,38 @@ function deferred() {
   return { promise, resolve };
 }
 
-it.each(["active", "read"] as const)("ignores manual save while initial %s lookup is pending", async (method) => {
-  const store = indexedWorkspace(factory);
-  const existing = newLocalProject("guest", "Existing stove", initialEditorState());
-  await store.write(existing, true);
-  const gate = deferred();
-  const original = store[method];
-  const write = vi.fn(store.write);
-  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
-    ...store,
-    write,
-    [method]: async (id: string) => {
-      await gate.promise;
-      return original(id);
-    }
-  });
-  snapshot = { ...initialEditorState(), rows: {} };
-  const value = render();
-  expect(value.ready).toBe(false);
-  const saving = value.save();
-  gate.resolve();
-  await saving;
-  const loaded = await boot();
-  expect(loaded.info?.id).toBe(existing.id);
-  expect(snapshot.rows).toEqual(existing.snapshot.rows);
-  expect((await store.read(existing.id))?.snapshot).toEqual(existing.snapshot);
-  expect(write).not.toHaveBeenCalled();
-});
+it.each(["active", "read"] as const)(
+  "ignores save and save-copy while initial %s lookup is pending",
+  async (method) => {
+    const store = indexedWorkspace(factory);
+    const existing = newLocalProject("guest", "Existing stove", initialEditorState());
+    await store.write(existing, true);
+    const gate = deferred();
+    const original = store[method];
+    const write = vi.fn(store.write);
+    vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
+      ...store,
+      write,
+      [method]: async (id: string) => {
+        await gate.promise;
+        return original(id);
+      }
+    });
+    snapshot = { ...initialEditorState(), rows: {} };
+    const value = render();
+    expect(value.ready).toBe(false);
+    const saving = Promise.all([value.save(), value.saveCopy()]);
+    gate.resolve();
+    await saving;
+    const loaded = await boot();
+    expect(loaded.info?.id).toBe(existing.id);
+    expect(snapshot.rows).toEqual(existing.snapshot.rows);
+    expect((await store.read(existing.id))?.snapshot).toEqual(existing.snapshot);
+    expect(write).not.toHaveBeenCalled();
+  }
+);
 
-it("ignores current and stale save callbacks while another account is hydrating", async () => {
+it("ignores current and stale save/copy callbacks while another account is hydrating", async () => {
   const store = indexedWorkspace(factory);
   const guest = newLocalProject("guest", "Guest stove", initialEditorState());
   const account = newLocalProject("alice", "Account stove", { ...initialEditorState(), rows: {} });
@@ -143,12 +146,12 @@ it("ignores current and stale save callbacks while another account is hydrating"
       return store.active(ns);
     }
   });
-  const oldSave = (await boot()).save;
+  const oldWorkspace = await boot();
   login = "alice";
   // This render still has the previous account's ready state until its effect runs.
   const value = render();
   expect(value.ready).toBe(true);
-  const pending = Promise.all([oldSave(), value.save()]);
+  const pending = Promise.all([oldWorkspace.save(), value.save(), oldWorkspace.saveCopy(), value.saveCopy()]);
   gate.resolve();
   await pending;
   await boot();
@@ -156,7 +159,7 @@ it("ignores current and stale save callbacks while another account is hydrating"
   expect(write.mock.calls.filter(([doc]) => doc.id === account.id)).toHaveLength(0);
 });
 
-it("ignores manual save while a project switch persists the outgoing edits", async () => {
+it("ignores save and save-copy while a project switch persists the outgoing edits", async () => {
   const store = indexedWorkspace(factory);
   const write = vi.fn(store.write);
   vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({ ...store, write });
@@ -173,7 +176,7 @@ it("ignores manual save while a project switch persists the outgoing edits", asy
     await store.write(...args);
   });
   const switching = value.create("Other stove", { ...initialEditorState(), rows: {} });
-  const saving = value.save();
+  const saving = Promise.all([value.save(), value.saveCopy()]);
   gate.resolve();
   expect(await switching).toBe(true);
   await saving;

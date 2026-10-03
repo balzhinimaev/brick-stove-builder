@@ -244,6 +244,7 @@ export function useLocalWorkspace(
     }
   };
   const saveCopy = async () => {
+    if (scope.current !== namespace || readyScope.current !== namespace || switching.current) return;
     const title = window.prompt("Название копии", `${info?.title ?? "Новая печь"} · копия`)?.trim();
     if (!title) return;
     // This also works after a cross-tab conflict: preserve the editor in a new ID without touching the other tab.

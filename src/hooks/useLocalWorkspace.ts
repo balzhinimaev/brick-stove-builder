@@ -182,14 +182,15 @@ export function useLocalWorkspace(
     if (!ready || !hydrated.current) return;
     setState("saving");
     clearTimeout(timer.current);
+    // flush reports failures only to its originating account; do not report them again here.
     timer.current = setTimeout(() => {
-      void flushRef.current().catch(fail);
+      void flushRef.current().catch(() => {});
     }, 500);
     return () => clearTimeout(timer.current);
-  }, [snapshot.rows, snapshot.parameters, snapshot.rowCount, snapshot.lockedRows, snapshot.currentRow, ready, fail]);
+  }, [snapshot.rows, snapshot.parameters, snapshot.rowCount, snapshot.lockedRows, snapshot.currentRow, ready]);
   useEffect(() => {
     const hidden = () => {
-      if (document.hidden && hydrated.current) void flushRef.current().catch(fail);
+      if (document.hidden && hydrated.current) void flushRef.current().catch(() => {});
     };
     const before = (event: BeforeUnloadEvent) => {
       if (state === "saving" || state === "error") event.preventDefault();
@@ -200,7 +201,7 @@ export function useLocalWorkspace(
       document.removeEventListener("visibilitychange", hidden);
       window.removeEventListener("beforeunload", before);
     };
-  }, [state, fail]);
+  }, [state]);
 
   const replace = async (source: LocalProject | (() => Promise<LocalProject>)) => {
     if (switching.current || scope.current !== namespace || readyScope.current !== namespace) return false;

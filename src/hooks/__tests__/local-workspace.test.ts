@@ -426,3 +426,62 @@ it("does not rename a new copy when it replaces the project during the outgoing 
   expect((await store.read(original.id))?.snapshot.lockedRows).toEqual([]);
   expect(value.state).toBe("saved");
 });
+
+it.each(["debounce", "visibility"])("ignores an outgoing account's failed %s autosave", async (trigger) => {
+  const store = indexedWorkspace(factory);
+  const guest = newLocalProject("guest", "Guest stove", initialEditorState());
+  await store.write(guest, true);
+  const writeGate = deferred();
+  const started = deferred();
+  const loading = deferred();
+  const loadGate = deferred();
+  const write = vi.fn(store.write);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({
+    ...store,
+    write,
+    active: async (ns) => {
+      if (ns === "alice") {
+        loading.resolve();
+        await loadGate.promise;
+      }
+      return store.active(ns);
+    }
+  });
+  const listeners = new Map<string, () => void>();
+  vi.stubGlobal("document", {
+    hidden: true,
+    addEventListener: (name: string, callback: () => void) => listeners.set(name, callback),
+    removeEventListener: (name: string) => listeners.delete(name)
+  });
+  await boot();
+  let autosave: (() => void) | undefined;
+  const realTimeout = globalThis.setTimeout;
+  vi.spyOn(globalThis, "setTimeout").mockImplementation(((callback: () => void, delay: number) => {
+    if (delay === 500) {
+      autosave = callback;
+      return realTimeout(() => {}, 0);
+    }
+    return realTimeout(callback, delay);
+  }) as typeof setTimeout);
+  snapshot = { ...snapshot, lockedRows: [] };
+  render();
+  write.mockImplementationOnce(async () => {
+    started.resolve();
+    await writeGate.promise;
+    throw new Error("Outgoing save failed");
+  });
+  if (trigger === "debounce") autosave!();
+  else listeners.get("visibilitychange")!();
+  await started.promise;
+  login = "alice";
+  render();
+  writeGate.resolve();
+  await loading.promise;
+  // Let the rejected autosave's outer catch settle while Alice is still loading.
+  await new Promise((resolve) => realTimeout(resolve, 0));
+  const value = render();
+  loadGate.resolve();
+  await boot();
+  expect(value.state).toBe("loading");
+  expect(value.error).toBe("");
+});

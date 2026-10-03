@@ -229,7 +229,7 @@ export function useLocalWorkspace(
       });
       return true;
     } catch (e) {
-      fail(e);
+      if (scope.current === namespace) fail(e);
       return false;
     } finally {
       switching.current = false;

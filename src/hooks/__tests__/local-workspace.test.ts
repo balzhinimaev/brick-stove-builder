@@ -2,6 +2,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { DraftSnapshot } from "../../domain/editor";
 import { initialEditorState } from "../../domain/editor/state";
+import * as projectFile from "../../storage/projectFile";
 import * as workspaceStorage from "../../storage/workspace";
 import { indexedWorkspace, newLocalProject } from "../../storage/workspace";
 
@@ -341,4 +342,25 @@ it("reopening the active project preserves unsaved edits without a false cross-t
   expect(value.state).toBe("saved");
   expect(value.error).toBe("");
   expect((await indexedWorkspace(factory).read(id))?.snapshot).toEqual(edited);
+});
+
+it("exports a restored long-title checkpoint as an importable project without changing its source", async () => {
+  const store = indexedWorkspace(factory);
+  const original = newLocalProject("guest", "П".repeat(200), initialEditorState());
+  const saved = workspaceStorage.checkpoint(original, "К".repeat(200));
+  await store.write(original, true);
+  await store.write(saved);
+  const download = vi.spyOn(projectFile, "downloadFile").mockImplementation(() => {});
+  let value = await boot();
+  await value.open(saved);
+  value = render();
+  expect(value.info?.id).not.toBe(saved.id);
+  expect(value.info?.title).toMatch(/ · восстановлено$/);
+  value.exportProject();
+  const exported = projectFile.parseProjectFile(download.mock.calls[0][1]);
+  expect(exported.snapshot).toEqual(saved.snapshot);
+  expect(exported.title).toBe(value.info?.title);
+  expect(await store.read(saved.id)).toEqual({ ...saved, viewRow: saved.snapshot.currentRow });
+  expect(await value.importProject(download.mock.calls[0][1])).toBe(true);
+  expect(snapshot).toEqual(saved.snapshot);
 });

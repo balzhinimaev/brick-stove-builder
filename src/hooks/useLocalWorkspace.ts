@@ -311,8 +311,14 @@ export function useLocalWorkspace(
       const doc = await getStore().read(item.id);
       if (!doc || doc.namespace !== namespace) throw new Error("Проект не найден");
       validateSnapshot(doc.snapshot);
+      const restoredSuffix = " · восстановлено";
       return doc.kind === "checkpoint"
-        ? newLocalProject(namespace, `${doc.title} · восстановлено`, doc.snapshot, doc.sourceId)
+        ? newLocalProject(
+            namespace,
+            `${doc.title.slice(0, 200 - restoredSuffix.length)}${restoredSuffix}`,
+            doc.snapshot,
+            doc.sourceId
+          )
         : doc;
     });
   };

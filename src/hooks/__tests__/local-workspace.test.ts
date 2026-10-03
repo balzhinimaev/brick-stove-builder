@@ -325,3 +325,20 @@ it("renames the hydrated project while preserving its identity and latest edits"
   expect(value.info?.title).toBe("Safe copy");
   expect((await indexedWorkspace(factory).read(id))?.snapshot).toEqual(snapshot);
 });
+
+it("reopening the active project preserves unsaved edits without a false cross-tab conflict", async () => {
+  let value = await boot();
+  await value.save();
+  value = render();
+  const id = value.info!.id;
+  snapshot = { ...snapshot, lockedRows: [], currentRow: 3 };
+  value = render();
+  const edited = structuredClone(snapshot);
+  await value.open(value.info!);
+  value = render();
+  expect(value.info?.id).toBe(id);
+  expect(snapshot).toEqual(edited);
+  expect(value.state).toBe("saved");
+  expect(value.error).toBe("");
+  expect((await indexedWorkspace(factory).read(id))?.snapshot).toEqual(edited);
+});

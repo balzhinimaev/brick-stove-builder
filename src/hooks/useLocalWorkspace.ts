@@ -202,13 +202,16 @@ export function useLocalWorkspace(
     };
   }, [state, fail]);
 
-  const replace = async (next: LocalProject) => {
-    if (switching.current || !ready) return false;
+  const replace = async (source: LocalProject | (() => Promise<LocalProject>)) => {
+    if (switching.current || scope.current !== namespace || readyScope.current !== namespace) return false;
     switching.current = true;
     setBusy(true);
     try {
       await flush();
       await schedule(async () => {
+        if (scope.current !== namespace) throw new Error("Аккаунт изменился");
+        // Read library entries only after the outgoing document has finished saving.
+        const next = typeof source === "function" ? await source() : source;
         if (scope.current !== namespace) throw new Error("Аккаунт изменился");
         if (current.current && Object.values(current.current.snapshot.rows).some((r) => r.length))
           await getStore().write(checkpoint(current.current));
@@ -304,18 +307,14 @@ export function useLocalWorkspace(
     }
   };
   const open = async (item: LocalProjectInfo) => {
-    try {
+    await replace(async () => {
       const doc = await getStore().read(item.id);
       if (!doc || doc.namespace !== namespace) throw new Error("Проект не найден");
       validateSnapshot(doc.snapshot);
-      await replace(
-        doc.kind === "checkpoint"
-          ? newLocalProject(namespace, `${doc.title} · восстановлено`, doc.snapshot, doc.sourceId)
-          : doc
-      );
-    } catch (e) {
-      fail(e);
-    }
+      return doc.kind === "checkpoint"
+        ? newLocalProject(namespace, `${doc.title} · восстановлено`, doc.snapshot, doc.sourceId)
+        : doc;
+    });
   };
   const exportProject = () =>
     downloadFile(

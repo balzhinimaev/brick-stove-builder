@@ -116,8 +116,8 @@ export function parseProjectFile(raw: string): ProjectFile {
     !record(data) ||
     data.format !== PROJECT_FILE_FORMAT ||
     !text(data.title, 200) ||
-    !finite(data.revision, 1) ||
-    !Number.isInteger(data.revision)
+    !finite(data.revision, 1, Number.MAX_SAFE_INTEGER) ||
+    !Number.isSafeInteger(data.revision)
   )
     throw new Error("Нужен полный файл проекта stove-project-v1, а не отчёт раскладки или физики");
   validateSnapshot(data.snapshot);

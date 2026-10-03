@@ -59,6 +59,27 @@ describe("local project library (Node IndexedDB, no browser)", () => {
     }
   });
 
+  it("imports backups after revision 100000 without changing their content", () => {
+    const backup = {
+      format: PROJECT_FILE_FORMAT,
+      title: "Долгая работа",
+      revision: 100001,
+      sourceId: "original-project",
+      snapshot: projectSnapshot(READY_PROJECTS[0])
+    };
+    expect(parseProjectFile(JSON.stringify(backup))).toEqual(backup);
+  });
+
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1])("rejects invalid backup revision %s", (revision) => {
+    const backup = {
+      format: PROJECT_FILE_FORMAT,
+      title: "Import",
+      revision,
+      snapshot: projectSnapshot(READY_PROJECTS[0])
+    };
+    expect(() => parseProjectFile(JSON.stringify(backup))).toThrow("полный файл");
+  });
+
   it.each(["kind", "orientation", "notchCorner", "cutFrom"])(
     "rejects array-valued %s in imported JSON instead of coercing it to a valid enum",
     (field) => {

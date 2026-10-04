@@ -86,6 +86,7 @@ export function ProjectsScreen({
           )}
           <button
             type="button"
+            aria-label={`${t("loadProject")}: ${project.title[locale]}`}
             onClick={() => onLoad(project)}
             className="min-h-13 w-full rounded-[20px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8] shadow-lg shadow-[#C1440E]/20"
           >
@@ -93,9 +94,16 @@ export function ProjectsScreen({
           </button>
           {userLogin && project.ownerLogin === userLogin ? (
             <>
-              <PublishControls project={project} t={t} onPublish={onPublish} onUnpublish={onUnpublish} />
+              <PublishControls
+                project={project}
+                title={project.title[locale]}
+                t={t}
+                onPublish={onPublish}
+                onUnpublish={onUnpublish}
+              />
               <button
                 type="button"
+                aria-label={`${t("deleteProject")}: ${project.title[locale]}`}
                 onClick={() => {
                   if (window.confirm(`${t("deleteProjectConfirm")} «${project.title[locale]}»`)) void onDelete(project);
                 }}
@@ -137,11 +145,13 @@ export function ProjectsScreen({
 
 function PublishControls({
   project,
+  title,
   t,
   onPublish,
   onUnpublish
 }: {
   project: ReadyProject;
+  title: string;
   t: Translate;
   onPublish: (project: ReadyProject, fields: PublishFields) => Promise<void>;
   onUnpublish: (project: ReadyProject) => Promise<void>;
@@ -168,6 +178,7 @@ function PublishControls({
         <span className="text-xs font-black text-[#5F7E4D]">✓ {t("publishedBadge")}</span>
         <button
           type="button"
+          aria-label={`${t("unpublishAction")}: ${title}`}
           onClick={() => run(() => onUnpublish(project))}
           disabled={busy}
           className="rounded-full px-3 py-1.5 text-xs font-black text-[#3D2B1F]/60 underline disabled:opacity-50"
@@ -182,6 +193,7 @@ function PublishControls({
     return (
       <button
         type="button"
+        aria-label={`${t("publishAction")}: ${title}`}
         onClick={() => setOpen(true)}
         className="min-h-12 w-full rounded-[20px] border-2 border-[#C1440E]/40 px-4 text-sm font-black text-[#C1440E]"
       >

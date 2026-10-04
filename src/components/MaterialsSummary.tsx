@@ -10,20 +10,22 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
       <p className="studio-muted">
         Ведомость физических деталей, не закупочная смета. Одна составная деталь — один кирпич.
       </p>
-      <MaterialRow label="Целые кирпичи · все материалы" value={materials.fullPieces ?? materials.regularBricks} />
-      <MaterialRow label="Прямые подрезки" value={materials.rectangularPieces ?? materials.cutBricks} />
-      <MaterialRow label="Фасонные детали и вырезы" value={materials.shapedPieces ?? materials.rebatedBricks} />
-      <MaterialRow label="Из них шамотных деталей" value={materials.firebricks} />
-      <MaterialRow label={t("grates")} value={materials.grates} />
-      <MaterialRow label={t("plates")} value={materials.plates} />
-      <MaterialRow label={t("doors")} value={materials.doors} />
-      <MaterialRow label={t("dampers")} value={materials.dampers} />
-      <MaterialRow label={t("vents")} value={materials.vents} />
-      {(materials.steelKg ?? 0) > 0 && (
-        <MaterialRow label={t("steelApproxKg")} value={(materials.steelKg ?? 0).toFixed(2)} />
-      )}
-      <MaterialRow label={t("mortarEstimate")} value={formatM3(materials.mortarM3)} />
-      <MaterialRow label="Бетон · только плита по параметрам" value={formatM3(materials.concreteVolumeM3)} />
+      <dl>
+        <MaterialRow label="Целые кирпичи · все материалы" value={materials.fullPieces ?? materials.regularBricks} />
+        <MaterialRow label="Прямые подрезки" value={materials.rectangularPieces ?? materials.cutBricks} />
+        <MaterialRow label="Фасонные детали и вырезы" value={materials.shapedPieces ?? materials.rebatedBricks} />
+        <MaterialRow label="Из них шамотных деталей" value={materials.firebricks} />
+        <MaterialRow label={t("grates")} value={materials.grates} />
+        <MaterialRow label={t("plates")} value={materials.plates} />
+        <MaterialRow label={t("doors")} value={materials.doors} />
+        <MaterialRow label={t("dampers")} value={materials.dampers} />
+        <MaterialRow label={t("vents")} value={materials.vents} />
+        {(materials.steelKg ?? 0) > 0 && (
+          <MaterialRow label={t("steelApproxKg")} value={(materials.steelKg ?? 0).toFixed(2)} />
+        )}
+        <MaterialRow label={t("mortarEstimate")} value={formatM3(materials.mortarM3)} />
+        <MaterialRow label="Бетон · только плита по параметрам" value={formatM3(materials.concreteVolumeM3)} />
+      </dl>
       <p className="studio-muted">
         Для закупки нужны карта раскроя с пропилом и отходами, объём швов и состав основания. Эти количества здесь не
         подменяются числом деталей.
@@ -35,8 +37,8 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
 function MaterialRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-3 border-b border-[#3D2B1F]/10 py-1 text-sm">
-      <span className="font-extrabold text-[#3D2B1F]/70">{label}</span>
-      <span className="font-black">{value}</span>
+      <dt className="font-extrabold text-[#3D2B1F]/70">{label}</dt>
+      <dd className="font-black">{value}</dd>
     </div>
   );
 }

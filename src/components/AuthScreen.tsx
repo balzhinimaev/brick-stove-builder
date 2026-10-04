@@ -48,23 +48,27 @@ export function AuthScreen({
         }}
         className="mt-3 space-y-3"
       >
-        <input
-          value={login}
-          onChange={(event) => setLogin(event.target.value)}
-          placeholder={t("authLoginPlaceholder")}
-          autoComplete="username"
-          aria-label={t("authLoginPlaceholder")}
-          className="min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3"
-        />
-        <input
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder={t("authPasswordPlaceholder")}
-          type="password"
-          autoComplete={mode === "register" ? "new-password" : "current-password"}
-          aria-label={t("authPasswordPlaceholder")}
-          className="min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3"
-        />
+        <label className="block space-y-1 text-sm font-bold">
+          <span>{t("authLoginPlaceholder")}</span>
+          <input
+            value={login}
+            onChange={(event) => setLogin(event.target.value)}
+            placeholder={t("authLoginPlaceholder")}
+            autoComplete="username"
+            className="min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3"
+          />
+        </label>
+        <label className="block space-y-1 text-sm font-bold">
+          <span>{t("authPasswordPlaceholder")}</span>
+          <input
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={t("authPasswordPlaceholder")}
+            type="password"
+            autoComplete={mode === "register" ? "new-password" : "current-password"}
+            className="min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3"
+          />
+        </label>
         <button type="submit" className="min-h-12 w-full rounded-2xl bg-[#8FAF76] font-black">
           {mode === "login" ? t("authLogin") : t("authCreate")}
         </button>

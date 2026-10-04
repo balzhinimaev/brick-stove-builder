@@ -34,6 +34,7 @@ it("identifies each project in library action names without changing visible but
   const workspace = {
     projects,
     info: { id: "active", title: "Текущая работа" },
+    ready: true,
     busy: false,
     error: ""
   } as LocalWorkspace;
@@ -52,6 +53,7 @@ it.each([false, true])("distinguishes empty search results from an empty library
     projects: [
       { id: "one", title: "Печь в доме", kind: versions ? "checkpoint" : "project", revision: 1, updatedAt: 0 }
     ],
+    ready: true,
     busy: false,
     error: ""
   } as LocalWorkspace;
@@ -71,4 +73,23 @@ it.each([false, true])("distinguishes empty search results from an empty library
   expect(render()).toContain(
     `<output aria-live="polite">Пока нет ${versions ? "контрольных точек" : "проектов"}.</output>`
   );
+});
+
+it.each([false, true])("announces library loading before empty or search results (versions: %s)", (versions) => {
+  filters.versions = versions;
+  const workspace = { projects: [], ready: false, busy: false, error: "" } as unknown as LocalWorkspace;
+  const render = () => {
+    filters.stateIndex = 0;
+    return renderToStaticMarkup(<LocalProjectsPanel workspace={workspace} onContinue={() => {}} />);
+  };
+  for (const query of ["", "Печь"]) {
+    filters.query = query;
+    const html = render();
+    expect(html).toContain('<output aria-live="polite">Открываю локальную библиотеку…</output>');
+    expect(html).not.toContain("Пока нет");
+    expect(html).not.toContain("ничего не найдено");
+  }
+  workspace.ready = true;
+  expect(render()).not.toContain("Открываю локальную библиотеку…");
+  expect(render()).toContain("По вашему запросу ничего не найдено.");
 });

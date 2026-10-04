@@ -62,13 +62,15 @@ export function LocalProjectsPanel({ workspace, onContinue }: { workspace: Local
       </p>
       {diff && <output className="local-diff">{diff}</output>}
       <output aria-live="polite">
-        {!visible.length
-          ? query
-            ? "По вашему запросу ничего не найдено. Попробуйте другое название."
-            : `Пока нет ${versions ? "контрольных точек" : "проектов"}.`
-          : query
-            ? `Найдено: ${visible.length}.`
-            : ""}
+        {!workspace.ready
+          ? "Открываю локальную библиотеку…"
+          : !visible.length
+            ? query
+              ? "По вашему запросу ничего не найдено. Попробуйте другое название."
+              : `Пока нет ${versions ? "контрольных точек" : "проектов"}.`
+            : query
+              ? `Найдено: ${visible.length}.`
+              : ""}
       </output>
       <ul>
         {visible.map((item) => (

@@ -194,26 +194,35 @@ function PublishControls({
     "min-h-12 w-full rounded-[16px] border-2 border-[#3D2B1F]/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#C1440E]/60";
   return (
     <div className="space-y-2 rounded-[20px] bg-[#FFF7E8]/80 p-3">
-      <textarea
-        value={description}
-        onChange={(event) => setDescription(event.target.value)}
-        placeholder={t("publishDescriptionPlaceholder")}
-        rows={3}
-        className={`${inputClass} resize-none py-2`}
-      />
-      <input
-        value={price}
-        onChange={(event) => setPrice(event.target.value.replace(/\D/g, ""))}
-        placeholder={t("publishPricePlaceholder")}
-        inputMode="numeric"
-        className={inputClass}
-      />
-      <input
-        value={region}
-        onChange={(event) => setRegion(event.target.value)}
-        placeholder={t("publishRegionPlaceholder")}
-        className={inputClass}
-      />
+      <label className="block text-sm font-bold">
+        <span className="mb-1 block">{t("publishDescriptionPlaceholder")}</span>
+        <textarea
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          placeholder={t("publishDescriptionPlaceholder")}
+          rows={3}
+          className={`${inputClass} resize-none py-2`}
+        />
+      </label>
+      <label className="block text-sm font-bold">
+        <span className="mb-1 block">{t("publishPricePlaceholder")}</span>
+        <input
+          value={price}
+          onChange={(event) => setPrice(event.target.value.replace(/\D/g, ""))}
+          placeholder={t("publishPricePlaceholder")}
+          inputMode="numeric"
+          className={inputClass}
+        />
+      </label>
+      <label className="block text-sm font-bold">
+        <span className="mb-1 block">{t("publishRegionPlaceholder")}</span>
+        <input
+          value={region}
+          onChange={(event) => setRegion(event.target.value)}
+          placeholder={t("publishRegionPlaceholder")}
+          className={inputClass}
+        />
+      </label>
       <div className="flex gap-2">
         <button
           type="button"

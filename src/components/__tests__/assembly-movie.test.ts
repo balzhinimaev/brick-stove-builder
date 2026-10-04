@@ -1,11 +1,24 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AssemblyPlayback, assemblyFrame, bindPlaybackVisibility } from "../builder/assemblyPlayback";
+import {
+  AssemblyPlayback,
+  assemblyFrame,
+  assemblyTotalRows,
+  bindPlaybackVisibility
+} from "../builder/assemblyPlayback";
 import type { PlacedBrick } from "../../domain/types";
 import builder from "../BuilderScreen.tsx?raw";
 import movie from "../AssemblyMovie.tsx?raw";
 
 afterEach(() => vi.useRealTimers());
 describe("assembly movie lifecycle", () => {
+  it("finds the final row of large imports without exceeding the argument limit", () => {
+    const bricks: Readonly<{ row: number }>[] = Array.from({ length: 200_000 }, () => Object.freeze({ row: 2 }));
+    bricks[123_456] = Object.freeze({ row: 89 });
+    Object.freeze(bricks);
+    expect(assemblyTotalRows(bricks, 36)).toBe(89);
+    expect(assemblyTotalRows(bricks, 100)).toBe(100);
+    expect(assemblyTotalRows([], 36)).toBe(0);
+  });
   it("opens still, plays by rows, pauses and stops exactly at end", () => {
     vi.useFakeTimers();
     const p = new AssemblyPlayback(3, vi.fn());

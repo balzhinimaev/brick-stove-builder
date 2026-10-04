@@ -2,7 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
 import { Vector3 } from "three";
 import type { GridSpec, PlacedBrick } from "../domain/types";
-import { AssemblyPlayback, assemblyFrame, bindPlaybackVisibility } from "./builder/assemblyPlayback";
+import { AssemblyPlayback, assemblyFrame, assemblyTotalRows, bindPlaybackVisibility } from "./builder/assemblyPlayback";
 import { archSceneBounds } from "./three/ClassicArchOverlay";
 import { type CameraCommand, SceneCamera } from "./three/SceneCamera";
 import { BrickHighlight, isMasonry, Masonry, ThreeBrick } from "./three/ThreeBrick";
@@ -26,7 +26,7 @@ export default function AssemblyMovie({
   const titleId = useId();
   const dialog = useRef<HTMLDialogElement>(null);
   const [, refresh] = useReducer((n: number) => n + 1, 0);
-  const total = bricks.length ? Math.max(rowCount, ...bricks.map((b) => b.row)) : 0;
+  const total = useMemo(() => assemblyTotalRows(bricks, rowCount), [bricks, rowCount]);
   const player = useMemo(() => new AssemblyPlayback(total, refresh), [total]);
   const [command, setCommand] = useState<CameraCommand>({ id: 0, kind: "iso" });
   useEffect(() => bindPlaybackVisibility(player, document), [player]);

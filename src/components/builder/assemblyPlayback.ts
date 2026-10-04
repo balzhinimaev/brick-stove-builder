@@ -1,5 +1,11 @@
 import type { PlacedBrick } from "../../domain/types";
 
+/** Avoid argument-count limits when imported projects contain many parts. */
+export function assemblyTotalRows(bricks: readonly Pick<PlacedBrick, "row">[], rowCount: number): number {
+  if (!bricks.length) return 0;
+  return bricks.reduce((total, brick) => Math.max(total, brick.row), rowCount);
+}
+
 export function assemblyFrame(bricks: PlacedBrick[], row: number) {
   return { visible: bricks.filter((b) => b.row <= row), fresh: bricks.filter((b) => b.row === row) };
 }

@@ -632,7 +632,7 @@ it("does not mark another account saved when a replacement list refresh finishes
   login = "alice";
   render();
   listGate.resolve();
-  await replacing;
+  expect(await replacing).toBe(false);
   await loading.promise;
   value = render();
   loadGate.resolve();

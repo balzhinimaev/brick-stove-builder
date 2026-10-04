@@ -228,7 +228,8 @@ export function useLocalWorkspace(
         setError("");
         hydrated.current = true;
       });
-      return true;
+      // Callers must not navigate or select a demo for an account that has changed.
+      return scope.current === namespace;
     } catch (e) {
       if (scope.current === namespace) fail(e);
       return false;

@@ -1,4 +1,4 @@
-import { IDBFactory } from "fake-indexeddb";
+import { forceCloseDatabase, IDBFactory } from "fake-indexeddb";
 import { describe, expect, it } from "vitest";
 import { indexedWorkspace, newLocalProject, checkpoint } from "../workspace";
 import { parseProjectFile, PROJECT_FILE_FORMAT, projectSnapshot, validateSnapshot } from "../projectFile";
@@ -35,6 +35,35 @@ describe("local project library (Node IndexedDB, no browser)", () => {
     expect((await restart.read(version.id))?.snapshot).toEqual(edited.snapshot);
     expect(await restart.list("another-account")).toEqual([]);
     expect(await restart.active("another-account")).toBeNull();
+  });
+
+  it("reopens after an unexpected database close and preserves projects and active selection", async () => {
+    const factory = new IDBFactory();
+    const store = indexedWorkspace(factory);
+    const project = newLocalProject("guest", "Saved project", initialEditorState());
+    // Capture the connection used by the store without changing its production API.
+    const originalOpen = factory.open.bind(factory);
+    let connection: IDBDatabase | undefined;
+    factory.open = (...args) => {
+      const request = originalOpen(...args);
+      request.addEventListener("success", () => {
+        connection = request.result;
+      });
+      return request;
+    };
+    await store.write(project, true);
+    const closed = connection!;
+    await new Promise<void>((resolve) => {
+      closed.addEventListener("close", () => resolve(), { once: true });
+      // fake-indexeddb 6.2.5 declares a constructor here but accepts a connection.
+      (forceCloseDatabase as unknown as (db: IDBDatabase) => void)(closed);
+    });
+    expect(await store.active("guest")).toBe(project.id);
+    expect(connection).not.toBe(closed);
+    expect(await store.read(project.id)).toMatchObject(project);
+    const edited = { ...project, title: "Recovered save", updatedAt: project.updatedAt + 1 };
+    await store.write(edited, true, project.updatedAt);
+    expect((await store.read(project.id))?.title).toBe("Recovered save");
   });
 
   it("rejects stale writes atomically and preserves the other tab's revision", async () => {

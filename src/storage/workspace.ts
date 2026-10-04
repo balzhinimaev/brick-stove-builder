@@ -34,7 +34,15 @@ export function indexedWorkspace(factory: IDBFactory = indexedDB): WorkspaceStor
         db.createObjectStore("active");
       };
       request.onsuccess = () => {
-        request.result.onversionchange = () => request.result.close();
+        const db = request.result;
+        // A closed connection cannot start transactions; retry through open() next time.
+        db.onclose = () => {
+          database = undefined;
+        };
+        db.onversionchange = () => {
+          db.close();
+          database = undefined;
+        };
         resolve(request.result);
       };
       request.onerror = () => reject(request.error);

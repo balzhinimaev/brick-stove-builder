@@ -48,7 +48,7 @@ export function Header({
       <header className="studio-header">
         <div>
           <strong>{t("appTitle")}</strong>
-          <output className="studio-save-state">
+          <output className="studio-save-state" aria-live="polite" aria-atomic="true">
             {autosaveLabel}
             {pendingCount > 0 ? ` · ${t("pendingSync")}: ${pendingCount}` : ""}
           </output>
@@ -94,7 +94,9 @@ export function Header({
               {t("rowCompleted")}: {lockedCount}
             </Pill>
             <Pill>{t("brickSize")}</Pill>
-            {autosaveLabel ? <Pill>{autosaveLabel}</Pill> : null}
+            <output aria-live="polite" aria-atomic="true">
+              {autosaveLabel ? <Pill>{autosaveLabel}</Pill> : null}
+            </output>
             {pendingCount > 0 ? (
               <span className="shrink-0 rounded-full bg-[#9b2c2c]/15 px-2.5 py-1 text-[11px] font-extrabold text-[#9b2c2c]">
                 ⏳ {t("pendingSync")}: {pendingCount}

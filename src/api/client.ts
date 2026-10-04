@@ -56,10 +56,15 @@ export function normalizeLogin(value: string): string {
 }
 
 export function loadSession(): Session | null {
-  const token = localStorage.getItem(TOKEN_KEY);
-  const login = localStorage.getItem(LOGIN_KEY);
-  if (!token || !login) return null;
-  return { login, token };
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    const login = localStorage.getItem(LOGIN_KEY);
+    if (!token || !login) return null;
+    return { login, token };
+  } catch {
+    // Storage can be denied by browser policy; guest startup must still work.
+    return null;
+  }
 }
 
 export function saveSession(session: Session): void {

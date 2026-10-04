@@ -74,7 +74,7 @@ export function Header({
             {t("reset")}
           </button>
           <button type="button" onClick={userLogin ? onSwitchAccount : onSignIn}>
-            {userLogin ? `@${userLogin}` : t("authLogin")}
+            {userLogin ? `@${userLogin} • ${t("signOut")}` : t("authLogin")}
           </button>
         </div>
       </header>

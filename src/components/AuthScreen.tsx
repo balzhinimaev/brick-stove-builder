@@ -55,6 +55,9 @@ export function AuthScreen({
             onChange={(event) => setLogin(event.target.value)}
             placeholder={t("authLoginPlaceholder")}
             autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             className="min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3"
           />
         </label>

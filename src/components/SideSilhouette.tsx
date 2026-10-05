@@ -19,7 +19,7 @@ export function SideSilhouette({
   return (
     <div className="overflow-hidden rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8]">
       <svg width="100%" height="220" viewBox="0 0 192 220">
-        <title>Stove side silhouette</title>
+        <title>{t("liveSidePreview")}</title>
         <rect width="192" height="220" rx="24" fill={COLORS.skyCream} />
         <line
           x1="18"

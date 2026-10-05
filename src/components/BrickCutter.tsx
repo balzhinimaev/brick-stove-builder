@@ -2,6 +2,7 @@ import { Suspense, lazy, useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Translate } from "../i18n";
 import type { CustomBrickSpec } from "../domain/types";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 // Three.js тяжёлый — 3D-превью резака грузим лениво, как и основную сцену.
 const CutterPreview3D = lazy(() => import("./three/CutterPreview3D"));
@@ -109,9 +110,17 @@ export function BrickCutter({
         <p className="mb-2 text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("cutterHint")}</p>
 
         <div className="h-[280px] overflow-hidden rounded-[18px] bg-[#F5E6C8]">
-          <Suspense fallback={<div className="grid h-full place-items-center">{t("loadingScene")}</div>}>
-            <CutterPreview3D spec={spec} />
-          </Suspense>
+          <ErrorBoundary
+            fallback={
+              <p role="alert" className="grid h-full place-items-center p-4 text-center">
+                {t("sceneError")}
+              </p>
+            }
+          >
+            <Suspense fallback={<div className="grid h-full place-items-center">{t("loadingScene")}</div>}>
+              <CutterPreview3D spec={spec} />
+            </Suspense>
+          </ErrorBoundary>
         </div>
 
         <div className="mt-3 space-y-2.5">

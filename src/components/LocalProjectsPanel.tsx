@@ -8,9 +8,9 @@ export function LocalProjectsPanel({ workspace, onContinue }: { workspace: Local
   const [query, setQuery] = useState("");
   const [versions, setVersions] = useState(false);
   const [diff, setDiff] = useState("");
+  const searchQuery = query.trim().toLowerCase();
   const visible = workspace.projects.filter(
-    (p) =>
-      (versions ? p.kind === "checkpoint" : p.kind === "project") && p.title.toLowerCase().includes(query.toLowerCase())
+    (p) => (versions ? p.kind === "checkpoint" : p.kind === "project") && p.title.toLowerCase().includes(searchQuery)
   );
   const compare = async (item: LocalProjectInfo) => {
     try {
@@ -65,10 +65,10 @@ export function LocalProjectsPanel({ workspace, onContinue }: { workspace: Local
         {!workspace.ready
           ? "Открываю локальную библиотеку…"
           : !visible.length
-            ? query
+            ? searchQuery
               ? "По вашему запросу ничего не найдено. Попробуйте другое название."
               : `Пока нет ${versions ? "контрольных точек" : "проектов"}.`
-            : query
+            : searchQuery
               ? `Найдено: ${visible.length}.`
               : ""}
       </output>

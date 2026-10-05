@@ -93,3 +93,33 @@ it.each([false, true])("announces library loading before empty or search results
   expect(render()).not.toContain("Открываю локальную библиотеку…");
   expect(render()).toContain("По вашему запросу ничего не найдено.");
 });
+
+it.each([false, true])(
+  "ignores surrounding search whitespace without removing spaces inside titles (versions: %s)",
+  (versions) => {
+    filters.versions = versions;
+    const workspace = {
+      projects: [
+        { id: "one", title: "Печь в доме", kind: versions ? "checkpoint" : "project", revision: 1, updatedAt: 0 }
+      ],
+      ready: true,
+      busy: false,
+      error: ""
+    } as LocalWorkspace;
+    const render = () => {
+      filters.stateIndex = 0;
+      return renderToStaticMarkup(<LocalProjectsPanel workspace={workspace} onContinue={() => {}} />);
+    };
+    filters.query = "  ПЕЧЬ В ДОМЕ\t";
+    expect(render()).toContain(`aria-label="${versions ? "Восстановить копию" : "Открыть"}: Печь в доме"`);
+    expect(render()).toContain("Найдено: 1.");
+    filters.query = "Печьвдоме";
+    expect(render()).toContain("По вашему запросу ничего не найдено.");
+    filters.query = " \t ";
+    expect(render()).toContain("Печь в доме");
+    expect(render()).not.toContain("Найдено:");
+    workspace.projects = [];
+    expect(render()).toContain(`Пока нет ${versions ? "контрольных точек" : "проектов"}.`);
+    expect(render()).not.toContain("По вашему запросу");
+  }
+);

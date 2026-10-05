@@ -141,6 +141,7 @@ export function useLocalWorkspace(
     const unchanged = previous ? sameDocument(previous.snapshot, data) : false;
     if (!force && previous && unchanged && previous.snapshot.currentRow === data.currentRow) {
       setState("saved");
+      setError("");
       return previous;
     }
     const doc = previous

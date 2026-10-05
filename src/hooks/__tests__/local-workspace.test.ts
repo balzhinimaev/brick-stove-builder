@@ -642,3 +642,24 @@ it("does not mark another account saved when a replacement list refresh finishes
   expect(value.info).toBeNull();
   expect((await store.list("guest")).some((item) => item.title === "Replacement")).toBe(true);
 });
+
+it("clears a transient library error when an unchanged save is retried successfully", async () => {
+  const store = indexedWorkspace(factory);
+  const list = vi.fn(store.list);
+  const write = vi.fn(store.write);
+  vi.spyOn(workspaceStorage, "indexedWorkspace").mockReturnValue({ ...store, list, write });
+  const value = await boot();
+  await value.save();
+  const saved = render().info;
+  write.mockClear();
+  list.mockRejectedValueOnce(new Error("Library temporarily unavailable"));
+  await expect(render().flush()).rejects.toThrow("Library temporarily unavailable");
+  expect(render().state).toBe("error");
+  expect(render().error).toContain("Library temporarily unavailable");
+
+  await render().flush();
+  expect(render().state).toBe("saved");
+  expect(render().error).toBe("");
+  expect(render().info).toEqual(saved);
+  expect(write).not.toHaveBeenCalled();
+});

@@ -203,6 +203,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   }, [printReady]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing) return;
       if (movieOpen) {
         if (isSaveShortcut(event)) event.preventDefault();
         return;

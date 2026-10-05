@@ -277,7 +277,9 @@ export function ProjectOrderPreview({
   t: Translate;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [page, setPage] = useState(0);
+  const [requestedPage, setPage] = useState(0);
+  // A saved project can lose rows while its existing card stays mounted.
+  const page = Math.min(requestedPage, Math.max(0, Math.ceil(rowCount / 6) - 1));
   return (
     <div className="border-y border-[#3D2B1F]/10 bg-[#FFF7E8] px-3 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">

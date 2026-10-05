@@ -15,6 +15,7 @@ export default function App() {
 
   return (
     <div
+      lang={locale}
       className={
         screen === "builder"
           ? "studio-shell"

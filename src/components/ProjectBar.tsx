@@ -39,7 +39,13 @@ export function ProjectBar({ workspace, onServerSave }: { workspace: LocalWorksp
   return (
     <header className="project-bar">
       <div className="project-identity">
-        <button type="button" className="project-title" onClick={workspace.rename} title="Переименовать">
+        <button
+          type="button"
+          className="project-title"
+          disabled={!workspace.ready || workspace.busy}
+          onClick={workspace.rename}
+          title="Переименовать"
+        >
           {info?.title ?? "Новая печь"} <span aria-hidden="true">✎</span>
         </button>
         <output aria-live="polite" className={state === "error" ? "project-error" : "studio-muted"}>
@@ -63,10 +69,10 @@ export function ProjectBar({ workspace, onServerSave }: { workspace: LocalWorksp
       <details className="project-actions">
         <summary>Файл и версии</summary>
         <div>
-          <button type="button" onClick={workspace.saveCopy} disabled={workspace.busy}>
+          <button type="button" onClick={workspace.saveCopy} disabled={!workspace.ready || workspace.busy}>
             Сохранить копию…
           </button>
-          <button type="button" onClick={workspace.saveVersion} disabled={workspace.busy}>
+          <button type="button" onClick={workspace.saveVersion} disabled={!workspace.ready || workspace.busy}>
             Контрольная точка…
           </button>
           <button type="button" onClick={workspace.exportProject}>

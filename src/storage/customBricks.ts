@@ -17,10 +17,12 @@ export function loadCustomBricks(login: string): StoredCustomBrick[] {
   }
 }
 
-export function saveCustomBricks(login: string, bricks: StoredCustomBrick[]): void {
+export function saveCustomBricks(login: string, bricks: StoredCustomBrick[]): boolean {
   try {
     localStorage.setItem(storageKey(login), JSON.stringify(bricks));
+    return true;
   } catch {
-    /* переполнение хранилища: палитра доживёт до перезагрузки в памяти */
+    /* Keep failed writes in the hook until storage becomes available again. */
+    return false;
   }
 }

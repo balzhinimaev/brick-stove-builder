@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loadCustomBricks, saveCustomBricks, type StoredCustomBrick } from "../storage/customBricks";
 import { uniqueId } from "../lib/id";
 import type { CustomBrickSpec } from "../domain/types";
@@ -7,7 +7,10 @@ import type { CustomBrickSpec } from "../domain/types";
 export function useCustomBricks(login: string) {
   const [customBricks, setCustomBricks] = useState<StoredCustomBrick[]>([]);
 
+  const pending = useRef<{ login: string; bricks: StoredCustomBrick[] } | null>(null);
+
   useEffect(() => {
+    pending.current = null;
     setCustomBricks(loadCustomBricks(login));
   }, [login]);
 
@@ -16,8 +19,9 @@ export function useCustomBricks(login: string) {
   const addCustomBrick = useCallback(
     (spec: CustomBrickSpec) => {
       const item: StoredCustomBrick = { id: uniqueId("cb"), spec };
-      const next = [...loadCustomBricks(login), item];
-      saveCustomBricks(login, next);
+      const current = pending.current?.login === login ? pending.current.bricks : loadCustomBricks(login);
+      const next = [...current, item];
+      pending.current = saveCustomBricks(login, next) ? null : { login, bricks: next };
       setCustomBricks(next);
       return item;
     },
@@ -26,8 +30,9 @@ export function useCustomBricks(login: string) {
 
   const removeCustomBrick = useCallback(
     (id: string) => {
-      const next = loadCustomBricks(login).filter((item) => item.id !== id);
-      saveCustomBricks(login, next);
+      const current = pending.current?.login === login ? pending.current.bricks : loadCustomBricks(login);
+      const next = current.filter((item) => item.id !== id);
+      pending.current = saveCustomBricks(login, next) ? null : { login, bricks: next };
       setCustomBricks(next);
     },
     [login]

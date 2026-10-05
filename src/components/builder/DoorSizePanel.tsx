@@ -20,10 +20,11 @@ export function DoorSizePanel({
 }) {
   const widthMm = Math.round(doorSpec.w * 125);
   const heightMm = doorSpec.heightMm ?? 210;
-  const slider = (value: number, min: number, max: number, onChange: (v: number) => void) => (
+  const slider = (label: string, value: number, min: number, max: number, onChange: (v: number) => void) => (
     <div className="flex items-center gap-2">
       <input
         type="range"
+        aria-label={label}
         min={min}
         max={max}
         step={5}
@@ -57,9 +58,9 @@ export function DoorSizePanel({
       </div>
       <div className="space-y-1.5 px-1">
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("doorWidth")}</div>
-        {slider(widthMm, 100, 500, (v) => setDoorSize(v, heightMm))}
+        {slider(t("doorWidth"), widthMm, 100, 500, (v) => setDoorSize(v, heightMm))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("doorHeight")}</div>
-        {slider(heightMm, 100, 400, (v) => setDoorSize(widthMm, v))}
+        {slider(t("doorHeight"), heightMm, 100, 400, (v) => setDoorSize(widthMm, v))}
       </div>
     </div>
   );

@@ -20,10 +20,11 @@ export function DamperSizePanel({
 }) {
   const lengthMm = Math.round(damperSpec.w * 125);
   const widthMm = Math.round(damperSpec.h * 125);
-  const slider = (value: number, min: number, max: number, onChange: (v: number) => void) => (
+  const slider = (label: string, value: number, min: number, max: number, onChange: (v: number) => void) => (
     <div className="flex items-center gap-2">
       <input
         type="range"
+        aria-label={label}
         min={min}
         max={max}
         step={5}
@@ -57,9 +58,9 @@ export function DamperSizePanel({
       </div>
       <div className="space-y-1.5 px-1">
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterLength")}</div>
-        {slider(lengthMm, 125, 375, (v) => setDamperSize(v, widthMm))}
+        {slider(t("cutterLength"), lengthMm, 125, 375, (v) => setDamperSize(v, widthMm))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterWidth")}</div>
-        {slider(widthMm, 125, 375, (v) => setDamperSize(lengthMm, v))}
+        {slider(t("cutterWidth"), widthMm, 125, 375, (v) => setDamperSize(lengthMm, v))}
       </div>
       <p className="mt-2 px-1 text-[10px] font-bold leading-3.5 text-[#3D2B1F]/55">{t("damperHint")}</p>
     </div>

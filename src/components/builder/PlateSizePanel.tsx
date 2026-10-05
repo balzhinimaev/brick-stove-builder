@@ -21,10 +21,18 @@ export function PlateSizePanel({
   const widthMm = Math.round(plateSpec.h * 125);
   const thicknessMm = plateSpec.thicknessMm ?? 14;
   const flush = plateSpec.flush === true;
-  const slider = (value: number, min: number, max: number, step: number, onChange: (v: number) => void) => (
+  const slider = (
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    onChange: (v: number) => void
+  ) => (
     <div className="flex items-center gap-2">
       <input
         type="range"
+        aria-label={label}
         min={min}
         max={max}
         step={step}
@@ -58,11 +66,11 @@ export function PlateSizePanel({
       </div>
       <div className="space-y-1.5 px-1">
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterLength")}</div>
-        {slider(lengthMm, 300, 1000, 5, (v) => setPlateSize(v, widthMm, thicknessMm, flush))}
+        {slider(t("cutterLength"), lengthMm, 300, 1000, 5, (v) => setPlateSize(v, widthMm, thicknessMm, flush))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterWidth")}</div>
-        {slider(widthMm, 250, 750, 5, (v) => setPlateSize(lengthMm, v, thicknessMm, flush))}
+        {slider(t("cutterWidth"), widthMm, 250, 750, 5, (v) => setPlateSize(lengthMm, v, thicknessMm, flush))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("plateThickness")}</div>
-        {slider(thicknessMm, 5, 25, 1, (v) => setPlateSize(lengthMm, widthMm, v, flush))}
+        {slider(t("plateThickness"), thicknessMm, 5, 25, 1, (v) => setPlateSize(lengthMm, widthMm, v, flush))}
       </div>
       <div className="mt-2 px-1">
         <div className="mb-1 text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("plateSeat")}</div>

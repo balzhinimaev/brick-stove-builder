@@ -21,10 +21,18 @@ export function GrateSizePanel({
   const lengthMm = Math.round(grateSpec.w * 125);
   const widthMm = Math.round(grateSpec.h * 125);
   const thicknessMm = grateSpec.thicknessMm ?? 22;
-  const slider = (value: number, min: number, max: number, step: number, onChange: (v: number) => void) => (
+  const slider = (
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number,
+    onChange: (v: number) => void
+  ) => (
     <div className="flex items-center gap-2">
       <input
         type="range"
+        aria-label={label}
         min={min}
         max={max}
         step={step}
@@ -58,11 +66,11 @@ export function GrateSizePanel({
       </div>
       <div className="space-y-1.5 px-1">
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterLength")}</div>
-        {slider(lengthMm, 200, 500, 5, (v) => setGrateSize(v, widthMm, thicknessMm))}
+        {slider(t("cutterLength"), lengthMm, 200, 500, 5, (v) => setGrateSize(v, widthMm, thicknessMm))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("cutterWidth")}</div>
-        {slider(widthMm, 125, 375, 5, (v) => setGrateSize(lengthMm, v, thicknessMm))}
+        {slider(t("cutterWidth"), widthMm, 125, 375, 5, (v) => setGrateSize(lengthMm, v, thicknessMm))}
         <div className="text-[10px] font-black uppercase text-[#3D2B1F]/45">{t("grateThickness")}</div>
-        {slider(thicknessMm, 15, 40, 1, (v) => setGrateSize(lengthMm, widthMm, v))}
+        {slider(t("grateThickness"), thicknessMm, 15, 40, 1, (v) => setGrateSize(lengthMm, widthMm, v))}
       </div>
       <p className="mt-2 px-1 text-[10px] font-bold leading-3.5 text-[#3D2B1F]/55">{t("grateHint")}</p>
     </div>

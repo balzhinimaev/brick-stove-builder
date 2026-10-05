@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ApiError, isPermanentError } from "../../api/client";
 import { flushOps, type FlushExecutor, type PendingOp } from "../offline";
 import type { ReadyProject } from "../../domain/types";
 
@@ -132,4 +133,28 @@ it("cancels rejected creates locally and lets deletes bypass rejected updates", 
   );
   expect(result.remaining).toEqual([]);
   expect(calls).toEqual(["delete:existing"]);
+});
+
+it("retries an HTTP 408 without rejecting queued edits or reordering their tail", async () => {
+  const { exec, calls } = fakeExec({});
+  const update = exec.update;
+  let timeout = true;
+  exec.isPermanent = isPermanentError;
+  exec.update = async (id, project) => {
+    if (timeout) {
+      timeout = false;
+      throw new ApiError(408);
+    }
+    return update(id, project);
+  };
+  const ops = [updateOp("p", "#v1"), updateOp("p", "#v2")];
+  const first = await flushOps(ops, exec);
+  expect(first.remaining).toEqual(ops);
+  expect(first.permanentFailure).toBe(false);
+  expect(first.retryable).toBe(true);
+  expect(calls).toEqual([]);
+
+  const retry = await flushOps(first.remaining, exec);
+  expect(retry.remaining).toEqual([]);
+  expect(calls).toEqual(["update:p", "update:p"]);
 });

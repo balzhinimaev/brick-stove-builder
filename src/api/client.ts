@@ -22,7 +22,7 @@ export function isAuthError(error: unknown): boolean {
 
 /**
  * Постоянный отказ: повторять запрос с теми же данными бессмысленно
- * (в отличие от сети/5xx/429, которые лечатся ретраем).
+ * (в отличие от сети/5xx/408/429, которые лечатся ретраем).
  */
 export function isPermanentError(error: unknown): boolean {
   return (
@@ -30,6 +30,7 @@ export function isPermanentError(error: unknown): boolean {
     error.status >= 400 &&
     error.status < 500 &&
     error.status !== 401 &&
+    error.status !== 408 &&
     error.status !== 429
   );
 }

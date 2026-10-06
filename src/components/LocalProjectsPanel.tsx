@@ -60,7 +60,9 @@ export function LocalProjectsPanel({ workspace, onContinue }: { workspace: Local
       <p className="studio-muted">
         Новые изменения сверху. Перед открытием другой работы сохраняется точка восстановления.
       </p>
-      {diff && <output className="local-diff">{diff}</output>}
+      <output aria-live="polite" aria-atomic="true">
+        {diff && <span className="local-diff">{diff}</span>}
+      </output>
       <output aria-live="polite">
         {!workspace.ready
           ? "Открываю локальную библиотеку…"

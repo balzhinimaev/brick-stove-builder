@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { LocalWorkspace } from "../../hooks/useLocalWorkspace";
 import { LocalProjectsPanel } from "../LocalProjectsPanel";
 
-const filters = vi.hoisted(() => ({ query: "", versions: false, stateIndex: 0 }));
+const filters = vi.hoisted(() => ({ query: "", versions: false, diff: "", stateIndex: 0 }));
 vi.mock("react", async (importOriginal) => {
   const react = await importOriginal<typeof import("react")>();
   return {
@@ -11,12 +11,16 @@ vi.mock("react", async (importOriginal) => {
     useState: (initial: unknown) => {
       const [value, setValue] = react.useState(initial);
       const index = filters.stateIndex++;
-      return [index === 0 ? filters.query : index === 1 ? filters.versions : value, setValue];
+      return [
+        index === 0 ? filters.query : index === 1 ? filters.versions : index === 2 ? filters.diff : value,
+        setValue
+      ];
     }
   };
 });
 afterEach(() => {
   filters.query = "";
+  filters.diff = "";
   filters.versions = false;
   filters.stateIndex = 0;
 });
@@ -123,3 +127,16 @@ it.each([false, true])(
     expect(render()).not.toContain("По вашему запросу");
   }
 );
+
+it("keeps comparison feedback in a mounted atomic live region, including errors", () => {
+  const workspace = { projects: [], ready: true, busy: false, error: "" } as unknown as LocalWorkspace;
+  for (const diff of ["", "Добавлено 2, удалено 1.", "Контрольная точка не найдена"]) {
+    filters.stateIndex = 0;
+    filters.diff = diff;
+    const html = renderToStaticMarkup(<LocalProjectsPanel workspace={workspace} onContinue={() => {}} />);
+    const status = html.match(/<output aria-live="polite" aria-atomic="true">(.*?)<\/output>/s);
+    expect(status).not.toBeNull();
+    expect(status?.[1].replace(/<[^>]*>/g, "")).toBe(diff);
+    expect(status?.[1].includes('class="local-diff"')).toBe(Boolean(diff));
+  }
+});

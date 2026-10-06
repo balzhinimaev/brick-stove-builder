@@ -55,6 +55,8 @@ export function PhysicsPanel({ bricks, grid, rowCount, onSelect, active = true }
         }) ?? [],
     [model, query, filter, frame]
   );
+  const pageCount = Math.ceil(list.length / 40);
+  const currentPage = Math.min(page, Math.max(0, pageCount - 1));
   const index = model?.bodies.findIndex((b) => b.id === selected) ?? -1;
   const body = model?.bodies[index],
     bearing = model?.bearings[index];
@@ -488,33 +490,28 @@ export function PhysicsPanel({ bricks, grid, rowCount, onSelect, active = true }
             <span>{list.length} деталей</span>
           </div>
           <div className="physics-parts">
-            {list
-              .slice(
-                Math.min(page, Math.max(0, Math.ceil(list.length / 40) - 1)) * 40,
-                (Math.min(page, Math.max(0, Math.ceil(list.length / 40) - 1)) + 1) * 40
-              )
-              .map(({ body, bearing }) => (
-                <button type="button" key={body.id} aria-pressed={selected === body.id} onClick={() => choose(body.id)}>
-                  <strong>
-                    Р{body.row} · {body.id}
-                  </strong>
-                  <span>{body.name}</span>
-                  <small>
-                    {bearing.issues.map((issue) => BEARING_LABELS[issue]).join(" · ") || "Нет перечисленных замечаний"}
-                  </small>
-                </button>
-              ))}
+            {list.slice(currentPage * 40, (currentPage + 1) * 40).map(({ body, bearing }) => (
+              <button type="button" key={body.id} aria-pressed={selected === body.id} onClick={() => choose(body.id)}>
+                <strong>
+                  Р{body.row} · {body.id}
+                </strong>
+                <span>{body.name}</span>
+                <small>
+                  {bearing.issues.map((issue) => BEARING_LABELS[issue]).join(" · ") || "Нет перечисленных замечаний"}
+                </small>
+              </button>
+            ))}
             {!list.length && <p>В этой группе деталей нет.</p>}
           </div>
           {list.length > 40 && (
             <div className="physics-pagination">
-              <button type="button" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>
+              <button type="button" disabled={currentPage <= 0} onClick={() => setPage(currentPage - 1)}>
                 ← Назад
               </button>
               <span>
-                Страница {Math.min(page + 1, Math.ceil(list.length / 40))} / {Math.ceil(list.length / 40)}
+                Страница {currentPage + 1} / {pageCount}
               </span>
-              <button type="button" disabled={(page + 1) * 40 >= list.length} onClick={() => setPage((p) => p + 1)}>
+              <button type="button" disabled={currentPage + 1 >= pageCount} onClick={() => setPage(currentPage + 1)}>
                 Далее →
               </button>
             </div>

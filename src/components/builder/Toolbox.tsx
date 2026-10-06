@@ -120,7 +120,7 @@ export function Toolbox({
                     <button
                       type="button"
                       onClick={() => onRemoveCustom(item.id)}
-                      aria-label={t("deleteProject")}
+                      aria-label={`${t("cutterRemove")}: ${item.spec.name}`}
                       className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-[#3D2B1F]/70 text-[10px] font-black text-[#F5E6C8]"
                     >
                       ✕

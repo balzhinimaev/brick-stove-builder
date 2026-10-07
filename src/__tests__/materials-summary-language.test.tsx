@@ -30,11 +30,21 @@ describe("materials summary language", () => {
       "materialsShapedPieces",
       "materialsFireclaySubset",
       "materialsSlabConcrete",
+      "materialsMortarNotCalculated",
       "materialsPurchasingHint"
     ] as const) {
       expect(html).toContain(dictionary[key]);
       if (locale !== "ru") expect(html).not.toContain(translations.ru[key]);
     }
     expect(html).toContain('class="font-black">11</dd>');
+    expect(html).toContain('class="font-black">0.25 m³</dd>');
+  });
+  it.each(LOCALES)("keeps a known zero mortar volume numeric in %s", (locale) => {
+    const dictionary = translations[locale];
+    const html = renderToStaticMarkup(
+      <MaterialsSummary materials={{ ...materials, mortarM3: 0 }} t={(key) => dictionary[key]} />
+    );
+    expect(html).toContain('class="font-black">0.00 m³</dd>');
+    expect(html).not.toContain(dictionary.materialsMortarNotCalculated);
   });
 });

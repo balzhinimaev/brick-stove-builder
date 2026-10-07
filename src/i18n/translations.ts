@@ -99,6 +99,7 @@ const ru = {
   materialsStraightCuts: "Прямые подрезки",
   materialsShapedPieces: "Фасонные детали и вырезы",
   materialsFireclaySubset: "Из них шамотных деталей",
+  materialsMortarNotCalculated: "Не рассчитан по швам",
   materialsSlabConcrete: "Бетон · только плита по параметрам",
   materialsPurchasingHint:
     "Для закупки нужны карта раскроя с пропилом и отходами, объём швов и состав основания. Эти количества здесь не подменяются числом деталей.",
@@ -358,6 +359,7 @@ const en: Record<TranslationKey, string> = {
   materialsStraightCuts: "Straight-cut pieces",
   materialsShapedPieces: "Shaped and notched pieces",
   materialsFireclaySubset: "Of these, fireclay pieces",
+  materialsMortarNotCalculated: "Not calculated from mortar joints",
   materialsSlabConcrete: "Concrete · slab from parameters only",
   materialsPurchasingHint:
     "Purchasing requires a cutting plan including kerf and waste, joint volume, and foundation composition. Piece counts do not replace these quantities.",
@@ -617,6 +619,7 @@ const lt: Record<TranslationKey, string> = {
   materialsStraightCuts: "Tiesiai pjautos detalės",
   materialsShapedPieces: "Figūrinės detalės ir išpjovos",
   materialsFireclaySubset: "Iš jų šamotinių detalių",
+  materialsMortarNotCalculated: "Neapskaičiuota pagal mūro siūles",
   materialsSlabConcrete: "Betonas · tik plokštė pagal parametrus",
   materialsPurchasingHint:
     "Pirkimui reikia pjovimo plano, įskaitant pjūvio plotį ir atliekas, siūlių tūrio ir pagrindo sudėties. Detalių skaičius šių kiekių nepakeičia.",

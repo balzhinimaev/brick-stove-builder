@@ -21,7 +21,10 @@ export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimat
         {(materials.steelKg ?? 0) > 0 && (
           <MaterialRow label={t("steelApproxKg")} value={(materials.steelKg ?? 0).toFixed(2)} />
         )}
-        <MaterialRow label={t("mortarEstimate")} value={formatM3(materials.mortarM3)} />
+        <MaterialRow
+          label={t("mortarEstimate")}
+          value={materials.mortarM3 === null ? t("materialsMortarNotCalculated") : formatM3(materials.mortarM3)}
+        />
         <MaterialRow label={t("materialsSlabConcrete")} value={formatM3(materials.concreteVolumeM3)} />
       </dl>
       <p className="studio-muted">{t("materialsPurchasingHint")}</p>

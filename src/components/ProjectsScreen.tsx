@@ -30,12 +30,12 @@ export function ProjectsScreen({
   onDelete: (project: ReadyProject) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
+  const searchQuery = query.trim().toLowerCase();
   const unit = t("unitCm");
   const mine = projects.filter((project) => userLogin && project.ownerLogin === userLogin);
   const templates = projects.filter(
     (project) =>
-      !(userLogin && project.ownerLogin === userLogin) &&
-      project.title[locale].toLowerCase().includes(query.toLowerCase())
+      !(userLogin && project.ownerLogin === userLogin) && project.title[locale].toLowerCase().includes(searchQuery)
   );
 
   const renderCard = (project: ReadyProject) => {

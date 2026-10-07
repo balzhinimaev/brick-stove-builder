@@ -3,6 +3,7 @@ import { DEFAULT_PHYSICS, type BearingIssue, type PhysicsSettings } from "../dom
 import { usePhysics } from "../hooks/usePhysics";
 import { downloadFile } from "../storage/projectFile";
 import type { PhysicsReviewProps } from "./PhysicsReview";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 const PhysicsScene = lazy(() => import("./three/PhysicsScene").then((module) => ({ default: module.PhysicsScene })));
 export const BEARING_LABELS: Record<BearingIssue, string> = {
@@ -344,9 +345,17 @@ export function PhysicsPanel({ bricks, grid, rowCount, onSelect, active = true }
           </p>
           <div className="physics-workspace">
             <div className="physics-canvas">
-              <Suspense fallback={<output>Загрузка 3D…</output>}>
-                <PhysicsScene model={model} frame={frame} selectedId={selected} mode={colorMode} onSelect={choose} />
-              </Suspense>
+              <ErrorBoundary
+                fallback={
+                  <p role="alert">
+                    Не удалось показать 3D. Управление проверкой, список деталей и скачивание отчёта остаются доступны.
+                  </p>
+                }
+              >
+                <Suspense fallback={<output>Загрузка 3D…</output>}>
+                  <PhysicsScene model={model} frame={frame} selectedId={selected} mode={colorMode} onSelect={choose} />
+                </Suspense>
+              </ErrorBoundary>
             </div>
             <aside className="physics-detail">
               <h4>{body ? `Ряд ${body.row} · ${body.name}` : "Выберите деталь"}</h4>

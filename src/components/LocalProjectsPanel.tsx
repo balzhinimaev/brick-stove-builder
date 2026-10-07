@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { LocalWorkspace } from "../hooks/useLocalWorkspace";
 import { compareDocuments } from "../domain/projectCompare";
 import type { LocalProjectInfo } from "../storage/workspace";
@@ -12,16 +12,20 @@ export function LocalProjectsPanel({ workspace, onContinue }: { workspace: Local
   const visible = workspace.projects.filter(
     (p) => (versions ? p.kind === "checkpoint" : p.kind === "project") && p.title.toLowerCase().includes(searchQuery)
   );
+  const comparisonRequest = useRef(0);
   const compare = async (item: LocalProjectInfo) => {
+    const request = ++comparisonRequest.current;
     try {
       const active = await workspace.flush();
       const past = await workspace.read(item.id);
+      if (request !== comparisonRequest.current) return;
       if (!past) throw new Error("Контрольная точка не найдена");
       const d = compareDocuments(past.snapshot, active.snapshot);
       setDiff(
         `От «${item.title}» до текущей работы: добавлено ${d.added.length}, удалено ${d.removed.length}, перемещено ${d.moved.length}, изменено ${d.changed.length}. ${d.parametersChanged || d.rowsChanged ? "Параметры или число рядов изменены." : "Параметры и число рядов совпадают."} Это сравнение деталей одной рабочей версии, не оценка прочности.`
       );
     } catch (e) {
+      if (request !== comparisonRequest.current) return;
       setDiff(e instanceof Error ? e.message : "Сравнение недоступно");
     }
   };

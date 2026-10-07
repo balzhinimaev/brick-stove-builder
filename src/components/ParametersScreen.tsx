@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { Locale, Translate } from "../i18n";
 import type { Parameters, ReadyProject } from "../domain/types";
 import type { CalculatorInput } from "../domain/stoveCalculator";
@@ -74,6 +74,7 @@ function ParameterControl({
   updateParameter: (key: keyof Parameters, value: number) => void;
   t: Translate;
 }) {
+  const helpId = useId();
   const bounds = PARAM_BOUNDS[field];
   const ratio = (value - bounds.min) / (bounds.max - bounds.min);
   const title = t(bounds.title);
@@ -96,7 +97,9 @@ function ParameterControl({
         </div>
         <div className="min-w-0 flex-1">
           <div className="font-black">{title}</div>
-          <div className="text-xs font-bold leading-4 text-[#3D2B1F]/60">{t(bounds.help)}</div>
+          <div id={helpId} className="text-xs font-bold leading-4 text-[#3D2B1F]/60">
+            {t(bounds.help)}
+          </div>
         </div>
         <label className="flex min-w-[86px] items-center rounded-[17px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] px-2 py-1.5">
           <input
@@ -109,6 +112,7 @@ function ParameterControl({
             }}
             inputMode="numeric"
             aria-label={`${title}, ${unit}`}
+            aria-describedby={helpId}
             className="w-10 bg-transparent text-base font-black outline-none"
           />
           <span className="text-xs font-black text-[#3D2B1F]/55">{unit}</span>

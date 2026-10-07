@@ -44,7 +44,10 @@ async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
 export function apiBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE as string | undefined;
   if (configured) return configured.replace(/\/$/, "");
-  if (window.location.pathname.startsWith("/brick-stove-builder")) return "/brick-stove-builder/api";
+  const pathname = window.location.pathname;
+  if (pathname === "/brick-stove-builder" || pathname.startsWith("/brick-stove-builder/")) {
+    return "/brick-stove-builder/api";
+  }
   return "/api";
 }
 

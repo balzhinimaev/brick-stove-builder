@@ -165,7 +165,7 @@ function ShowcaseCard({
   );
 }
 
-function LeadForm({ project, locale, t }: { project: ReadyProject; locale: Locale; t: Translate }) {
+export function LeadForm({ project, locale, t }: { project: ReadyProject; locale: Locale; t: Translate }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -192,6 +192,7 @@ function LeadForm({ project, locale, t }: { project: ReadyProject; locale: Local
   }
 
   const send = async () => {
+    if (status === "sending") return;
     if (phone.replace(/\D/g, "").length < 10) {
       setStatus("error");
       return;
@@ -210,7 +211,13 @@ function LeadForm({ project, locale, t }: { project: ReadyProject; locale: Local
   };
 
   return (
-    <div className="space-y-2 rounded-[20px] bg-[#FFF7E8]/80 p-3">
+    <form
+      className="space-y-2 rounded-[20px] bg-[#FFF7E8]/80 p-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void send();
+      }}
+    >
       <p className="text-xs font-bold leading-4 text-[#3D2B1F]/65">{t("showcaseLeadHint")}</p>
       <input
         value={name}
@@ -231,8 +238,7 @@ function LeadForm({ project, locale, t }: { project: ReadyProject; locale: Local
       {status === "error" ? <p className="text-xs font-black text-[#C1440E]">{t("leadError")}</p> : null}
       <div className="flex gap-2">
         <button
-          type="button"
-          onClick={send}
+          type="submit"
           disabled={status === "sending"}
           className="min-h-12 flex-1 rounded-[18px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8] disabled:opacity-60"
         >
@@ -246,6 +252,6 @@ function LeadForm({ project, locale, t }: { project: ReadyProject; locale: Local
           {t("cancel")}
         </button>
       </div>
-    </div>
+    </form>
   );
 }

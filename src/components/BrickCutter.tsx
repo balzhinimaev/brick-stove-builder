@@ -182,12 +182,15 @@ export function BrickCutter({
             </>
           )}
 
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("cutterName")}
-            className="min-h-11 w-full rounded-[14px] border-2 border-[#3D2B1F]/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#C1440E]/60"
-          />
+          <label className="block text-sm font-bold">
+            <span className="mb-1 block">{t("cutterName")}</span>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="min-h-11 w-full rounded-[14px] border-2 border-[#3D2B1F]/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#C1440E]/60"
+            />
+          </label>
 
           <div className="flex gap-2 pt-1">
             <button

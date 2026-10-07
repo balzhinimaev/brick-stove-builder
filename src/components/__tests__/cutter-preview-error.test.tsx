@@ -28,6 +28,10 @@ it.each(["ru", "en", "lt"] as const)("keeps cutter controls available after prev
   const html = renderToStaticMarkup(<BrickCutter t={t} onSave={() => {}} onClose={() => {}} />);
   expect(html).toMatch(new RegExp(`<[^>]+role="alert"[^>]*>${t("sceneError")}</`));
   expect(html).not.toContain(t("loadingScene"));
+  // The name retains a visible, associated label even when the preview fails.
+  const nameLabel = html.match(/<label[^>]*><span[^>]*>([^<]*)<\/span><input type="text"[^>]*><\/label>/);
+  const escapedName = t("cutterName").replaceAll('"', "&quot;");
+  expect(nameLabel?.[1]).toBe(escapedName);
   expect(html).toContain('id="cutter-length"');
   expect(html).toContain('id="cutter-width"');
   expect(html).toContain(`>${t("cutterSave")}</button>`);

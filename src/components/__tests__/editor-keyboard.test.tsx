@@ -14,7 +14,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("leaves IME composition keys untouched while ordinary editor shortcuts still work", () => {
+it("leaves IME and Alt-modified keys untouched while ordinary editor shortcuts still work", () => {
   const listeners = new Set<(event: KeyboardEvent) => void>();
   vi.stubGlobal("window", {
     addEventListener: (name: string, callback: (event: KeyboardEvent) => void) => {
@@ -63,9 +63,17 @@ it("leaves IME composition keys untouched while ordinary editor shortcuts still 
     />
   );
   const cleanups = effects.map((effect) => effect());
-  const press = (key: string, isComposing: boolean, ctrlKey = false) => {
+  const press = (key: string, isComposing: boolean, ctrlKey = false, altKey = false, metaKey = false) => {
     const preventDefault = vi.fn();
-    const event = { key, isComposing, ctrlKey, preventDefault, target: null } as unknown as KeyboardEvent;
+    const event = {
+      key,
+      isComposing,
+      ctrlKey,
+      altKey,
+      metaKey,
+      preventDefault,
+      target: null
+    } as unknown as KeyboardEvent;
     for (const listener of listeners) listener(event);
     return preventDefault;
   };
@@ -73,6 +81,12 @@ it("leaves IME composition keys untouched while ordinary editor shortcuts still 
     expect(listeners.size).toBe(1);
     for (const key of ["r", "b", "e"]) expect(press(key, true)).not.toHaveBeenCalled();
     for (const key of ["z", "y", "s"]) expect(press(key, true, true)).not.toHaveBeenCalled();
+    // Ctrl+Alt (including AltGr) and Command+Option belong to native/input shortcuts.
+    for (const key of ["r", "b", "e", "z", "y", "s"]) {
+      expect(press(key, false, true, true)).not.toHaveBeenCalled();
+      expect(press(key, false, false, true, true)).not.toHaveBeenCalled();
+      expect(press(key, false, false, true)).not.toHaveBeenCalled();
+    }
     for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
     press("r", false);
     press("b", false);

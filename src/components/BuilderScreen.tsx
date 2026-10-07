@@ -203,7 +203,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   }, [printReady]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.isComposing) return;
+      if (event.isComposing || event.altKey) return;
       if (movieOpen) {
         if (isSaveShortcut(event)) event.preventDefault();
         return;
@@ -227,7 +227,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
           event.preventDefault();
           redo();
         }
-      } else if (!event.altKey) {
+      } else {
         if (key === "r") {
           event.preventDefault();
           setOrientation(orientation === "h" ? "v" : "h");

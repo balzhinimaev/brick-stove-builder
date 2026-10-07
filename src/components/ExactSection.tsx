@@ -97,9 +97,9 @@ export function ExactSection({
                 if (!measure) onSelect?.([s.brick.id], row);
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+                if (!measure && onSelect && (e.key === "Enter" || e.key === " ")) {
                   e.preventDefault();
-                  onSelect?.([s.brick.id], row);
+                  onSelect([s.brick.id], row);
                 }
               }}
             >

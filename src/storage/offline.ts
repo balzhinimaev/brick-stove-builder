@@ -92,7 +92,8 @@ export type FlushResult = {
  * Чистая функция от (ops, executor) — покрыта юнит-тестами.
  */
 export async function flushOps(ops: PendingOp[], exec: FlushExecutor): Promise<FlushResult> {
-  const idMap: Record<string, string> = {};
+  // Project IDs are data, including names inherited by ordinary objects.
+  const idMap: Record<string, string> = Object.create(null);
   const remaining: PendingOp[] = [];
   const work = [...ops];
   const key = (op: PendingOp) => (op.kind === "create" ? op.project.id : op.id);
@@ -164,7 +165,7 @@ export async function flushOps(ops: PendingOp[], exec: FlushExecutor): Promise<F
 export function remapPendingOps(ops: PendingOp[], idMap: Record<string, string>): PendingOp[] {
   return ops.map((op) => {
     if (op.kind === "create") return op;
-    const id = idMap[op.id] ?? op.id;
+    const id = Object.hasOwn(idMap, op.id) ? idMap[op.id] : op.id;
     return op.kind === "delete" ? { ...op, id } : { ...op, id, project: { ...op.project, id } };
   });
 }

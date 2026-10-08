@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError, isPermanentError } from "../../api/client";
-import { flushOps, type FlushExecutor, type PendingOp } from "../offline";
+import { flushOps, remapPendingOps, type FlushExecutor, type PendingOp } from "../offline";
 import type { ReadyProject } from "../../domain/types";
 
 const project = (id: string): ReadyProject => ({
@@ -157,4 +157,30 @@ it("retries an HTTP 408 without rejecting queued edits or reordering their tail"
   const retry = await flushOps(first.remaining, exec);
   expect(retry.remaining).toEqual([]);
   expect(calls).toEqual(["update:p", "update:p"]);
+});
+
+it.each(["toString", "constructor", "__proto__"])(
+  "preserves unmapped project ID %s through a network retry",
+  async (id) => {
+    const { exec, calls } = fakeExec({ [`update:${id}`]: ["net"] });
+    const ops = [updateOp(id), deleteOp(id)];
+    const first = await flushOps(ops, exec);
+    expect(first.remaining).toEqual(ops);
+    expect(first.retryable).toBe(true);
+    expect(remapPendingOps(ops, {})).toEqual(ops);
+    await flushOps(first.remaining, exec);
+    expect(calls).toEqual([`update:${id}`, `update:${id}`, `delete:${id}`]);
+  }
+);
+
+it.each(["toString", "constructor", "__proto__"])("remaps offline project ID %s after creation", async (id) => {
+  const { exec, calls } = fakeExec({});
+  const result = await flushOps([createOp(id), updateOp(id), deleteOp(id)], exec);
+  expect(result.remaining).toEqual([]);
+  expect(result.idMap[id]).toBe(`srv-${id}`);
+  expect(remapPendingOps([updateOp(id), deleteOp(id)], result.idMap)).toEqual([
+    { ...updateOp(id), id: `srv-${id}`, project: { ...project(id), id: `srv-${id}` } },
+    deleteOp(`srv-${id}`)
+  ]);
+  expect(calls).toEqual([`create:${id}`, `update:srv-${id}`, `delete:srv-${id}`]);
 });

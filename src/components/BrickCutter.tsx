@@ -138,18 +138,20 @@ export function BrickCutter({
             <div className="mt-1 grid grid-cols-5 gap-1.5">
               {(
                 [
-                  ["none", "▭"],
-                  ["nw", "◰"],
-                  ["ne", "◳"],
-                  ["sw", "◱"],
-                  ["se", "◲"]
-                ] as Array<[Corner, string]>
-              ).map(([key, glyph]) => (
+                  ["none", "▭", t("cutterCornerNone")],
+                  ["nw", "◰", t("cutterCornerNW")],
+                  ["ne", "◳", t("cutterCornerNE")],
+                  ["sw", "◱", t("cutterCornerSW")],
+                  ["se", "◲", t("cutterCornerSE")]
+                ] as Array<[Corner, string, string]>
+              ).map(([key, glyph, label]) => (
                 <button
                   type="button"
                   key={key}
                   onClick={() => setCorner(key)}
                   aria-pressed={corner === key}
+                  aria-label={label}
+                  title={label}
                   className={`min-h-10 rounded-2xl text-sm font-black ${corner === key ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#F5E6C8] text-[#3D2B1F]"}`}
                 >
                   {glyph}

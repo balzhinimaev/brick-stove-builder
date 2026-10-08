@@ -31,7 +31,8 @@ export function masonryDimensions(b: PlacedBrick): number[] {
 export function masonryCsv(bricks: PlacedBrick[]): string {
   const cell = (v: string | number) => {
     const text = String(v);
-    return `"${(/^[=+@-]/.test(text) ? `'${text}` : text).replaceAll('"', '""')}"`;
+    // Spreadsheet importers may discard leading whitespace before evaluating a formula.
+    return `"${(/^\s*[=+@-]/.test(text) ? `'${text}` : text).replaceAll('"', '""')}"`;
   };
   const numbers = partNumbers(bricks);
   const records: (string | number)[][] = [

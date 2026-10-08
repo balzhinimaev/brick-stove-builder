@@ -66,3 +66,23 @@ it("exports one schedule line per physical brick and escapes spreadsheet formula
   expect(csv).toContain("'=HYPERLINK");
   expect(csv).toContain("Единый кирпич с вырезами");
 });
+
+it.each(["\t=1+1", "\r=1+1", "\n=1+1", "  =1+1", " \t+1", "\t@SUM(1)", "\t-1"])(
+  "exports whitespace-prefixed spreadsheet expressions as literal text: %j",
+  (name) => {
+    const input = { ...brick, id: name, custom: { ...brick.custom!, name } };
+    const csv = masonryCsv([input]);
+    const literal = `"'${name}"`;
+    expect(csv).toContain(`${literal};${literal};`);
+    expect(input.id).toBe(name);
+    expect(input.custom.name).toBe(name);
+  }
+);
+
+it("preserves ordinary CSV text, embedded delimiters, quotes and line breaks", () => {
+  const name = '  Cut; "A"\nsecond line';
+  const csv = masonryCsv([{ ...brick, custom: { ...brick.custom!, name } }]);
+  expect(csv).toContain('"  Cut; ""A""\nsecond line"');
+  expect(csv.startsWith("\uFEFF")).toBe(true);
+  expect(csv.endsWith("\r\n")).toBe(true);
+});

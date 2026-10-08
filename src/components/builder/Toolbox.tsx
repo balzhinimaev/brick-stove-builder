@@ -179,7 +179,9 @@ export function Toolbox({
               <span className="text-[11px] font-black uppercase tracking-wide text-[#3D2B1F]/55">
                 {t("cutterDepth")}
               </span>
-              <span className="text-sm font-black">{rebateDepthMm} мм</span>
+              <span className="text-sm font-black">
+                {rebateDepthMm} {t("unitMm")}
+              </span>
             </div>
             <input
               type="range"
@@ -193,7 +195,9 @@ export function Toolbox({
             />
             <div className="mt-1 flex items-center justify-between gap-2 px-1">
               <span className="text-[10px] font-bold text-[#3D2B1F]/55">
-                {rebateDepthMm >= 65 ? t("cutterThrough") : `${t("cutterLedgeLeft")}: ${65 - rebateDepthMm} мм`}
+                {rebateDepthMm >= 65
+                  ? t("cutterThrough")
+                  : `${t("cutterLedgeLeft")}: ${65 - rebateDepthMm} ${t("unitMm")}`}
               </span>
               {/* полка точно под текущую толщину плиты — плита ляжет на неё, а не повиснет */}
               <button
@@ -201,7 +205,7 @@ export function Toolbox({
                 onClick={() => setRebateDepth(plateThicknessMm)}
                 className="min-h-8 shrink-0 rounded-full border border-[#C1440E]/40 px-2.5 text-[10px] font-black text-[#C1440E]"
               >
-                {t("rebateDepthForPlate")}: {plateThicknessMm} мм
+                {t("rebateDepthForPlate")}: {plateThicknessMm} {t("unitMm")}
               </button>
             </div>
           </div>

@@ -85,9 +85,9 @@ export function PrintOrder({
                 <thead>
                   <tr>
                     <th>№</th>
-                    <th>Деталь</th>
-                    <th>X × Y × Z, мм</th>
-                    <th>Форма</th>
+                    <th>{t("printPart")}</th>
+                    <th>X × Y × Z, {t("unitMm")}</th>
+                    <th>{t("printShape")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -102,10 +102,10 @@ export function PrintOrder({
                       </td>
                       <td>
                         {b.custom?.solidParts
-                          ? "Составной вырез · одна заготовка"
+                          ? t("printCompositeShape")
                           : b.custom?.profileXZ
-                            ? "Профильная"
-                            : "Прямая / арматура"}
+                            ? t("printProfileShape")
+                            : t("printStraightShape")}
                       </td>
                     </tr>
                   ))}

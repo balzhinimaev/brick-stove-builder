@@ -191,6 +191,11 @@ export function Toolbox({
               value={rebateDepthMm}
               onChange={(event) => setRebateDepth(Number(event.target.value))}
               aria-label={t("cutterDepth")}
+              aria-valuetext={`${rebateDepthMm} ${t("unitMm")}, ${
+                rebateDepthMm >= 65
+                  ? t("cutterThrough")
+                  : `${t("cutterLedgeLeft")}: ${65 - rebateDepthMm} ${t("unitMm")}`
+              }`}
               className="w-full accent-[#C1440E]"
             />
             <div className="mt-1 flex items-center justify-between gap-2 px-1">

@@ -45,6 +45,7 @@ export function ProjectBar({ workspace, onServerSave }: { workspace: LocalWorksp
           disabled={!workspace.ready || workspace.busy}
           onClick={workspace.rename}
           title="Переименовать"
+          aria-label={`Переименовать: ${info?.title ?? "Новая печь"}`}
         >
           {info?.title ?? "Новая печь"} <span aria-hidden="true">✎</span>
         </button>

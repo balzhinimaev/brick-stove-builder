@@ -40,7 +40,13 @@ vi.mock("../../hooks/usePhysics", () => ({
   })
 }));
 
-type Props = { children?: ReactNode; className?: string; onClick?: () => void; disabled?: boolean };
+type Props = {
+  children?: ReactNode;
+  className?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  onChange?: (event: { target: { value: string } }) => void;
+};
 function find(node: ReactNode, predicate: (element: ReactElement<Props>) => boolean): ReactElement<Props>[] {
   const found: ReactElement<Props>[] = [];
   Children.forEach(node, (child) => {
@@ -56,6 +62,7 @@ function render() {
   const parts = find(tree, (node) => node.props.className === "physics-parts")[0];
   const button = (label: string) => find(tree, (node) => node.type === "button" && node.props.children === label)[0];
   return {
+    search: find(tree, (node) => node.type === "input" && !!node.props.onChange).at(-1),
     ids: find(parts, (node) => node.type === "button").map((node) => node.key),
     back: button("← Назад"),
     next: button("Далее →")
@@ -96,4 +103,15 @@ it("handles a single page and empty dynamic results without stale navigation con
   state.count = 0;
   expect(render().ids).toEqual([]);
   expect(render().back).toBeUndefined();
+});
+
+it.each([
+  ["  BRICK-119  ", ["brick-119"]],
+  [" \tКИРПИЧ\n ", Array.from({ length: 40 }, (_, i) => `brick-${i}`)],
+  [" \t ", Array.from({ length: 40 }, (_, i) => `brick-${i}`)],
+  ["  missing  ", []]
+])("ignores surrounding whitespace in search %j and resets pagination", (query, expected) => {
+  render().next.props.onClick?.();
+  render().search?.props.onChange?.({ target: { value: query as string } });
+  expect(render().ids).toEqual(expected);
 });

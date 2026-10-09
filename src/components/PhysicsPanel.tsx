@@ -41,20 +41,21 @@ export function PhysicsPanel({ bricks, grid, rowCount, onSelect, active = true }
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [colorMode, setColorMode] = useState<"motion" | "load" | "bearing">("bearing");
+  const searchQuery = query.trim().toLowerCase();
   const list = useMemo(
     () =>
       model?.bodies
         .map((b, i) => ({ body: b, bearing: model.bearings[i], i }))
         .filter(({ body, bearing, i }) => {
           const text = `${body.id} ${body.name} ${body.row}`.toLowerCase();
-          if (!text.includes(query.toLowerCase())) return false;
+          if (!text.includes(searchQuery)) return false;
           if (filter === "issues") return bearing.issues.some((issue) => issue !== "inclined");
           if (filter === "inclined") return bearing.issues.includes("inclined");
           if (filter === "moved") return (frame?.displacementsMm[i] ?? 0) > 2 || (frame?.rotationsDeg[i] ?? 0) > 1;
           if (filter === "held") return body.held && !frame?.released;
           return true;
         }) ?? [],
-    [model, query, filter, frame]
+    [model, searchQuery, filter, frame]
   );
   const pageCount = Math.ceil(list.length / 40);
   const currentPage = Math.min(page, Math.max(0, pageCount - 1));

@@ -83,6 +83,7 @@ export function ExactSection({
               d={s.path}
               role={onSelect ? "button" : undefined}
               aria-pressed={onSelect ? selectedIds.includes(s.brick.id) : undefined}
+              aria-disabled={onSelect ? measure : undefined}
               tabIndex={onSelect ? 0 : undefined}
               aria-label={`Деталь ${labels.get(s.brick.id)}, ряд установки ${s.brick.row}`}
               fill={

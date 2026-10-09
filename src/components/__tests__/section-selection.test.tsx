@@ -14,6 +14,7 @@ const brick: PlacedBrick = { id: "brick", kind: "standard", row: 1, x: 0, y: 0, 
 
 type PathProps = {
   children?: ReactNode;
+  "aria-disabled"?: boolean;
   onClick?: () => void;
   onKeyDown?: (event: { key: string; preventDefault: () => void }) => void;
 };
@@ -42,6 +43,7 @@ it.each([false, true])("keeps pointer and keyboard selection consistent in measu
     })
   );
   expect(path).toBeDefined();
+  expect(path?.["aria-disabled"]).toBe(measure);
   path?.onClick?.();
   for (const key of ["Enter", " "]) {
     const preventDefault = vi.fn();
@@ -71,6 +73,7 @@ it("does not consume activation keys in a noninteractive print section", () => {
     ExactSection({ bricks: [brick], grid: { cols: 8, rows: 8, widthCm: 100, lengthCm: 100 }, row: 1 })
   );
   expect(path).toBeDefined();
+  expect(path?.["aria-disabled"]).toBeUndefined();
   for (const key of ["Enter", " "]) {
     const preventDefault = vi.fn();
     path?.onKeyDown?.({ key, preventDefault });

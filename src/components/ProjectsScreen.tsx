@@ -294,7 +294,7 @@ export function ProjectOrderPreview({
         onClick={() => setExpanded(!expanded)}
         className="min-h-11 rounded-lg border px-3"
       >
-        {expanded ? "Свернуть ряды" : "Посмотреть порядовку"}
+        {t(expanded ? "collapseOrderPreview" : "showOrderPreview")}
       </button>
       {expanded && (
         <>
@@ -319,13 +319,13 @@ export function ProjectOrderPreview({
           </div>
           <div className="part-actions">
             <button type="button" disabled={page === 0} onClick={() => setPage(page - 1)}>
-              ← Ряды
+              ← {t("rowsRail")}
             </button>
             <span>
               {page * 6 + 1}–{Math.min(rowCount, page * 6 + 6)} / {rowCount}
             </span>
             <button type="button" disabled={(page + 1) * 6 >= rowCount} onClick={() => setPage(page + 1)}>
-              Ряды →
+              {t("rowsRail")} →
             </button>
           </div>
         </>

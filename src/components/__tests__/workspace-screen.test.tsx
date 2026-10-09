@@ -61,5 +61,5 @@ it("keeps heavy review, physics, 89-row preview and print unmounted until reques
     />
   );
   expect(preview).not.toContain("<svg");
-  expect(preview).toContain("Посмотреть порядовку");
+  expect(preview).toContain("showOrderPreview");
 });

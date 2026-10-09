@@ -122,7 +122,7 @@ export function ProjectsScreen({
     <main className="mt-4 space-y-3 xl:space-y-4">
       {userLogin && (
         <>
-          <SectionTitle title="В аккаунте" subtitle={t("myProjectsSubtitle")} />
+          <SectionTitle title={t("accountProjectsTitle")} subtitle={t("myProjectsSubtitle")} />
           {mine.length ? (
             <div className="space-y-3">{mine.map(renderCard)}</div>
           ) : (
@@ -136,7 +136,7 @@ export function ProjectsScreen({
         <SectionTitle title={t("templatesTitle")} subtitle={t("projectsSubtitle")} />
       </div>
       <label className="catalog-search">
-        Найти шаблон <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
+        {t("findTemplate")} <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
       </label>
       <div className="space-y-3">{templates.map(renderCard)}</div>
     </main>

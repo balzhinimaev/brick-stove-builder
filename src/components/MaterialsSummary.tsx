@@ -6,7 +6,7 @@ import { formatM3 } from "./format";
 export function MaterialsSummary({ materials, t }: { materials: MaterialsEstimate; t: Translate }) {
   return (
     <div className="mt-3 rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-3">
-      <div className="mb-2 text-lg font-black">{t("materialsSnapshot")}</div>
+      <h2 className="mb-2 text-lg font-black">{t("materialsSnapshot")}</h2>
       <p className="studio-muted">{t("materialsInventoryHint")}</p>
       <dl>
         <MaterialRow label={t("materialsWholePieces")} value={materials.fullPieces ?? materials.regularBricks} />

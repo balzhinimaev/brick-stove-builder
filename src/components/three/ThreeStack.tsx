@@ -234,7 +234,7 @@ export function ThreeStack({
   }, [currentRow, grid, inspect]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (assembly || inspect || sectionActive) return;
+      if (event.isComposing || assembly || inspect || sectionActive) return;
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || target?.closest("input,textarea,select,button,dialog,[role=dialog]")) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;

@@ -94,14 +94,14 @@ export function Header({
               {t("rowCompleted")}: {lockedCount}
             </Pill>
             <Pill>{t("brickSize")}</Pill>
-            <output aria-live="polite" aria-atomic="true">
+            <output className="flex gap-1.5" aria-live="polite" aria-atomic="true">
               {autosaveLabel ? <Pill>{autosaveLabel}</Pill> : null}
+              {pendingCount > 0 ? (
+                <span className="shrink-0 rounded-full bg-[#9b2c2c]/15 px-2.5 py-1 text-[11px] font-extrabold text-[#9b2c2c]">
+                  ⏳ {t("pendingSync")}: {pendingCount}
+                </span>
+              ) : null}
             </output>
-            {pendingCount > 0 ? (
-              <span className="shrink-0 rounded-full bg-[#9b2c2c]/15 px-2.5 py-1 text-[11px] font-extrabold text-[#9b2c2c]">
-                ⏳ {t("pendingSync")}: {pendingCount}
-              </span>
-            ) : null}
           </div>
         </div>
         <div className="flex flex-col gap-1">

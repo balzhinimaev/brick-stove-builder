@@ -121,9 +121,10 @@ function ParameterControl({
       <div className="mt-3 flex items-center gap-2">
         <button
           type="button"
+          disabled={value <= bounds.min}
           onClick={() => updateParameter(field, value - bounds.step)}
           aria-label={`${title} −${bounds.step}`}
-          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#3D2B1F] text-xl font-black text-[#F5E6C8]"
+          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#3D2B1F] text-xl font-black text-[#F5E6C8] disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
@@ -132,9 +133,10 @@ function ParameterControl({
         </div>
         <button
           type="button"
+          disabled={value >= bounds.max}
           onClick={() => updateParameter(field, value + bounds.step)}
           aria-label={`${title} +${bounds.step}`}
-          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#3D2B1F] text-xl font-black text-[#F5E6C8]"
+          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#3D2B1F] text-xl font-black text-[#F5E6C8] disabled:cursor-not-allowed disabled:opacity-40"
         >
           +
         </button>

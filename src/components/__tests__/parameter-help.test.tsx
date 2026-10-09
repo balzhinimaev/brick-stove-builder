@@ -41,3 +41,35 @@ it.each(LOCALES)("associates each dimension with its localized help without dupl
   });
   expect(new Set(ids).size).toBe(inputs.length);
 });
+
+it.each(["min", "middle", "max"] as const)("disables only unavailable dimension steps at %s values", (position) => {
+  const parameters = { foundationWidth: 100, foundationLength: 120, foundationThickness: 20, roomHeight: 250 };
+  for (const field of PARAMETER_FIELDS) {
+    const bounds = PARAM_BOUNDS[field];
+    parameters[field] = position === "middle" ? (bounds.min + bounds.max) / 2 : bounds[position];
+  }
+  const t = (key: keyof typeof translations.ru) => translations.ru[key];
+  const html = renderToStaticMarkup(
+    <ParametersScreen
+      locale="ru"
+      calculatorInput={{} as CalculatorInput}
+      onCalculatorChange={() => {}}
+      onOpenReference={() => {}}
+      parameters={parameters}
+      updateParameter={() => {}}
+      t={t}
+      onContinue={() => {}}
+      lockedRows={[]}
+    />
+  );
+  const buttons = html.match(/<button\b[^>]*>/g) ?? [];
+  for (const field of PARAMETER_FIELDS) {
+    const bounds = PARAM_BOUNDS[field];
+    const decrease = buttons.find((button) => button.includes(`aria-label="${t(bounds.title)} −${bounds.step}"`));
+    const increase = buttons.find((button) => button.includes(`aria-label="${t(bounds.title)} +${bounds.step}"`));
+    expect(decrease).toBeDefined();
+    expect(increase).toBeDefined();
+    expect(decrease?.includes('disabled=""')).toBe(position === "min");
+    expect(increase?.includes('disabled=""')).toBe(position === "max");
+  }
+});

@@ -7,6 +7,7 @@ import { archSceneBounds } from "./three/ClassicArchOverlay";
 import { type CameraCommand, SceneCamera } from "./three/SceneCamera";
 import { BrickHighlight, isMasonry, Masonry, ThreeBrick } from "./three/ThreeBrick";
 import { Foundation } from "./three/ThreeStack";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export default function AssemblyMovie({
   bricks,
@@ -71,36 +72,40 @@ export default function AssemblyMovie({
       {total ? (
         <>
           <div className="assembly-movie-scene">
-            <Canvas
-              frameloop="demand"
-              dpr={[1, 1.5]}
-              camera={{ position: [16, 14, 16], fov: 38, near: 0.05, far: 1000 }}
+            <ErrorBoundary
+              fallback={<p role="alert">Не удалось показать 3D. Закройте кино сборки, чтобы вернуться в редактор.</p>}
             >
-              <color attach="background" args={["#e8e9e5"]} />
-              <ambientLight intensity={0.65} />
-              <hemisphereLight args={["#fffaf0", "#666b65", 1.2]} />
-              <directionalLight position={[10, 30, 15]} intensity={2.6} />
-              <SceneCamera
-                width={bounds.size.x}
-                depth={bounds.size.z}
-                height={bounds.size.y}
-                centerX={bounds.center.x}
-                centerY={bounds.center.y}
-                centerZ={bounds.center.z}
-                inspect
-                command={command}
-              />
-              <Foundation grid={grid} thickness={foundationHeight} sectionActive={false} />
-              <Masonry bricks={frame.visible.filter(isMasonry)} grid={grid} />
-              {frame.visible
-                .filter((b) => !isMasonry(b))
-                .map((b) => (
-                  <ThreeBrick key={b.id} brick={b} grid={grid} />
+              <Canvas
+                frameloop="demand"
+                dpr={[1, 1.5]}
+                camera={{ position: [16, 14, 16], fov: 38, near: 0.05, far: 1000 }}
+              >
+                <color attach="background" args={["#e8e9e5"]} />
+                <ambientLight intensity={0.65} />
+                <hemisphereLight args={["#fffaf0", "#666b65", 1.2]} />
+                <directionalLight position={[10, 30, 15]} intensity={2.6} />
+                <SceneCamera
+                  width={bounds.size.x}
+                  depth={bounds.size.z}
+                  height={bounds.size.y}
+                  centerX={bounds.center.x}
+                  centerY={bounds.center.y}
+                  centerZ={bounds.center.z}
+                  inspect
+                  command={command}
+                />
+                <Foundation grid={grid} thickness={foundationHeight} sectionActive={false} />
+                <Masonry bricks={frame.visible.filter(isMasonry)} grid={grid} />
+                {frame.visible
+                  .filter((b) => !isMasonry(b))
+                  .map((b) => (
+                    <ThreeBrick key={b.id} brick={b} grid={grid} />
+                  ))}
+                {frame.fresh.map((b) => (
+                  <BrickHighlight key={b.id} brick={b} grid={grid} color="#d8bd78" />
                 ))}
-              {frame.fresh.map((b) => (
-                <BrickHighlight key={b.id} brick={b} grid={grid} color="#d8bd78" />
-              ))}
-            </Canvas>
+              </Canvas>
+            </ErrorBoundary>
           </div>
           <div className="assembly-movie-controls">
             <button type="button" onClick={() => player.seek(0)}>

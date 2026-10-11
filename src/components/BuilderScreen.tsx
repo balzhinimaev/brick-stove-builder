@@ -511,6 +511,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
               {panel === "part" &&
                 (selectedPart && props.editPart && props.removePart ? (
                   <PartInspector
+                    t={t}
                     key={JSON.stringify(selectedPart)}
                     brick={selectedPart}
                     number={numbers.get(selectedPart.id) ?? selectedPart.id}

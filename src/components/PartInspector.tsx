@@ -1,3 +1,5 @@
+import type { Translate } from "../i18n";
+import { DamperExplanation } from "./DamperExplanation";
 import { useState } from "react";
 import { brickPhysicalSolids, polyhedronVolumeMm3, solidPolyhedron } from "../domain/geometry";
 import { isMasonryPiece, masonryDimensions } from "../domain/masonryAudit";
@@ -6,6 +8,7 @@ import type { PlacedBrick } from "../domain/types";
 
 export function PartInspector({
   brick,
+  t,
   number,
   locked,
   rowCount,
@@ -18,6 +21,7 @@ export function PartInspector({
   onInstallationRow
 }: {
   brick: PlacedBrick;
+  t: Translate;
   number: string;
   locked: boolean;
   rowCount: number;
@@ -61,6 +65,7 @@ export function PartInspector({
         <h3>№ {number}</h3>
         <p>{brick.custom?.name ?? brick.kind}</p>
       </header>
+      <DamperExplanation brick={brick} t={t} />
       <div className="part-actions">
         <button type="button" onClick={onFocus}>
           Приблизить

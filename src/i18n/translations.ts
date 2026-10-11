@@ -290,6 +290,16 @@ const ru = {
   vents: "Вентканалы",
   rebateDepthForPlate: "Под плиту",
   damper: "Задвижка",
+  damperClosed: "Закрыта",
+  damperOpen: "Полностью открыта",
+  damperPartial: "Частично открыта",
+  damperInstalledRow: "Ряд установки:",
+  damperRaisedExplanation:
+    "При открытии подвижная пластина поднимается над проёмом и может быть видна у более высоких рядов. Ряд установки не меняется.",
+  damperSlidingExplanation:
+    "При открытии подвижная пластина выдвигается вдоль направляющих. Ряд установки не меняется.",
+  damperSchematicExplanation:
+    "В 3D рамка, направляющие и золотистая ручка показаны схематично для узнаваемости. Их видимые размеры — не спецификация реальной фурнитуры; сохранённая геометрия и коллизии не изменены.",
   dampers: "Задвижки",
   damperSizeTitle: "Проём задвижки, мм",
   damperHint: "Ставится над дымовым каналом (V). Клик инструментом по установленной задвижке — открыть/закрыть.",
@@ -590,6 +600,15 @@ const en: Record<TranslationKey, string> = {
   vents: "Vent channels",
   rebateDepthForPlate: "For plate",
   damper: "Flue damper",
+  damperClosed: "Closed",
+  damperOpen: "Fully open",
+  damperPartial: "Partly open",
+  damperInstalledRow: "Installation row:",
+  damperRaisedExplanation:
+    "Opening raises the moving blade above the aperture, so it may appear beside higher rows. The installation row stays unchanged.",
+  damperSlidingExplanation: "Opening pulls the moving blade along the guides. The installation row stays unchanged.",
+  damperSchematicExplanation:
+    "In 3D, the frame, guides and gold-coloured handle are schematic recognition aids. Their visible dimensions are not a real hardware specification; saved geometry and collisions are unchanged.",
   dampers: "Flue dampers",
   damperSizeTitle: "Damper opening, mm",
   damperHint: "Place over a flue channel (V). Click a placed damper with the tool to open/close it.",
@@ -889,6 +908,15 @@ const lt: Record<TranslationKey, string> = {
   vents: "Ventiliacijos kanalai",
   rebateDepthForPlate: "Plokštei",
   damper: "Sklendė",
+  damperClosed: "Uždaryta",
+  damperOpen: "Visiškai atidaryta",
+  damperPartial: "Iš dalies atidaryta",
+  damperInstalledRow: "Įrengimo eilė:",
+  damperRaisedExplanation:
+    "Atidarant judanti plokštė pakyla virš angos, todėl gali būti matoma ties aukštesnėmis eilėmis. Įrengimo eilė nesikeičia.",
+  damperSlidingExplanation: "Atidarant judanti plokštė ištraukiama išilgai kreipiklių. Įrengimo eilė nesikeičia.",
+  damperSchematicExplanation:
+    "3D rėmas, kreipikliai ir auksinės spalvos rankena parodyti schematiškai, kad sklendę būtų lengviau atpažinti. Matomi jų matmenys nėra tikros furnitūros specifikacija; išsaugota geometrija ir susidūrimai nepakeisti.",
   dampers: "Sklendės",
   damperSizeTitle: "Sklendės anga, mm",
   damperHint: "Dedama virš dūmų kanalo (V). Spustelėkite pastatytą sklendę įrankiu — atidaryti/uždaryti.",

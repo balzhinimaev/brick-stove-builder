@@ -125,13 +125,15 @@ export function ThreeStack({
     () => frame?.parts ?? withPlacementAdjustments(visible, valid ? preview : null),
     [frame, visible, preview, valid]
   );
+  const visualBounds = useMemo(() => archSceneBounds(sceneBricks, grid), [sceneBricks, grid]);
   const height = useMemo(
     () =>
       Math.max(
         assembly ? 0 : BRICK_LAYER_HEIGHT * currentRow,
+        visualBounds.isEmpty() ? 0 : visualBounds.max.y,
         ...sceneBricks.flatMap((brick) => solidBoxes(brick, grid).map((box) => box.position[1] + box.scale[1] / 2))
       ),
-    [assembly, sceneBricks, grid, currentRow]
+    [assembly, sceneBricks, grid, currentRow, visualBounds]
   );
   const clipPlane = useMemo(
     () => inspectionPlane(assembly ? undefined : inspection, bricks, grid),
@@ -498,8 +500,32 @@ export function ThreeStack({
           />
           <directionalLight position={[-10, 6, -8]} intensity={0.65} />
           <SceneCamera
-            width={houseContext ? 52 : (focusSize?.x ?? archSize?.x ?? sectionSize?.x ?? grid.cols + 1)}
-            depth={houseContext ? 76 : (focusSize?.z ?? archSize?.z ?? sectionSize?.z ?? grid.rows + 1)}
+            width={
+              houseContext
+                ? 52
+                : (focusSize?.x ??
+                  archSize?.x ??
+                  sectionSize?.x ??
+                  Math.max(
+                    grid.cols + 1,
+                    visualBounds.isEmpty()
+                      ? 0
+                      : 2 * Math.max(Math.abs(visualBounds.min.x), Math.abs(visualBounds.max.x))
+                  ))
+            }
+            depth={
+              houseContext
+                ? 76
+                : (focusSize?.z ??
+                  archSize?.z ??
+                  sectionSize?.z ??
+                  Math.max(
+                    grid.rows + 1,
+                    visualBounds.isEmpty()
+                      ? 0
+                      : 2 * Math.max(Math.abs(visualBounds.min.z), Math.abs(visualBounds.max.z))
+                  ))
+            }
             height={houseContext ? 68 : (focusSize?.y ?? archSize?.y ?? sectionSize?.y ?? height + foundationHeight)}
             centerX={focusCenter?.x ?? archCenter?.x ?? sectionCenter?.x ?? 0}
             centerY={

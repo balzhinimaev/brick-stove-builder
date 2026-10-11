@@ -3,14 +3,22 @@ import { useMemo } from "react";
 import { Box3, Vector3 } from "three";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 import { archAddress, physicalVertices, type ArchAssembly } from "../builder/classicArchAssembly";
+import { damperVisualParts } from "./damperVisual";
 import { BrickHighlight } from "./ThreeBrick";
 
 export function archSceneBounds(parts: PlacedBrick[], grid: GridSpec) {
-  return new Box3().setFromPoints(
+  const bounds = new Box3().setFromPoints(
     parts
       .flatMap(physicalVertices)
       .map((p) => new Vector3(p.x / 125 - grid.cols / 2, p.z / 125, p.y / 125 - grid.rows / 2))
   );
+  for (const brick of parts.filter((b) => b.kind === "damper")) {
+    for (const box of damperVisualParts(brick, grid)) {
+      for (const sign of [-1, 1])
+        bounds.expandByPoint(new Vector3(...box.position.map((v, i) => v + (sign * box.scale[i]) / 2)));
+    }
+  }
+  return bounds;
 }
 
 /** Timber meshes only: never PlacedBrick, persistence, materials or gas geometry. */

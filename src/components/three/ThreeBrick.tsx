@@ -11,10 +11,11 @@ import {
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { MM_PER_CELL } from "../../domain/constants";
-import { brickBounds, brickPhysicalSolids, damperParts, footprintSizeOf, grateParts } from "../../domain/geometry";
+import { brickBounds, brickPhysicalSolids, footprintSizeOf, grateParts } from "../../domain/geometry";
 import { isSteelPart } from "../../domain/materials";
 import { plateBurnerCenters } from "../../domain/plate";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
+import { damperVisualParts } from "./damperVisual";
 import { brickAppearance, isMasonry } from "./brickAppearance";
 import { profileSceneGeometry } from "./profileGeometry";
 import { type SceneBox, solidBoxes, solidSceneBox } from "./sceneMath";
@@ -157,14 +158,16 @@ function InstanceBoxes({ instances, textured = false }: { instances: Instance[];
   );
 }
 
-/** Collision-aligned wire ghost; never lies about an element's true height or seat. */
+/** Physical highlight plus the same render-only damper cues used by the solid view. */
 export function BrickHighlight({ brick, grid, color }: { brick: PlacedBrick; grid: GridSpec; color: string }) {
   if (brick.custom?.profileXZ) return <ProfileMesh brick={brick} grid={grid} color={color} highlight />;
   return (
     <group>
-      {(brick.kind === "damper" || brick.kind === "grate"
-        ? brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid))
-        : solidBoxes(brick, grid, 0)
+      {(brick.kind === "damper"
+        ? damperVisualParts(brick, grid)
+        : brick.kind === "grate"
+          ? brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid))
+          : solidBoxes(brick, grid, 0)
       ).map((box) => (
         <group key={box.position.join(":")} position={box.position}>
           <mesh raycast={() => null}>
@@ -300,14 +303,18 @@ export function ProfileMesh({
 }
 
 function HardwareMesh({ brick, grid }: { brick: PlacedBrick; grid: GridSpec }) {
-  const parts = brick.kind === "damper" ? damperParts(brick) : grateParts(brick);
+  const parts =
+    brick.kind === "damper"
+      ? damperVisualParts(brick, grid)
+      : grateParts(brick).map(({ solid, role }) => ({ ...solidSceneBox(solid, brick.row, grid), role }));
   return (
     <group name={`hardware-${brick.id}`} userData={{ brickId: brick.id }}>
-      {parts.map(({ solid, role }) => (
+      {parts.map(({ position, scale, role }) => (
         <MetalBox
-          key={`${role}-${solid.box.x1}-${solid.box.y1}-${solid.box.x2}-${solid.box.y2}-${solid.z1}-${solid.z2}`}
-          {...solidSceneBox(solid, brick.row, grid)}
-          color={role === "blade" ? "#45494a" : "#353a3c"}
+          key={`${role}-${position.join(":")}-${scale.join(":")}`}
+          position={position}
+          scale={scale}
+          color={role === "blade" ? "#69767c" : role === "handle" ? "#b99454" : "#353a3c"}
         />
       ))}
     </group>

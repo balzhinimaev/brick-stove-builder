@@ -1922,3 +1922,16 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.damper-explanation {
+  margin-block: 0.75rem;
+  padding: 0.75rem;
+  border-inline-start: 3px solid #b99454;
+  border-radius: 0.35rem;
+  background: #b9945414;
+  line-height: 1.5;
+}
+
+.damper-explanation-text {
+  margin-block: 0.4rem;
+}

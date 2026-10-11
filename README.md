@@ -265,3 +265,18 @@ This is an interactive prototype. Material calculations are rough estimates and 
 Это только визуализация, не строительная инструкция и не учебная сборка
 отдельных арок. Плеер не изменяет ряды, выбор, историю или сохранение проекта.
 Основная 3D-сцена на время просмотра отключена.
+
+### Damper recognition in 3D
+
+Select a damper in the existing project's 3D view to see its installation row,
+opening percentage and blade movement explanation (RU/EN/LT). Raised blades can
+appear beside higher courses without changing their installation row. The R1
+upper-loop damper is installed in row 23 and starts fully open; its saved blade
+is 180 × 280 × 5 mm.
+
+The fixed guides, installation rim and gold-coloured moving handle are schematic
+recognition aids, not a specification of real hardware dimensions. They also
+appear in highlights, placement ghosts and read-only assembly playback, and are
+included in visual camera/section bounds. Existing saved copies work directly;
+no project regeneration, geometry migration, collision or opening-behaviour
+change is involved. Exact domain sections and physics retain the saved solids.

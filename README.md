@@ -182,7 +182,14 @@ signed release builds / store uploads).
    on desktop and mobile. Existing project storage, account sync, custom cutters,
    material estimates and printable course diagrams remain available.
 
-Keyboard: **R** rotates the selected tool, **B** selects brick, **E** selects eraser,
+The Rows panel includes a top-view course preview, part counts, locked/in-progress/empty status,
+filters and 12-course pages that retain the current course. Copying over parts, clearing and
+deleting require confirmation; Cancel is focused by default. Deleting shifts all higher
+courses down, including locked courses. Fill only adds into available spaces. Geometry
+rejections are reported without changing the document. Switching rows/projects or entering
+a workspace transition cancels pending confirmation.
+
+Keyboard: **PageUp / PageDown** select the previous/next course outside forms and dialogs. **R** rotates the selected tool, **B** selects brick, **E** selects eraser,
 **arrows** nudge a selected placement, **Enter** confirms, **Escape** cancels,
 **Ctrl/Cmd+Z** undoes and **Ctrl/Cmd+Shift+Z** redoes. **Ctrl/Cmd+S** saves to the local library (including Russian keyboard layout and focused forms).
 Other form shortcuts remain native. Account changes always join the ordered offline queue;

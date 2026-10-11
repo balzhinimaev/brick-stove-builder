@@ -58,11 +58,13 @@ function mapRect(box: BrickBox, cell: number, style: RowMapStyle, strokeWidth = 
 export function RowMap({
   grid,
   bricks,
-  variant
+  variant,
+  title = "Stove row layout"
 }: {
   grid: GridSpec;
   bricks: PlacedBrick[];
   variant: "print" | "screen";
+  title?: string;
 }) {
   const s = STYLES[variant];
   const cell = Math.min(s.maxCell, s.maxSpan / Math.max(grid.cols, grid.rows));
@@ -70,7 +72,7 @@ export function RowMap({
   const height = grid.rows * cell + s.pad * 2;
   return (
     <svg className={s.className} width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-      <title>Stove row layout</title>
+      <title>{title}</title>
       <rect
         x={s.frame.inset}
         y={s.frame.inset}

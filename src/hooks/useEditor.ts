@@ -1,6 +1,7 @@
 import { canConfirmPlacement, previewPlacement, type PlacementPoint } from "../domain/editor/preview";
 import { useCallback, useMemo, useReducer } from "react";
 import {
+  editorReducer,
   buildPlacementDrafts,
   historyReducer,
   initialHistoryState,
@@ -86,13 +87,17 @@ export function useEditor() {
   const copyPreviousRow = useCallback(() => {
     if (state.currentRow <= 1 || state.lockedRows.includes(state.currentRow)) return;
     const previous = state.rows[state.currentRow - 1] ?? [];
+    if (!previous.length && !state.rows[state.currentRow]?.length) return null;
     const bricks = previous.map((brick, index) => ({
       ...brick,
       id: `r${state.currentRow}-copy-${index}-${nextSeq()}`,
       row: state.currentRow
     }));
-    dispatch({ type: "copyRow", bricks });
-  }, [state.currentRow, state.lockedRows, state.rows]);
+    const action = { type: "copyRow", bricks } as const;
+    if (editorReducer(state, action) === state) return "rowOperationRejected" as const;
+    dispatch(action);
+    return null;
+  }, [state]);
 
   const fillCurrentRow = useCallback(() => {
     if (state.lockedRows.includes(state.currentRow)) return;
@@ -101,8 +106,12 @@ export function useEditor() {
     // конфликтом — под ней кладка продолжается.
     const existing = Object.values(state.rows).flat();
     const bricks = fillRowBricks(existing, state.grid, state.currentRow, state.orientation, nextSeq);
-    if (bricks.length) dispatch({ type: "place", bricks });
-  }, [state.currentRow, state.lockedRows, state.rows, state.grid, state.orientation]);
+    if (!bricks.length) return "rowFillEmpty" as const;
+    const action = { type: "place", bricks } as const;
+    if (editorReducer(state, action) === state) return "rowOperationRejected" as const;
+    dispatch(action);
+    return null;
+  }, [state]);
 
   return {
     parameters: state.parameters,
@@ -173,7 +182,11 @@ export function useEditor() {
     placeAt,
     previewAt,
     addRow: useCallback(() => dispatch({ type: "addRow" }), []),
-    deleteCurrentRow: useCallback(() => dispatch({ type: "deleteRow" }), []),
+    deleteCurrentRow: useCallback(() => {
+      if (editorReducer(state, { type: "deleteRow" }) === state) return "rowOperationRejected" as const;
+      dispatch({ type: "deleteRow" });
+      return null;
+    }, [state]),
     copyPreviousRow,
     fillCurrentRow,
     clearCurrentRow: useCallback(() => dispatch({ type: "clearRow" }), []),

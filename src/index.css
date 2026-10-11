@@ -1859,3 +1859,66 @@ body {
 .assembly-editor-content {
   display: contents;
 }
+
+.row-workspace {
+  min-width: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.row-workspace h3,
+.row-workspace p {
+  margin: 0;
+}
+.row-workspace-map {
+  margin: 0;
+  padding: 0.75rem;
+  background: #f7f5ed;
+  border-radius: 0.75rem;
+}
+.row-workspace-map svg {
+  width: 100%;
+  height: auto;
+  max-height: 240px;
+}
+.row-workspace-map figcaption {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+.row-workspace .studio-row-list {
+  max-height: none;
+}
+.row-workspace .studio-row-list button {
+  flex-wrap: wrap;
+  text-align: left;
+  gap: 0.25rem;
+}
+.row-workspace select {
+  max-width: 100%;
+}
+.row-confirmation {
+  margin: auto;
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid #6b675d;
+  border-radius: 1rem;
+  color: #292c28;
+  background: #fffdf7;
+}
+.row-confirmation::backdrop {
+  background: #171c24aa;
+}
+.row-confirmation button {
+  min-height: 44px;
+  white-space: normal;
+}
+.row-confirmation h2 {
+  font-size: 1.2rem;
+}
+@media (max-width: 380px) {
+  .row-workspace .studio-row-actions,
+  .row-confirmation .studio-row-actions {
+    grid-template-columns: 1fr;
+  }
+}

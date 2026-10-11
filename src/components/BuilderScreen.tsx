@@ -1,3 +1,6 @@
+import { RowWorkspace } from "./builder/RowWorkspace";
+import { rowShortcut } from "./builder/rowWorkflow";
+import type { TranslationKey } from "../i18n";
 import { isSaveShortcut } from "../lib/shortcuts";
 import { PartInspector } from "./PartInspector";
 import { ExactSection } from "./ExactSection";
@@ -72,10 +75,10 @@ export type BuilderScreenProps = {
   placeAt: (x: number, y: number, exactX?: number, exactY?: number) => void;
   previewAt: (point: PlacementPoint) => PlacementPreview;
   addRow: () => void;
-  deleteCurrentRow: () => void;
-  copyPreviousRow: () => void;
-  fillCurrentRow: () => void;
-  clearCurrentRow: () => void;
+  deleteCurrentRow: () => TranslationKey | null | void;
+  copyPreviousRow: () => TranslationKey | null | void;
+  fillCurrentRow: () => TranslationKey | null | void;
+  clearCurrentRow: () => TranslationKey | null | void;
   lockRow: () => void;
   unlockRow: () => void;
   canUndo: boolean;
@@ -204,6 +207,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.isComposing || event.altKey) return;
+      if (document.querySelector("dialog[open]")) return;
       if (movieOpen) {
         if (isSaveShortcut(event)) event.preventDefault();
         return;
@@ -216,6 +220,17 @@ export function BuilderScreen(props: BuilderScreenProps) {
       const target = event.target as HTMLElement | null;
       if (cutterOpen) return;
       if (target?.isContentEditable || target?.closest("input,textarea,select,dialog,[role=dialog]")) return;
+      const row = rowShortcut(
+        event,
+        currentRow,
+        rowCount,
+        !!props.workspace?.busy || !!document.querySelector("dialog[open]")
+      );
+      if (row !== null) {
+        event.preventDefault();
+        setCurrentRow(row);
+        return;
+      }
       const key = event.key.toLowerCase();
       if (event.ctrlKey || event.metaKey) {
         if (key === "z") {
@@ -238,7 +253,20 @@ export function BuilderScreen(props: BuilderScreenProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [undo, redo, orientation, setOrientation, setActiveTool, cutterOpen, movieOpen, props.saveCurrentProject]);
+  }, [
+    undo,
+    redo,
+    orientation,
+    setOrientation,
+    setActiveTool,
+    cutterOpen,
+    movieOpen,
+    props.saveCurrentProject,
+    currentRow,
+    rowCount,
+    setCurrentRow,
+    props.workspace?.busy
+  ]);
   return (
     <main className="studio-editor">
       <div className="assembly-editor-content" inert={movieOpen}>
@@ -725,38 +753,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                       </button>
                     </div>
                   )}
-                  <p className="studio-muted">
-                    В списке — детали, устанавливаемые в ряду. На сечении видны и детали снизу.
-                  </p>
-                  <div className="studio-row-list">
-                    {Array.from({ length: rowCount }, (_, i) => i + 1).map((row) => (
-                      <button
-                        key={row}
-                        type="button"
-                        aria-pressed={row === currentRow}
-                        onClick={() => setCurrentRow(row)}
-                      >
-                        <span>
-                          {t("currentRow")} {row} {lockedRows.includes(row) ? "✓" : ""}
-                        </span>
-                        <span className="studio-muted">{(rows[row] ?? []).length}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="studio-row-actions">
-                    <button type="button" disabled={locked || currentRow === 1} onClick={props.copyPreviousRow}>
-                      {t("copyPrev")}
-                    </button>
-                    <button type="button" disabled={locked} onClick={props.fillCurrentRow}>
-                      {t("fillRow")}
-                    </button>
-                    <button type="button" disabled={locked} onClick={props.clearCurrentRow}>
-                      {t("clearRow")}
-                    </button>
-                    <button type="button" disabled={locked || rowCount === 1} onClick={props.deleteCurrentRow}>
-                      {t("deleteRow")}
-                    </button>
-                  </div>
+                  <RowWorkspace {...props} busy={!!props.workspace?.busy} />
                 </div>
               )}
               {panel === "materials" && (

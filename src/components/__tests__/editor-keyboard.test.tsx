@@ -22,6 +22,8 @@ it("leaves IME and Alt-modified keys untouched while ordinary editor shortcuts s
     },
     removeEventListener: (_name: string, callback: (event: KeyboardEvent) => void) => listeners.delete(callback)
   });
+  let dialogOpen = false;
+  vi.stubGlobal("document", { querySelector: () => (dialogOpen ? {} : null) });
   const no = () => {};
   const actions = { tool: vi.fn(), rotate: vi.fn(), undo: vi.fn(), redo: vi.fn(), save: vi.fn() };
   const state = initialEditorState();
@@ -88,6 +90,11 @@ it("leaves IME and Alt-modified keys untouched while ordinary editor shortcuts s
       expect(press(key, false, false, true)).not.toHaveBeenCalled();
     }
     for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
+    dialogOpen = true;
+    for (const key of ["r", "b", "e", "PageUp", "PageDown"]) expect(press(key, false)).not.toHaveBeenCalled();
+    expect(press("z", false, true)).not.toHaveBeenCalled();
+    for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
+    dialogOpen = false;
     press("r", false);
     press("b", false);
     press("e", false);

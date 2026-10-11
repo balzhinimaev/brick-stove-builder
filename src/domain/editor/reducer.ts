@@ -55,8 +55,11 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
         rows: { ...state.rows, [brick.row]: state.rows[brick.row].filter((b) => b.id !== action.id) }
       };
     }
-    case "setCurrentRow":
-      return { ...state, currentRow: action.row };
+    case "setCurrentRow": {
+      if (!Number.isFinite(action.row)) return state;
+      const currentRow = clamp(Math.round(action.row), 1, state.rowCount);
+      return currentRow === state.currentRow ? state : { ...state, currentRow };
+    }
     case "setTool":
       return { ...state, activeTool: action.tool };
     case "setOrientation":

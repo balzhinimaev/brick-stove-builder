@@ -53,6 +53,22 @@ describe("erase", () => {
 });
 
 describe("rows", () => {
+  it("clamps row shortcuts after deletion and ignores invalid or unchanged selections", () => {
+    const state = { ...initialEditorState(), rows: {}, rowCount: 30, currentRow: 30, lockedRows: [] };
+    const deleted = editorReducer(state, { type: "deleteRow" });
+    expect(deleted.rowCount).toBe(29);
+    expect(deleted.currentRow).toBe(29);
+    expect(editorReducer(deleted, { type: "setCurrentRow", row: 30 })).toBe(deleted);
+    const twiceDeleted = editorReducer(deleted, { type: "deleteRow" });
+    for (const row of [29, 30, 100, NaN, Infinity, -Infinity, 28]) {
+      expect(editorReducer(twiceDeleted, { type: "setCurrentRow", row })).toBe(twiceDeleted);
+    }
+    for (const row of [-10, 0, 1.2]) {
+      expect(editorReducer(twiceDeleted, { type: "setCurrentRow", row }).currentRow).toBe(1);
+    }
+    expect(editorReducer(twiceDeleted, { type: "setCurrentRow", row: 2.8 }).currentRow).toBe(3);
+  });
+
   it("addRow grows the count and selects the new row", () => {
     const next = editorReducer(initialEditorState(), { type: "addRow" });
     expect(next.rowCount).toBe(initialEditorState().rowCount + 1);

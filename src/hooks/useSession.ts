@@ -18,6 +18,7 @@ const MIN_PASSWORD_LENGTH = 6;
 
 export function useSession(t: Translate) {
   const submitting = useRef(false);
+  const authGeneration = useRef(0);
   const [session, setSession] = useState<Session | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authLogin, setAuthLogin] = useState("");
@@ -26,6 +27,10 @@ export function useSession(t: Translate) {
   useEffect(() => {
     const stored = loadSession();
     if (stored) setSession(stored);
+    return () => {
+      authGeneration.current += 1;
+      submitting.current = false;
+    };
   }, []);
 
   const submitAuth = async () => {
@@ -40,12 +45,14 @@ export function useSession(t: Translate) {
       return;
     }
 
+    const generation = authGeneration.current;
     submitting.current = true;
     try {
       const result =
         authMode === "register"
           ? await registerRequest(normalized, authPassword)
           : await loginRequest(normalized, authPassword);
+      if (generation !== authGeneration.current) return;
       if (!result.ok) {
         window.alert(t(authFailureKey(authMode, result.status)));
         return;
@@ -55,13 +62,15 @@ export function useSession(t: Translate) {
       setAuthLogin("");
       setAuthPassword("");
     } catch {
-      window.alert(t("authUnavailable"));
+      if (generation === authGeneration.current) window.alert(t("authUnavailable"));
     } finally {
-      submitting.current = false;
+      if (generation === authGeneration.current) submitting.current = false;
     }
   };
 
   const switchAccount = () => {
+    authGeneration.current += 1;
+    submitting.current = false;
     clearSession();
     setSession(null);
     setAuthLogin("");
@@ -72,6 +81,8 @@ export function useSession(t: Translate) {
   const invalidateSession = () => {
     // Несколько параллельных 401 не должны показать несколько alert'ов.
     if (!loadSession()) return;
+    authGeneration.current += 1;
+    submitting.current = false;
     clearSession();
     setSession(null);
     window.alert(t("sessionExpired"));

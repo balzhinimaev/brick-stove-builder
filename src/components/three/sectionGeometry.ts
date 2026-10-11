@@ -3,7 +3,6 @@ import { MM_PER_CELL } from "../../domain/constants";
 import { brickPhysicalSolids, COURSE_MM, footprintSizeOf, solidPolyhedron } from "../../domain/geometry";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
 import type { TeplushkaInspection } from "../builder/teplushkaInspection";
-import { damperVisualParts } from "./damperVisual";
 import { brickAppearance, isMasonry } from "./brickAppearance";
 import { solidBoxes, solidSceneBox, type SceneBox } from "./sceneMath";
 
@@ -60,12 +59,9 @@ function brickSceneSolids(brick: PlacedBrick, grid: GridSpec): SceneSolid[] {
     });
   }
   const masonry = isMasonry(brick);
-  const boxes =
-    brick.kind === "damper"
-      ? damperVisualParts(brick, grid)
-      : masonry
-        ? solidBoxes(brick, grid)
-        : brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid));
+  const boxes = masonry
+    ? solidBoxes(brick, grid)
+    : brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid));
   const solids = boxes.map((box) => boxSolid(box, color));
   // Match the existing rendered bed joints; no joint is invented through a wedge or through-cut.
   if (masonry && brick.row > 1) {

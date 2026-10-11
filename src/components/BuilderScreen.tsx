@@ -398,6 +398,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
               <p className="studio-fallback">Открыто кино сборки</p>
             ) : twoD ? (
               <ExactSection
+                t={t}
                 bricks={physicsDocument}
                 grid={grid}
                 row={currentRow}
@@ -598,6 +599,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                     />
                   </label>
                   <ExactSection
+                    t={t}
                     bricks={physicsDocument}
                     grid={grid}
                     row={currentRow}

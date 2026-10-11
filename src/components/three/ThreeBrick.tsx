@@ -1,3 +1,4 @@
+import { damperVisualParts } from "./damperVisual";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   BoxGeometry,
@@ -11,11 +12,10 @@ import {
 } from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { MM_PER_CELL } from "../../domain/constants";
-import { brickBounds, brickPhysicalSolids, footprintSizeOf, grateParts } from "../../domain/geometry";
+import { brickBounds, brickPhysicalSolids, damperParts, footprintSizeOf, grateParts } from "../../domain/geometry";
 import { isSteelPart } from "../../domain/materials";
 import { plateBurnerCenters } from "../../domain/plate";
 import type { GridSpec, PlacedBrick } from "../../domain/types";
-import { damperVisualParts } from "./damperVisual";
 import { brickAppearance, isMasonry } from "./brickAppearance";
 import { profileSceneGeometry } from "./profileGeometry";
 import { type SceneBox, solidBoxes, solidSceneBox } from "./sceneMath";
@@ -158,16 +158,34 @@ function InstanceBoxes({ instances, textured = false }: { instances: Instance[];
   );
 }
 
-/** Physical highlight plus the same render-only damper cues used by the solid view. */
-export function BrickHighlight({ brick, grid, color }: { brick: PlacedBrick; grid: GridSpec; color: string }) {
+/** Collision-aligned wire ghost; never lies about an element's true height or seat. */
+export function BrickHighlight({
+  brick,
+  grid,
+  color,
+  selected = false
+}: {
+  brick: PlacedBrick;
+  grid: GridSpec;
+  color: string;
+  selected?: boolean;
+}) {
   if (brick.custom?.profileXZ) return <ProfileMesh brick={brick} grid={grid} color={color} highlight />;
   return (
     <group>
-      {(brick.kind === "damper"
-        ? damperVisualParts(brick, grid)
-        : brick.kind === "grate"
-          ? brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid))
-          : solidBoxes(brick, grid, 0)
+      {selected &&
+        brick.kind === "damper" &&
+        damperVisualParts(brick, grid)
+          .filter((p) => p.role === "guide")
+          .map((box) => (
+            <mesh key="closed-position-schematic" position={box.position} raycast={() => null}>
+              <boxGeometry args={box.scale} />
+              <meshBasicMaterial color={color} wireframe transparent opacity={0.7} depthWrite={false} />
+            </mesh>
+          ))}
+      {(brick.kind === "damper" || brick.kind === "grate"
+        ? brickPhysicalSolids(brick).map((solid) => solidSceneBox(solid, brick.row, grid))
+        : solidBoxes(brick, grid, 0)
       ).map((box) => (
         <group key={box.position.join(":")} position={box.position}>
           <mesh raycast={() => null}>
@@ -303,18 +321,14 @@ export function ProfileMesh({
 }
 
 function HardwareMesh({ brick, grid }: { brick: PlacedBrick; grid: GridSpec }) {
-  const parts =
-    brick.kind === "damper"
-      ? damperVisualParts(brick, grid)
-      : grateParts(brick).map(({ solid, role }) => ({ ...solidSceneBox(solid, brick.row, grid), role }));
+  const parts = brick.kind === "damper" ? damperParts(brick) : grateParts(brick);
   return (
     <group name={`hardware-${brick.id}`} userData={{ brickId: brick.id }}>
-      {parts.map(({ position, scale, role }) => (
+      {parts.map(({ solid, role }) => (
         <MetalBox
-          key={`${role}-${position.join(":")}-${scale.join(":")}`}
-          position={position}
-          scale={scale}
-          color={role === "blade" ? "#69767c" : role === "handle" ? "#b99454" : "#353a3c"}
+          key={`${role}-${solid.box.x1}-${solid.box.y1}-${solid.box.x2}-${solid.box.y2}-${solid.z1}-${solid.z2}`}
+          {...solidSceneBox(solid, brick.row, grid)}
+          color={role === "blade" ? "#45494a" : "#353a3c"}
         />
       ))}
     </group>

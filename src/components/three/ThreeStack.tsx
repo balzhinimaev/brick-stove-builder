@@ -155,7 +155,8 @@ export function ThreeStack({
       (focusRequest || isolateIds?.length) && highlightedIds?.length
         ? archSceneBounds(
             bricks.filter((b) => highlightedIds.includes(b.id)),
-            grid
+            grid,
+            true
           )
         : null,
     [focusRequest, isolateIds, highlightedIds, bricks, grid]
@@ -310,10 +311,6 @@ export function ThreeStack({
               ))}
             </select>
           </label>
-          {!assembly &&
-            renderedBricks
-              .filter((b) => highlightedIds?.includes(b.id))
-              .map((b) => <BrickHighlight key={`review-${b.id}`} brick={b} grid={grid} color="#00d6df" />)}
           {assembly && frame && (
             <>
               <p>
@@ -568,7 +565,7 @@ export function ThreeStack({
           {!assembly &&
             renderedBricks
               .filter((b) => highlightedIds?.includes(b.id))
-              .map((b) => <BrickHighlight key={`review-${b.id}`} brick={b} grid={grid} color="#00d6df" />)}
+              .map((b) => <BrickHighlight key={`review-${b.id}`} brick={b} grid={grid} color="#00d6df" selected />)}
           {assembly && frame && (
             <>
               {frame.centering && <ArchCentering assembly={assembly} grid={grid} />}

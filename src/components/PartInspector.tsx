@@ -1,3 +1,4 @@
+import { damperName } from "./damperDetails";
 import type { Translate } from "../i18n";
 import { DamperExplanation } from "./DamperExplanation";
 import { useState } from "react";
@@ -63,7 +64,7 @@ export function PartInspector({
       <header>
         <span className="project-eyebrow">ВЫБРАННАЯ ДЕТАЛЬ</span>
         <h3>№ {number}</h3>
-        <p>{brick.custom?.name ?? brick.kind}</p>
+        <p>{brick.kind === "damper" ? damperName(brick, t) : (brick.custom?.name ?? brick.kind)}</p>
       </header>
       <DamperExplanation brick={brick} t={t} />
       <div className="part-actions">

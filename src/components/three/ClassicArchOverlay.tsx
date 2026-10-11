@@ -6,13 +6,13 @@ import { archAddress, physicalVertices, type ArchAssembly } from "../builder/cla
 import { damperVisualParts } from "./damperVisual";
 import { BrickHighlight } from "./ThreeBrick";
 
-export function archSceneBounds(parts: PlacedBrick[], grid: GridSpec) {
+export function archSceneBounds(parts: PlacedBrick[], grid: GridSpec, selectedDamper = false) {
   const bounds = new Box3().setFromPoints(
     parts
       .flatMap(physicalVertices)
       .map((p) => new Vector3(p.x / 125 - grid.cols / 2, p.z / 125, p.y / 125 - grid.rows / 2))
   );
-  for (const brick of parts.filter((b) => b.kind === "damper")) {
+  for (const brick of parts.filter((b) => selectedDamper && b.kind === "damper")) {
     for (const box of damperVisualParts(brick, grid)) {
       for (const sign of [-1, 1])
         bounds.expandByPoint(new Vector3(...box.position.map((v, i) => v + (sign * box.scale[i]) / 2)));

@@ -268,15 +268,13 @@ This is an interactive prototype. Material calculations are rough estimates and 
 
 ### Damper recognition in 3D
 
-Select a damper in the existing project's 3D view to see its installation row,
-opening percentage and blade movement explanation (RU/EN/LT). Raised blades can
-appear beside higher courses without changing their installation row. The R1
-upper-loop damper is installed in row 23 and starts fully open; its saved blade
-is 180 × 280 × 5 mm.
+Select a damper to see its saved installation row, opening state and actual blade
+height/course span (RU/EN/LT). Known preset gate IDs receive readable names;
+renamed/custom gates retain their names and actual saved parameters. The R1 preset
+upper gate starts in row 23, fully open, blade 180 × 280 × 5 mm at 1820–2100 mm
+(rows 27–30). An edited copy can differ.
 
-The fixed guides, installation rim and gold-coloured moving handle are schematic
-recognition aids, not a specification of real hardware dimensions. They also
-appear in highlights, placement ghosts and read-only assembly playback, and are
-included in visual camera/section bounds. Existing saved copies work directly;
-no project regeneration, geometry migration, collision or opening-behaviour
-change is involved. Exact domain sections and physics retain the saved solids.
+A selected-only wireframe marks the closed blade position, NOT physical hardware.
+It obeys scene clipping and is non-pickable. Normal rendering, ghosts, exact
+sections, quantities, collisions and read-only assembly playback retain canonical
+solids. No new opening control or saved geometry change is introduced.

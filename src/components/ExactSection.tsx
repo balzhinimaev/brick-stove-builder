@@ -1,3 +1,5 @@
+import { damperName } from "./damperDetails";
+import { translations, type Translate } from "../i18n";
 import { useMemo, useState } from "react";
 import { partNumbers, sectionsAtHeight } from "../domain/masonrySections";
 import type { GridSpec, PlacedBrick } from "../domain/types";
@@ -11,8 +13,10 @@ export function ExactSection({
   onSelect,
   previous = false,
   numbers = false,
+  t = (key) => translations.ru[key],
   measurement = false
 }: {
+  t?: Translate;
   bricks: PlacedBrick[];
   grid: GridSpec;
   row: number;
@@ -104,7 +108,7 @@ export function ExactSection({
                 }
               }}
             >
-              <title>{`№ ${labels.get(s.brick.id)} · ${s.brick.custom?.name ?? s.brick.kind} · установка в ряду ${s.brick.row}`}</title>
+              <title>{`№ ${labels.get(s.brick.id)} · ${s.brick.kind === "damper" ? damperName(s.brick, t) : (s.brick.custom?.name ?? s.brick.kind)} · установка в ряду ${s.brick.row}`}</title>
             </path>
             <path
               d={s.outline}

@@ -70,14 +70,14 @@ describe("render-only damper recognition", () => {
         const parts = damperVisualParts(brick, grid);
         const closed = damperVisualParts({ ...brick, damperOpen: 0 }, grid);
         expect(parts.filter((p) => p.role === "guide")).toEqual(closed.filter((p) => p.role === "guide"));
-        expect(parts.filter((p) => p.role === "handle")).toHaveLength(3);
+        expect(parts.filter((p) => p.role === "guide")).toHaveLength(1);
         const blade = solidSceneBox(
           required(damperParts(brick).find((p) => p.role === "blade")).solid,
           brick.row,
           grid
         );
         expect(parts.find((p) => p.role === "blade")).toEqual({ ...blade, role: "blade" });
-        const bounds = archSceneBounds([brick], grid);
+        const bounds = archSceneBounds([brick], grid, true);
         for (const p of parts) {
           expect(p.scale.every((n) => Number.isFinite(n) && n > 0)).toBe(true);
           for (const sign of [-1, 1])
@@ -103,19 +103,14 @@ describe("render-only damper recognition", () => {
       required(open.find((p) => p.role === "blade")).position[axis] -
       required(closed.find((p) => p.role === "blade")).position[axis];
     expect(delta).toBeCloseTo(((orientation === "h" ? -1 : 1) * 216) / 125);
-    open
-      .filter((p) => p.role === "handle")
-      .forEach((p, i) => {
-        expect(p.position[axis] - closed.filter((p) => p.role === "handle")[i].position[axis]).toBeCloseTo(delta);
-      });
+    expect(open.filter((p) => p.role === "guide")).toEqual(closed.filter((p) => p.role === "guide"));
   });
-  it("retains and caps schematic guides when the physical raised blade is outside a section", () => {
+  it("excludes schematic outlines from physical sections", () => {
     const brick = { ...gate, damperOpen: 1 };
     const plane = new Plane(new Vector3(0, -1, 0), ((brick.row - 1) * 70 + 140) / 125);
     const section = sectionScene([brick], grid, plane);
-    expect(section.retainedBrickIds.has(brick.id)).toBe(true);
-    expect(section.geometry.getAttribute("position").count).toBeGreaterThan(0);
-    expect(section.bounds.max.y).toBeCloseTo(plane.constant);
+    expect(section.retainedBrickIds.has(brick.id)).toBe(false);
+    expect(section.geometry.getAttribute("position").count).toBe(0);
     section.geometry.dispose();
   });
 });

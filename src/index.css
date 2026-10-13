@@ -1860,6 +1860,96 @@ body {
   display: contents;
 }
 
+/* Desktop: reserve screen space for the model, not stacked command rows. */
+.desktop-inspector-toggle {
+  display: none;
+}
+@media screen and (min-width: 761px) {
+  .studio-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 24vw, 360px);
+  }
+  .studio-layout.inspector-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .studio-layout.inspector-hidden > .studio-inspector {
+    display: none;
+  }
+  .desktop-inspector-toggle {
+    display: block;
+    margin-left: auto;
+  }
+  .studio-header,
+  .project-bar,
+  .studio-commandbar {
+    padding: 4px 12px;
+  }
+  .studio-shell button,
+  .studio-shell select {
+    min-height: 32px;
+  }
+  .project-actions summary {
+    padding: 7px 10px;
+  }
+  .workspace-modes,
+  .viewport-switch,
+  .scene-toolbar {
+    padding: 4px 10px;
+  }
+  .studio-panel-tabs button {
+    padding: 6px 4px;
+  }
+}
+@media screen and (min-width: 1100px) {
+  .studio-frame {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .studio-header {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+  .studio-shell nav {
+    grid-area: 1 / 2;
+    align-items: center;
+    padding: 4px 12px;
+  }
+  .studio-shell nav button {
+    padding-inline: 10px;
+  }
+  .studio-top-guide {
+    grid-area: 2 / 1 / auto / -1;
+  }
+  .studio-editor,
+  .studio-frame > .studio-fallback {
+    grid-area: 3 / 1 / auto / -1;
+  }
+  .assembly-editor-content {
+    display: grid;
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+  .assembly-editor-content > .workspace-transition {
+    grid-area: 1 / 1 / auto / -1;
+  }
+  .assembly-editor-content > .project-bar {
+    grid-area: 2 / 1 / auto / -1;
+  }
+  .assembly-editor-content > .studio-commandbar {
+    grid-area: 3 / 1;
+    flex-wrap: wrap;
+  }
+  .assembly-editor-content > .workspace-modes {
+    grid-area: 3 / 2;
+    border-bottom: 1px solid var(--studio-line);
+  }
+  .assembly-editor-content > .studio-layout {
+    grid-area: 4 / 1 / auto / -1;
+  }
+}
+
 .row-workspace {
   min-width: 0;
   display: grid;

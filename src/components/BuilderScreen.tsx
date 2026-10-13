@@ -7,7 +7,7 @@ import { ExactSection } from "./ExactSection";
 import { partNumbers } from "../domain/masonrySections";
 import { ProjectBar } from "./ProjectBar";
 import type { LocalWorkspace } from "../hooks/useLocalWorkspace";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { PlacementPoint, PlacementPreview } from "../domain/editor/preview";
 import { isInsideGrid } from "../domain/geometry";
 import type {
@@ -152,6 +152,8 @@ export function BuilderScreen(props: BuilderScreenProps) {
     "tools" | "rows" | "materials" | "part" | "section" | "review" | "guide" | "physics"
   >("rows");
   const [inspectorExpanded, setInspectorExpanded] = useState(false);
+  const inspectorId = useId();
+  const [desktopInspectorHidden, setDesktopInspectorHidden] = useState(false);
   const [hasPhysics, setHasPhysics] = useState(false);
   const [selectParts, setSelectParts] = useState(true);
   const [rowMode, setRowMode] = useState<"through" | "row" | "all">("through");
@@ -381,7 +383,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
             </button>
           )}
         </div>
-        <div className="studio-layout">
+        <div className={`studio-layout${desktopInspectorHidden ? " inspector-hidden" : ""}`}>
           <section className="studio-viewport" aria-label={t("editorTitle")}>
             <div className="viewport-switch">
               <button ref={movieTrigger} type="button" onClick={() => setMovieOpen(true)}>
@@ -392,6 +394,15 @@ export function BuilderScreen(props: BuilderScreenProps) {
               </button>
               <button type="button" aria-pressed={twoD} onClick={() => setTwoD(true)}>
                 Точное сечение · 2D
+              </button>
+              <button
+                className="desktop-inspector-toggle"
+                type="button"
+                aria-expanded={!desktopInspectorHidden}
+                aria-controls={inspectorId}
+                onClick={() => setDesktopInspectorHidden((hidden) => !hidden)}
+              >
+                {desktopInspectorHidden ? "Показать панель" : "Скрыть панель"}
               </button>
             </div>
             {movieOpen ? (
@@ -445,6 +456,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                         selectPart([id], b.row);
                         setPanel("part");
                         setInspectorExpanded(true);
+                        setDesktopInspectorHidden(false);
                       }
                     }}
                     rowMode={rowMode}
@@ -465,7 +477,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
               </ErrorBoundary>
             )}
           </section>
-          <aside className={`studio-inspector${inspectorExpanded ? " is-expanded" : ""}`}>
+          <aside id={inspectorId} className={`studio-inspector${inspectorExpanded ? " is-expanded" : ""}`}>
             <button
               className="mobile-inspector-toggle"
               type="button"

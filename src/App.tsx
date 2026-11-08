@@ -16,19 +16,10 @@ export default function App() {
   return (
     <div
       lang={locale}
-      className={
-        screen === "builder"
-          ? "studio-shell"
-          : "min-h-[100dvh] w-full bg-[#FFF7E8] px-3 pb-12 pt-3 text-[#3D2B1F] sm:px-4"
-      }
-      style={{
-        fontFamily: screen === "builder" ? "system-ui, sans-serif" : "Nunito, ui-rounded, system-ui, sans-serif",
-        // Статус-бар/вырез телефона (viewport-fit=cover): шапка не заезжает под него.
-        paddingTop:
-          screen === "builder" ? "env(safe-area-inset-top, 0px)" : "calc(env(safe-area-inset-top, 0px) + 0.75rem)"
-      }}
+      className={`studio-shell ${screen === "builder" ? "" : "site-shell"}`}
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
-      <div className={screen === "builder" ? "studio-frame" : "mx-auto w-full max-w-[1520px]"}>
+      <div className={screen === "builder" ? "studio-frame" : "site-frame"}>
         <Header
           compact={screen === "builder"}
           locale={locale}
@@ -44,6 +35,7 @@ export default function App() {
           pendingCount={studio.pendingCount}
           syncIssue={studio.syncIssue}
           syncFailureStatus={studio.syncFailureStatus}
+          sessionNotice={screen !== "auth" ? studio.authError : undefined}
         />
         {screen === "builder" && studio.showTeplushkaGuide ? (
           <details className="studio-top-guide">
@@ -56,7 +48,12 @@ export default function App() {
           <main className="studio-fallback">Восстанавливаю рабочую библиотеку…</main>
         ) : screen === "showcase" ? (
           // Витрина публичная: заказчики смотрят печи без регистрации.
-          <ShowcaseScreen locale={locale} t={t} onLoad={studio.loadProject} />
+          <ShowcaseScreen
+            locale={locale}
+            t={t}
+            onLoad={studio.loadProject}
+            onContinue={() => studio.setScreen("builder")}
+          />
         ) : screen === "auth" ? (
           // Редактор гостевой (печь строится и без сети, и без аккаунта);
           // вход нужен только для синка между устройствами и витрины.
@@ -68,6 +65,11 @@ export default function App() {
             password={studio.authPassword}
             setPassword={studio.setAuthPassword}
             onSubmit={studio.submitAuth}
+            busy={studio.authBusy}
+            error={studio.authError || studio.localWorkspace.error || ""}
+            remember={studio.rememberSession}
+            setRemember={studio.setRememberSession}
+            onContinue={() => studio.setScreen("builder")}
             t={t}
           />
         ) : screen === "parameters" ? (
@@ -83,7 +85,23 @@ export default function App() {
             lockedRows={studio.lockedRows}
           />
         ) : screen === "projects" ? (
-          <>
+          <main className="site-page">
+            <div className="page-heading">
+              <p className="eyebrow">{t("workspaceLabel")}</p>
+              <h1>{t("libraryTitle")}</h1>
+              <p>{t("libraryIntro")}</p>
+            </div>
+            {!userLogin && (
+              <div className="account-callout">
+                <div>
+                  <strong>{t("accountBenefit")}</strong>
+                  <p>{t("accountStorageHint")}</p>
+                </div>
+                <button type="button" onClick={() => studio.setScreen("auth")}>
+                  {t("authLogin")}
+                </button>
+              </div>
+            )}
             <LocalProjectsPanel workspace={studio.localWorkspace} onContinue={() => studio.setScreen("builder")} />
             <ProjectsScreen
               locale={locale}
@@ -95,7 +113,7 @@ export default function App() {
               onUnpublish={studio.unpublishSavedProject}
               onDelete={studio.deleteProject}
             />
-          </>
+          </main>
         ) : (
           <BuilderScreen
             key={studio.sceneRevision}

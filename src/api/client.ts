@@ -59,26 +59,50 @@ export function normalizeLogin(value: string): string {
     .slice(0, 32);
 }
 
+function readSession(storage: Storage): Session | null {
+  const token = storage.getItem(TOKEN_KEY);
+  const login = storage.getItem(LOGIN_KEY);
+  return token && login ? { login, token } : null;
+}
+
 export function loadSession(): Session | null {
+  // A private tab session takes precedence; legacy remembered sessions still work.
   try {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const login = localStorage.getItem(LOGIN_KEY);
-    if (!token || !login) return null;
-    return { login, token };
+    const session = readSession(sessionStorage);
+    if (session) return session;
   } catch {
-    // Storage can be denied by browser policy; guest startup must still work.
+    /* Storage may be blocked. */
+  }
+  try {
+    return readSession(localStorage);
+  } catch {
     return null;
   }
 }
 
-export function saveSession(session: Session): void {
-  localStorage.setItem(TOKEN_KEY, session.token);
-  localStorage.setItem(LOGIN_KEY, session.login);
+export function saveSession(session: Session, remember = true): void {
+  clearSession();
+  const storage = remember ? localStorage : sessionStorage;
+  try {
+    storage.setItem(TOKEN_KEY, session.token);
+    storage.setItem(LOGIN_KEY, session.login);
+  } catch (error) {
+    clearSession();
+    throw error;
+  }
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(LOGIN_KEY);
+  // Logout must still clear in-memory state when a browser denies storage access.
+  for (const getStorage of [() => localStorage, () => sessionStorage]) {
+    try {
+      const storage = getStorage();
+      storage.removeItem(TOKEN_KEY);
+      storage.removeItem(LOGIN_KEY);
+    } catch {
+      /* Storage unavailable. */
+    }
+  }
 }
 
 export type AuthResult = { ok: true; session: Session } | { ok: false; status: number };

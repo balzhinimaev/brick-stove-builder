@@ -15,7 +15,10 @@ describe("separate guest examples", () => {
   it("renders every bundled card with load buttons and without a commercial lead form", () => {
     const html = renderToStaticMarkup(createElement(ShowcaseScreen, { locale: "ru", t, onLoad: load }));
     for (const p of BUILTIN_SHOWCASE_PROJECTS) expect(html).toContain(`id="${p.id}"`);
-    expect(html.split(t("loadProject")).length - 1).toBe(BUILTIN_SHOWCASE_PROJECTS.length);
+    const loadButtons = (html.match(/<button\b[^>]*>[\s\S]*?<\/button>/g) ?? []).filter(
+      (button) => button.replace(/<[^>]*>/g, "").trim() === t("loadProject")
+    );
+    expect(loadButtons).toHaveLength(BUILTIN_SHOWCASE_PROJECTS.length);
     expect(html).not.toContain(t("showcaseWant"));
   });
   it("keeps unique IDs in the guest catalog and loads distinct rows through the ordinary editor", () => {

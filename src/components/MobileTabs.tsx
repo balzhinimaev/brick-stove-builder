@@ -12,7 +12,7 @@ export function MobileTabs({
   t: Translate;
 }) {
   return (
-    <nav className="mt-3 grid grid-cols-4 gap-1.5 rounded-[24px] bg-[#3D2B1F]/10 p-1.5 md:max-w-[840px]">
+    <nav className="site-nav" aria-label={t("navigationLabel")}>
       <TabButton active={screen === "parameters"} onClick={() => setScreen("parameters")}>
         {t("parametersTab")}
       </TabButton>

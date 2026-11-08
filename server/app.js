@@ -60,7 +60,7 @@ export function createApp(config) {
   const noStore = (res) => res.set("Cache-Control", "no-cache");
 
   app.get(["/landing", "/mastera"], (_req, res) => {
-    noStore(res).sendFile(path.join(distDir, "landing.html"));
+    noStore(res).sendFile("landing.html", { root: distDir });
   });
 
   app.use(
@@ -75,7 +75,7 @@ export function createApp(config) {
     })
   );
   app.get(/.*/, (_req, res) => {
-    noStore(res).sendFile(path.join(distDir, "index.html"));
+    noStore(res).sendFile("index.html", { root: distDir });
   });
 
   app.use((error, _req, res, _next) => {

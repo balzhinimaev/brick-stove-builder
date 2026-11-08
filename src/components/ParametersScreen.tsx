@@ -30,31 +30,29 @@ export function ParametersScreen({
 }) {
   const valid = useMemo(() => validateParameters(parameters, t), [parameters, t]);
   return (
-    <main className="mt-4 space-y-3 xl:space-y-4">
+    <main className="site-page parameters-page">
       <StoveCalculator locale={locale} input={calculatorInput} onChange={onCalculatorChange} onOpen={onOpenReference} />
-      <details className="rounded-[26px] border-2 border-[#3D2B1F]/10 p-4">
-        <summary className="cursor-pointer font-black">{t("parametersTitle")}</summary>
+      <details className="rounded-xl border border-[#283732]/10 p-4">
+        <summary className="cursor-pointer font-semibold">{t("parametersTitle")}</summary>
         <div className="mt-4 space-y-3">
           <SectionTitle title={t("parametersTitle")} subtitle={t("parametersSubtitle")} />
           {PARAMETER_FIELDS.map((key) => (
             <ParameterControl key={key} field={key} value={parameters[key]} updateParameter={updateParameter} t={t} />
           ))}
-          <div className="flex items-center gap-3 rounded-[26px] border-2 border-[#5F7E4D]/20 bg-[#8FAF76]/20 p-3">
-            <BrickMascot valid={valid.ok} />
+          <div className="flex items-center gap-3 rounded-xl border border-[#326856]/20 bg-[#dfe9e1]/20 p-3">
+            <span className="validation-mark" aria-hidden="true">
+              {valid.ok ? "✓" : "!"}
+            </span>
             <div className="flex-1">
-              <div className="font-black">{valid.ok ? t("looksBuildable") : t("checkDimensions")}</div>
-              <p className="mt-1 text-sm font-bold leading-5 text-[#3D2B1F]/70">{valid.message}</p>
+              <div className="font-semibold">{valid.ok ? t("looksBuildable") : t("checkDimensions")}</div>
+              <p className="mt-1 text-sm font-bold leading-5 text-[#283732]/70">{valid.message}</p>
             </div>
           </div>
-          <div className="rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8]/80 p-3">
-            <div className="mb-2 text-lg font-black">{t("liveSidePreview")}</div>
+          <div className="rounded-xl border border-[#283732]/10 bg-[#ffffff]/80 p-3">
+            <div className="mb-2 text-lg font-semibold">{t("liveSidePreview")}</div>
             <SideSilhouette parameters={parameters} lockedRows={lockedRows} t={t} />
           </div>
-          <button
-            type="button"
-            onClick={onContinue}
-            className="min-h-14 w-full rounded-[22px] bg-[#C1440E] text-base font-black text-[#F5E6C8] shadow-lg shadow-[#C1440E]/25"
-          >
+          <button type="button" onClick={onContinue} className="studio-primary w-full">
             {t("startBuild")}
           </button>
         </div>
@@ -87,21 +85,21 @@ function ParameterControl({
     setDraft(null);
   };
   return (
-    <div className="rounded-[24px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-3 shadow-md shadow-[#3D2B1F]/10">
+    <div className="rounded-xl border border-[#283732]/10 bg-[#ffffff] p-3 ">
       <div className="flex gap-3">
         <div
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] border-2 border-[#C1440E]/15 bg-[#C1440E]/10 text-2xl font-black text-[#C1440E]"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-[#326856]/15 bg-[#326856]/10 text-2xl font-semibold text-[#326856]"
           aria-hidden="true"
         >
           {bounds.icon}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="font-black">{title}</div>
-          <div id={helpId} className="text-xs font-bold leading-4 text-[#3D2B1F]/60">
+          <div className="font-semibold">{title}</div>
+          <div id={helpId} className="text-xs font-bold leading-4 text-[#283732]/60">
             {t(bounds.help)}
           </div>
         </div>
-        <label className="flex min-w-[86px] items-center rounded-[17px] border-2 border-[#3D2B1F]/10 bg-[#FFF7E8] px-2 py-1.5">
+        <label className="flex min-w-[86px] items-center rounded-[17px] border border-[#283732]/10 bg-[#f4f5f1] px-2 py-1.5">
           <input
             value={draft ?? String(value)}
             onFocus={() => setDraft(String(value))}
@@ -113,9 +111,9 @@ function ParameterControl({
             inputMode="numeric"
             aria-label={`${title}, ${unit}`}
             aria-describedby={helpId}
-            className="w-10 bg-transparent text-base font-black outline-none"
+            className="w-10 bg-transparent text-base font-semibold outline-none"
           />
-          <span className="text-xs font-black text-[#3D2B1F]/55">{unit}</span>
+          <span className="text-xs font-semibold text-[#283732]/55">{unit}</span>
         </label>
       </div>
       <div className="mt-3 flex items-center gap-2">
@@ -124,40 +122,22 @@ function ParameterControl({
           disabled={value <= bounds.min}
           onClick={() => updateParameter(field, value - bounds.step)}
           aria-label={`${title} −${bounds.step}`}
-          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#3D2B1F] text-xl font-black text-[#F5E6C8] disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#283732] text-xl font-semibold text-[#ffffff] disabled:cursor-not-allowed disabled:opacity-40"
         >
           −
         </button>
-        <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#3D2B1F]/10">
-          <div className="h-full rounded-full bg-[#8FAF76]" style={{ width: `${Math.max(4, ratio * 100)}%` }} />
+        <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#283732]/10">
+          <div className="h-full rounded-full bg-[#dfe9e1]" style={{ width: `${Math.max(4, ratio * 100)}%` }} />
         </div>
         <button
           type="button"
           disabled={value >= bounds.max}
           onClick={() => updateParameter(field, value + bounds.step)}
           aria-label={`${title} +${bounds.step}`}
-          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#3D2B1F] text-xl font-black text-[#F5E6C8] disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid min-h-11 min-w-11 place-items-center rounded-[16px] bg-[#283732] text-xl font-semibold text-[#ffffff] disabled:cursor-not-allowed disabled:opacity-40"
         >
           +
         </button>
-      </div>
-    </div>
-  );
-}
-
-function BrickMascot({ valid }: { valid: boolean }) {
-  return (
-    <div className="relative h-[62px] w-[72px] shrink-0" aria-hidden="true">
-      <div className="relative mt-3 h-[40px] w-16 rounded-[14px] border-2 border-[#3D2B1F] bg-[#E9854A]">
-        <div className="absolute left-0 right-0 top-[18px] h-[3px] bg-[#F4D9B7]" />
-        <div className="absolute left-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" />
-        <div className="absolute right-[18px] top-3 h-1.5 w-1.5 rounded-full bg-[#3D2B1F]" />
-        <div
-          className={`absolute left-[25px] top-[26px] h-2 w-3.5 rounded-full border-[#3D2B1F] ${valid ? "border-b-2" : "border-t-2"}`}
-        />
-      </div>
-      <div className={`absolute right-0 top-4 text-2xl font-black ${valid ? "-rotate-12" : "rotate-12"}`}>
-        {valid ? "👍" : "!"}
       </div>
     </div>
   );

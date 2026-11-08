@@ -37,7 +37,7 @@ export function useStudioState() {
   // Deep link: /?screen=showcase opens the public showcase (used by the promo landing).
   const [screen, setScreen] = useState<Screen>(() => {
     const requested = new URLSearchParams(window.location.search).get("screen");
-    if (requested === "showcase") return "showcase";
+    if (requested === "showcase" || requested === "projects" || requested === "auth") return requested;
     if (requested === "parameters" || requested === "calculator") return "parameters";
     return "builder";
   });
@@ -349,7 +349,18 @@ export function useStudioState() {
     setAuthLogin: session.setAuthLogin,
     authPassword: session.authPassword,
     setAuthPassword: session.setAuthPassword,
-    submitAuth: session.submitAuth,
+    authBusy: session.authBusy,
+    authError: session.authError,
+    rememberSession: session.rememberSession,
+    setRememberSession: session.setRememberSession,
+    submitAuth: async () => {
+      try {
+        await localWorkspace.flush();
+      } catch {
+        return;
+      }
+      await session.submitAuth();
+    },
     switchAccount: async () => {
       try {
         await localWorkspace.flush();

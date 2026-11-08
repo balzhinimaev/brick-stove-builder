@@ -2,8 +2,8 @@ import type { Locale } from "../i18n";
 export function ClassicRussianStoveGuide({ locale }: { locale: Locale }) {
   const ru = locale === "ru";
   return (
-    <details className="m-3 rounded-[18px] bg-[#FFF7E8] p-3 text-sm">
-      <summary className="cursor-pointer font-black">
+    <details className="m-3 rounded-lg bg-[#f4f5f1] p-3 text-sm">
+      <summary className="cursor-pointer font-semibold">
         {ru ? "Об этой русской печи и источнике" : "About this Russian oven and its source"}
       </summary>
       <p className="mt-2">

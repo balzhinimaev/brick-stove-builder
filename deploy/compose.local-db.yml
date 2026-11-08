@@ -1,0 +1,18 @@
+# Database for the host-run Express process. Never exposed on public interfaces.
+services:
+  mongo:
+    image: mongo:7
+    container_name: brick-stove-builder-mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27019:27017"
+    volumes:
+      - stove-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  stove-data:
+    name: brick-stove-builder-mongo-data

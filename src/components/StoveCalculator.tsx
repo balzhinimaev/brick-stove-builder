@@ -74,7 +74,7 @@ export function StoveCalculator({
               setError("");
               onChange({ ...input, [key]: event.target.value === "" ? Number.NaN : Number(event.target.value) });
             }}
-            className="min-h-11 min-w-0 rounded-xl border border-[#3D2B1F]/30 bg-white px-3 text-base text-[#3D2B1F]"
+            className="min-h-11 min-w-0 rounded-xl border border-[#283732]/30 bg-white px-3 text-base text-[#283732]"
           />
           {invalidFields.includes(key) ? (
             <span id={`calculator-range-${key}`} className="text-xs text-[#A22E0C]">
@@ -86,39 +86,36 @@ export function StoveCalculator({
     </div>
   );
   return (
-    <section
-      data-testid="stove-calculator"
-      className="space-y-5 rounded-[26px] border-2 border-[#3D2B1F]/15 bg-[#FFF7E8] p-4 sm:p-6"
-    >
+    <section data-testid="stove-calculator" className="calculator-surface space-y-6">
       <div>
-        <h1 className="text-xl font-black sm:text-2xl">{t("title")}</h1>
+        <h1 className="text-xl font-semibold sm:text-2xl">{t("title")}</h1>
         <p className="mt-2 max-w-4xl text-sm">{t("intro")}</p>
         <p className="mt-2 text-sm font-bold">{t("examples")}</p>
       </div>
       <fieldset className="space-y-3">
-        <legend className="mb-3 font-black">{t("dimensions")}</legend>
+        <legend className="mb-3 font-semibold">{t("dimensions")}</legend>
         {fields(DIMENSION_FIELDS)}
         <p className="text-xs leading-5">{t("clearanceHint")}</p>
       </fieldset>
       <fieldset className="space-y-3">
-        <legend className="mb-3 font-black">{t("heat")}</legend>
+        <legend className="mb-3 font-semibold">{t("heat")}</legend>
         {fields(HEAT_FIELDS)}
         <p className="text-xs leading-5">{t("heatHint")}</p>
-        <output className="block rounded-xl bg-[#3D2B1F] p-3 font-bold text-white" aria-live="polite">
+        <output className="block rounded-xl bg-[#283732] p-3 font-bold text-white" aria-live="polite">
           {t("load")}: {heat ? `${heat.totalKw.toFixed(2)} ${t("kw")}` : "—"}
         </output>
       </fieldset>
       <div>
-        <h2 className="font-black">{t("schemes")}</h2>
-        <p className="mt-2 rounded-xl border border-[#C1440E]/40 bg-[#C1440E]/5 p-3 text-sm">{t("construction")}</p>
+        <h2 className="font-semibold">{t("schemes")}</h2>
+        <p className="mt-2 rounded-xl border border-[#326856]/40 bg-[#326856]/5 p-3 text-sm">{t("construction")}</p>
         <p className="mt-2 text-sm">{t("excluded")}</p>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         {ORDER_RECIPES.map((recipe, i) => {
           const a = assessments[i];
           return (
-            <article key={recipe.id} className="min-w-0 space-y-3 rounded-2xl border border-[#3D2B1F]/20 bg-white p-4">
-              <h3 className="text-lg font-black">{recipe.project.title[locale]}</h3>
+            <article key={recipe.id} className="min-w-0 space-y-3 rounded-2xl border border-[#283732]/20 bg-white p-4">
+              <h3 className="text-lg font-semibold">{recipe.project.title[locale]}</h3>
               <a href={recipe.sourceUrl} className="text-sm underline" target="_blank" rel="noreferrer">
                 {recipe.source}
               </a>
@@ -143,7 +140,7 @@ export function StoveCalculator({
                     type="button"
                     disabled={!a.canGenerateReference}
                     onClick={() => generate(recipe.id, target)}
-                    className="min-h-11 rounded-xl bg-[#3D2B1F] px-3 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    className={target === "editor" ? "studio-primary" : ""}
                   >
                     {t(
                       target === "editor"

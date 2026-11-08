@@ -1,13 +1,14 @@
 import { RowWorkspace } from "./builder/RowWorkspace";
+import { EditorHelp } from "./builder/EditorHelp";
 import { rowShortcut } from "./builder/rowWorkflow";
 import type { TranslationKey } from "../i18n";
-import { isSaveShortcut } from "../lib/shortcuts";
+import { editorShortcut, isSaveShortcut } from "../lib/shortcuts";
 import { PartInspector } from "./PartInspector";
 import { ExactSection } from "./ExactSection";
 import { partNumbers } from "../domain/masonrySections";
 import { ProjectBar } from "./ProjectBar";
 import type { LocalWorkspace } from "../hooks/useLocalWorkspace";
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { PlacementPoint, PlacementPreview } from "../domain/editor/preview";
 import { isInsideGrid } from "../domain/geometry";
 import type {
@@ -166,7 +167,33 @@ export function BuilderScreen(props: BuilderScreenProps) {
   const [printReady, setPrintReady] = useState(false);
   const [printRow, setPrintRow] = useState(false);
   const [sectionOffset, setSectionOffset] = useState(32.5);
+  const [placementRequest, setPlacementRequest] = useState(0);
   const locked = lockedRows.includes(currentRow);
+  const busy = !!props.workspace?.busy;
+  const clearSelection = useCallback(() => {
+    setMasonrySelection(null);
+    setIsolated(false);
+    setFocusRequest(0);
+  }, []);
+  const beginPlacement = useCallback(
+    (tool?: ToolKind) => {
+      if (busy) return;
+      if (tool) setActiveTool(tool);
+      clearSelection();
+      setSelectParts(false);
+      setTwoD(false);
+      setManualSection(null);
+      setPanel("tools");
+      setInspectorExpanded(true);
+      setDesktopInspectorHidden(false);
+      setRowMode("through");
+      setHouseContext(false);
+      setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
+      setPlacementRequest((request) => request + 1);
+      props.onExitSection?.();
+    },
+    [busy, setActiveTool, clearSelection, props.onExitSection]
+  );
   const physicsDocument = useMemo(() => Object.values(rows).flat(), [rows]);
   const visibleDocument = useMemo(
     () =>
@@ -182,6 +209,12 @@ export function BuilderScreen(props: BuilderScreenProps) {
     setCurrentRow(Math.max(1, Math.min(rowCount, row)));
     setSelectParts(true);
     setHouseContext(false);
+  };
+  const inspectPart = (ids: string[], row: number) => {
+    selectPart(ids, row);
+    setPanel("part");
+    setInspectorExpanded(true);
+    setDesktopInspectorHidden(false);
   };
   const print = async () => {
     if (props.workspace) {
@@ -208,7 +241,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
   }, [printReady]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.isComposing || event.altKey) return;
+      if (event.defaultPrevented || event.isComposing || event.altKey) return;
       if (document.querySelector("dialog[open]")) return;
       if (movieOpen) {
         if (isSaveShortcut(event)) event.preventDefault();
@@ -216,41 +249,45 @@ export function BuilderScreen(props: BuilderScreenProps) {
       }
       if (isSaveShortcut(event)) {
         event.preventDefault();
-        if (!event.repeat) void props.saveCurrentProject();
+        if (!event.repeat && !busy) void props.saveCurrentProject();
         return;
       }
       const target = event.target as HTMLElement | null;
-      if (cutterOpen) return;
-      if (target?.isContentEditable || target?.closest("input,textarea,select,dialog,[role=dialog]")) return;
-      const row = rowShortcut(
-        event,
-        currentRow,
-        rowCount,
-        !!props.workspace?.busy || !!document.querySelector("dialog[open]")
-      );
+      if (cutterOpen || busy) return;
+      if (target?.isContentEditable || target?.closest("input,textarea,select,dialog,[role=dialog],[role=textbox]"))
+        return;
+      const row = rowShortcut(event, currentRow, rowCount, busy);
       if (row !== null) {
         event.preventDefault();
         setCurrentRow(row);
         return;
       }
-      const key = event.key.toLowerCase();
-      if (event.ctrlKey || event.metaKey) {
-        if (key === "z") {
-          event.preventDefault();
-          if (event.shiftKey) redo();
-          else undo();
-        }
-        if (key === "y") {
-          event.preventDefault();
+      const command = editorShortcut(event);
+      if (!command) return;
+      // Escape also belongs to the scene's pending-placement cancellation.
+      if (command !== "clear") event.preventDefault();
+      switch (command) {
+        case "undo":
+          undo();
+          break;
+        case "redo":
           redo();
-        }
-      } else {
-        if (key === "r") {
-          event.preventDefault();
+          break;
+        case "rotate":
           setOrientation(orientation === "h" ? "v" : "h");
-        }
-        if (key === "b") setActiveTool("standard");
-        if (key === "e") setActiveTool("eraser");
+          break;
+        case "brick":
+          beginPlacement("standard");
+          break;
+        case "erase":
+          beginPlacement("eraser");
+          break;
+        case "select":
+          setSelectParts(true);
+          break;
+        case "clear":
+          clearSelection();
+          break;
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -260,18 +297,19 @@ export function BuilderScreen(props: BuilderScreenProps) {
     redo,
     orientation,
     setOrientation,
-    setActiveTool,
     cutterOpen,
     movieOpen,
     props.saveCurrentProject,
     currentRow,
     rowCount,
     setCurrentRow,
-    props.workspace?.busy
+    busy,
+    beginPlacement,
+    clearSelection
   ]);
   return (
     <main className="studio-editor">
-      <div className="assembly-editor-content" inert={movieOpen}>
+      <div className="assembly-editor-content" inert={movieOpen || busy}>
         {props.workspace?.busy && (
           <output className="workspace-transition">Сохраняю текущую работу и открываю проект…</output>
         )}
@@ -341,33 +379,19 @@ export function BuilderScreen(props: BuilderScreenProps) {
           </div>
         </div>
         <div className="workspace-modes">
-          <button type="button" aria-pressed={selectParts} onClick={() => setSelectParts(true)}>
-            Выбор детали
-          </button>
           <button
             type="button"
-            aria-pressed={!selectParts}
-            onClick={() => {
-              setSelectParts(false);
-              setManualSection(null);
-              setPanel("tools");
-              setRowMode("through");
-              setIsolated(false);
-              setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
-              props.onExitSection?.();
-            }}
+            aria-pressed={selectParts}
+            onClick={() => setSelectParts(true)}
+            title={`${t("selectPartMode")} · V`}
           >
-            Кладка
+            {t("selectPartMode")}
+          </button>
+          <button type="button" aria-pressed={!selectParts} onClick={() => beginPlacement()}>
+            {t("buildMode")}
           </button>
           {masonryIds.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setMasonrySelection(null);
-                setIsolated(false);
-                setFocusRequest(0);
-              }}
-            >
+            <button type="button" onClick={clearSelection}>
               Снять выбор
             </button>
           )}
@@ -382,6 +406,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
               Снять изоляцию
             </button>
           )}
+          <EditorHelp t={t} />
         </div>
         <div className={`studio-layout${desktopInspectorHidden ? " inspector-hidden" : ""}`}>
           <section className="studio-viewport" aria-label={t("editorTitle")}>
@@ -405,6 +430,25 @@ export function BuilderScreen(props: BuilderScreenProps) {
                 {desktopInspectorHidden ? "Показать панель" : "Скрыть панель"}
               </button>
             </div>
+            {!movieOpen && !twoD && selectParts && !rows[currentRow]?.length && (
+              <div className="editor-empty-row">
+                <p>
+                  <strong>
+                    {t("currentRow")} {currentRow} · {t("rowEmptyStatus")}
+                  </strong>
+                  <br />
+                  {t(locked ? "placementLocked" : "editorEmptyRowHint")}
+                </p>
+                <button
+                  type="button"
+                  className="studio-primary"
+                  disabled={locked || busy}
+                  onClick={() => beginPlacement("standard")}
+                >
+                  {t("editorStartRow")}
+                </button>
+              </div>
+            )}
             {movieOpen ? (
               <p className="studio-fallback">Открыто кино сборки</p>
             ) : twoD ? (
@@ -415,7 +459,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                 row={currentRow}
                 offset={sectionOffset}
                 selectedIds={masonryIds}
-                onSelect={selectPart}
+                onSelect={inspectPart}
                 previous={ghostPrevious}
                 measurement
               />
@@ -450,14 +494,11 @@ export function BuilderScreen(props: BuilderScreenProps) {
                     houseContext={isHouse && houseContext}
                     highlightedIds={masonryIds}
                     selectParts={selectParts}
+                    interactionDisabled={busy}
+                    placementRequest={placementRequest}
                     onSelectPart={(id) => {
                       const b = physicsDocument.find((b) => b.id === id);
-                      if (b) {
-                        selectPart([id], b.row);
-                        setPanel("part");
-                        setInspectorExpanded(true);
-                        setDesktopInspectorHidden(false);
-                      }
+                      if (b) inspectPart([id], b.row);
                     }}
                     rowMode={rowMode}
                     ghostPrevious={ghostPrevious}
@@ -508,11 +549,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                     setPanel(key);
                     if (key === "physics") setHasPhysics(true);
                     if (key === "tools") {
-                      setSelectParts(false);
-                      setManualSection(null);
-                      setRowMode("through");
-                      setHouseInspection({ section: "whole", fraction: 0.4, courseOnly: true });
-                      props.onExitSection?.();
+                      beginPlacement();
                     }
                   }}
                 >
@@ -617,7 +654,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                     row={currentRow}
                     offset={sectionOffset}
                     selectedIds={masonryIds}
-                    onSelect={selectPart}
+                    onSelect={inspectPart}
                     previous={ghostPrevious}
                     measurement
                   />
@@ -689,7 +726,7 @@ export function BuilderScreen(props: BuilderScreenProps) {
                 <Toolbox
                   t={t}
                   activeTool={activeTool}
-                  setActiveTool={setActiveTool}
+                  setActiveTool={beginPlacement}
                   orientation={orientation}
                   setOrientation={setOrientation}
                   notchCorner={props.notchCorner}
@@ -701,7 +738,10 @@ export function BuilderScreen(props: BuilderScreenProps) {
                   setSnapStep={props.setSnapStep}
                   customBricks={customBricks}
                   activeCustom={activeTool === "custom" ? props.customBrick : null}
-                  onPickCustom={props.pickCustomBrick}
+                  onPickCustom={(spec) => {
+                    beginPlacement();
+                    props.pickCustomBrick(spec);
+                  }}
                   onRemoveCustom={removeCustomBrick}
                   onOpenCutter={() => setCutterOpen(true)}
                   plateSpec={props.plateSpec}

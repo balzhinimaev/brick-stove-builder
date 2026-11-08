@@ -9,7 +9,7 @@ import {
   type Session
 } from "../api/client";
 import { authFailureKey } from "../api/authFailure";
-import type { Translate } from "../i18n";
+import type { Translate, TranslationKey } from "../i18n";
 
 export type AuthMode = "login" | "register";
 
@@ -20,9 +20,24 @@ export function useSession(t: Translate) {
   const submitting = useRef(false);
   const authGeneration = useRef(0);
   const [session, setSession] = useState<Session | null>(null);
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [authLogin, setAuthLogin] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
+  const [authMode, updateAuthMode] = useState<AuthMode>("login");
+  const [authLogin, updateAuthLogin] = useState("");
+  const [authPassword, updateAuthPassword] = useState("");
+  const [rememberSession, setRememberSession] = useState(true);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authErrorKey, setAuthErrorKey] = useState<TranslationKey | null>(null);
+  const setAuthMode = (value: AuthMode) => {
+    updateAuthMode(value);
+    setAuthErrorKey(null);
+  };
+  const setAuthLogin = (value: string) => {
+    updateAuthLogin(value);
+    setAuthErrorKey(null);
+  };
+  const setAuthPassword = (value: string) => {
+    updateAuthPassword(value);
+    setAuthErrorKey(null);
+  };
 
   useEffect(() => {
     const stored = loadSession();
@@ -37,15 +52,21 @@ export function useSession(t: Translate) {
     if (submitting.current) return;
     const normalized = normalizeLogin(authLogin);
     if (normalized.length < MIN_LOGIN_LENGTH) {
-      window.alert(t("authLoginTooShort"));
+      setAuthErrorKey("authLoginTooShort");
       return;
     }
     if (authPassword.length < MIN_PASSWORD_LENGTH) {
-      window.alert(t("authPasswordTooShort"));
+      setAuthErrorKey("authPasswordTooShort");
       return;
     }
 
+    if (!/^[a-zA-Z0-9_-]{3,32}$/.test(authLogin.trim())) {
+      setAuthErrorKey("authLoginFormat");
+      return;
+    }
     const generation = authGeneration.current;
+    setAuthErrorKey(null);
+    setAuthBusy(true);
     submitting.current = true;
     try {
       const result =
@@ -54,17 +75,25 @@ export function useSession(t: Translate) {
           : await loginRequest(normalized, authPassword);
       if (generation !== authGeneration.current) return;
       if (!result.ok) {
-        window.alert(t(authFailureKey(authMode, result.status)));
+        setAuthErrorKey(authFailureKey(authMode, result.status));
         return;
       }
-      saveSession(result.session);
+      try {
+        saveSession(result.session, rememberSession);
+      } catch {
+        setAuthErrorKey("authStorageError");
+        return;
+      }
       setSession(result.session);
       setAuthLogin("");
       setAuthPassword("");
     } catch {
-      if (generation === authGeneration.current) window.alert(t("authUnavailable"));
+      if (generation === authGeneration.current) setAuthErrorKey("authUnavailable");
     } finally {
-      if (generation === authGeneration.current) submitting.current = false;
+      if (generation === authGeneration.current) {
+        submitting.current = false;
+        setAuthBusy(false);
+      }
     }
   };
 
@@ -72,6 +101,7 @@ export function useSession(t: Translate) {
     authGeneration.current += 1;
     submitting.current = false;
     clearSession();
+    setAuthBusy(false);
     setSession(null);
     setAuthLogin("");
     setAuthPassword("");
@@ -79,13 +109,14 @@ export function useSession(t: Translate) {
 
   /** Сервер ответил 401: токен протух/отозван — честно разлогиниваем. */
   const invalidateSession = () => {
-    // Несколько параллельных 401 не должны показать несколько alert'ов.
+    // Ignore duplicate 401s after the stored session has already been cleared.
     if (!loadSession()) return;
     authGeneration.current += 1;
     submitting.current = false;
     clearSession();
+    setAuthBusy(false);
     setSession(null);
-    window.alert(t("sessionExpired"));
+    setAuthErrorKey("sessionExpired");
   };
 
   return {
@@ -97,6 +128,10 @@ export function useSession(t: Translate) {
     setAuthLogin,
     authPassword,
     setAuthPassword,
+    rememberSession,
+    setRememberSession,
+    authBusy,
+    authError: authErrorKey ? t(authErrorKey) : "",
     submitAuth,
     switchAccount,
     invalidateSession

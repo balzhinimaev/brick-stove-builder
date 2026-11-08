@@ -21,8 +21,9 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 it("handles rejected fetch, suppresses duplicate submit, and allows retry", async () => {
-  const states = [null, "login", "tester", "test-password"];
-  vi.mocked(useState).mockImplementation(() => [states.shift(), vi.fn()] as never);
+  const states = [null, "login", "tester", "test-password", true, false, null];
+  const update = vi.fn();
+  vi.mocked(useState).mockImplementation(() => [states.shift(), update] as never);
   vi.stubGlobal("window", { alert: vi.fn() });
   let reject!: (error: Error) => void;
   vi.mocked(login).mockImplementationOnce(
@@ -38,14 +39,14 @@ it("handles rejected fetch, suppresses duplicate submit, and allows retry", asyn
   expect(login).toHaveBeenCalledTimes(1);
   reject(new TypeError("network unavailable"));
   await expect(first).resolves.toBeUndefined();
-  expect(window.alert).toHaveBeenLastCalledWith("authUnavailable");
+  expect(update).toHaveBeenCalledWith("authUnavailable");
   await hook.submitAuth();
   expect(login).toHaveBeenCalledTimes(2);
-  expect(window.alert).toHaveBeenLastCalledWith("authUnavailable");
+  expect(update).toHaveBeenCalledWith("authUnavailable");
 });
 
 it.each(["unmount", "switch"])("ignores a successful login after %s", async (action) => {
-  const states = [null, "login", "tester", "test-password"];
+  const states = [null, "login", "tester", "test-password", true, false, null];
   const update = vi.fn();
   vi.mocked(useState).mockImplementation(() => [states.shift(), update] as never);
   vi.stubGlobal("window", { alert: vi.fn() });
@@ -71,8 +72,9 @@ it.each(["unmount", "switch"])("ignores a successful login after %s", async (act
 });
 
 it("a cancelled request cannot unlock or report errors over a newer login", async () => {
-  const states = [null, "login", "tester", "test-password"];
-  vi.mocked(useState).mockImplementation(() => [states.shift(), vi.fn()] as never);
+  const states = [null, "login", "tester", "test-password", true, false, null];
+  const update = vi.fn();
+  vi.mocked(useState).mockImplementation(() => [states.shift(), update] as never);
   vi.stubGlobal("window", { alert: vi.fn() });
   let reject!: (error: Error) => void;
   let resolve!: (result: Awaited<ReturnType<typeof login>>) => void;
@@ -101,5 +103,5 @@ it("a cancelled request cannot unlock or report errors over a newer login", asyn
   const session = { login: "tester", token: "new-token" };
   resolve({ ok: true, session });
   await second;
-  expect(saveSession).toHaveBeenCalledExactlyOnceWith(session);
+  expect(saveSession).toHaveBeenCalledExactlyOnceWith(session, true);
 });

@@ -21,9 +21,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it.each(["Enter", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"])(
-  "leaves composing %s to the IME but still handles the ordinary placement key",
-  (key) => {
+it.each(
+  ["Enter", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].flatMap((key) => [
+    { key, selectParts: false, interactionDisabled: false },
+    { key, selectParts: true, interactionDisabled: false },
+    { key, selectParts: false, interactionDisabled: true }
+  ])
+)(
+  "handles $key only in placement mode (selectParts=$selectParts, busy=$interactionDisabled), never during IME input",
+  ({ key, selectParts, interactionDisabled }) => {
     const listeners = new Set<(event: KeyboardEvent) => void>();
     vi.stubGlobal("window", {
       addEventListener: (name: string, callback: (event: KeyboardEvent) => void) => {
@@ -38,6 +44,8 @@ it.each(["Enter", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"])(
       bricks: [],
       currentRow: 1,
       locked: false,
+      selectParts,
+      interactionDisabled,
       snapStep: 0.5,
       t: (key) => key,
       previewAt: () => ({ status: "ready", bricks: [], affected: [], adjustments: [] }),
@@ -58,10 +66,11 @@ it.each(["Enter", "Escape", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"])(
       expect(hooks.setPoint).not.toHaveBeenCalled();
       expect(preventDefault).not.toHaveBeenCalled();
       press(false);
-      expect(hooks.setPoint).toHaveBeenCalledOnce();
-      if (key === "Enter") expect(placeAt).toHaveBeenCalledExactlyOnceWith(2, 3, 2, 3);
+      expect(hooks.setPoint).toHaveBeenCalledTimes(selectParts || interactionDisabled ? 0 : 1);
+      if (key === "Enter" && !selectParts && !interactionDisabled)
+        expect(placeAt).toHaveBeenCalledExactlyOnceWith(2, 3, 2, 3);
       else expect(placeAt).not.toHaveBeenCalled();
-      expect(preventDefault).toHaveBeenCalledTimes(key === "Escape" ? 0 : 1);
+      expect(preventDefault).toHaveBeenCalledTimes(selectParts || interactionDisabled || key === "Escape" ? 0 : 1);
     } finally {
       for (const cleanup of cleanups) cleanup?.();
     }

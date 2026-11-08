@@ -230,9 +230,9 @@ export function RussianStoveGuide({ locale, controls }: { locale: Locale; contro
   return (
     <details
       data-testid="teplushka-guide"
-      className="teplushka-guide max-h-[34dvh] shrink-0 overflow-y-auto rounded-xl border border-[#A6472A]/20 bg-[#FFF7E8] p-3 text-xs text-[#3D2B1F]"
+      className="teplushka-guide max-h-[34dvh] shrink-0 overflow-y-auto rounded-xl border border-[#A6472A]/20 bg-[#f4f5f1] p-3 text-xs text-[#283732]"
     >
-      <summary className="sticky top-0 z-10 cursor-pointer bg-[#FFF7E8] font-bold">{copy.title}</summary>
+      <summary className="sticky top-0 z-10 cursor-pointer bg-[#f4f5f1] font-bold">{copy.title}</summary>
       <p className="my-2 font-semibold" data-testid="teplushka-source-badge">
         {copy.intro}
       </p>

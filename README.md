@@ -278,3 +278,22 @@ A selected-only wireframe marks the closed blade position, NOT physical hardware
 It obeys scene clipping and is non-pickable. Normal rendering, ghosts, exact
 sections, quantities, collisions and read-only assembly playback retain canonical
 solids. No new opening control or saved geometry change is introduced.
+
+
+## Host-run deployment and account sessions
+
+For a host-run Express server, start the project's isolated local database with
+`docker compose -p brick-stove-host -f deploy/compose.local-db.yml up -d`.
+It binds only `127.0.0.1:27019` and persists data in `brick-stove-builder-mongo-data`.
+Set `MONGODB_URI=mongodb://127.0.0.1:27019/brickstove` and a private, generated
+`AUTH_SECRET` in the ignored `.env` (mode 600). Preserve that key on restarts.
+Do not run this database and the all-in-one Compose setup simultaneously.
+
+Web builds use same-origin API requests by default; do not hardcode the former
+external API URL in `.env.production`. Set `VITE_API_BASE` explicitly only when
+building for a separate backend or the native Android app.
+
+Sign-in supports remembered local storage or tab-only session storage. Sign-out
+clears both. Browser storage failures are shown in the form, not reported as a
+successful login. The server token lifetime is 30 days. Guest and account local
+libraries remain separate; use export/import to transfer a guest project.

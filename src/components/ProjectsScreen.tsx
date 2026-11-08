@@ -42,22 +42,19 @@ export function ProjectsScreen({
     const projectGrid = gridFromParameters(project.parameters);
     const projectMaterials = estimateMaterials(Object.values(project.rows).flat(), project.parameters);
     return (
-      <article
-        key={project.id}
-        className="overflow-hidden rounded-[26px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] shadow-md shadow-[#3D2B1F]/10"
-      >
+      <article key={project.id} className="project-card">
         <div className="p-3">
           <div className="mb-2 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="text-xl font-black leading-6">{project.title[locale]}</h3>
-              <p className="mt-1 text-sm font-bold leading-5 text-[#3D2B1F]/70">{project.subtitle[locale]}</p>
+              <h3 className="text-xl font-semibold leading-6">{project.title[locale]}</h3>
+              <p className="mt-1 text-sm font-bold leading-5 text-[#283732]/70">{project.subtitle[locale]}</p>
             </div>
             <div
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] border-2 border-[#3D2B1F]/10 text-xl font-black text-[#F5E6C8]"
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-[#283732]/10 text-xl font-semibold text-[#ffffff]"
               style={{ backgroundColor: project.accent }}
               aria-hidden="true"
             >
-              炉
+              <span aria-hidden="true">▤</span>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -72,15 +69,22 @@ export function ProjectsScreen({
             </Pill>
           </div>
         </div>
-        {project.id === "russian-stove-hob" ? <RussianStoveGuide locale={locale} /> : null}
+        {(project.id === "russian-stove-hob" ||
+          project.id === "classic-russian-stove-hob" ||
+          project.id.startsWith("russian-house-6x9")) && (
+          <details className="project-details">
+            <summary>{t("projectDetails")}</summary>
+            {project.id === "russian-stove-hob" ? <RussianStoveGuide locale={locale} /> : null}
 
-        {project.id === "classic-russian-stove-hob" ? <ClassicRussianStoveGuide locale={locale} /> : null}
+            {project.id === "classic-russian-stove-hob" ? <ClassicRussianStoveGuide locale={locale} /> : null}
 
-        {project.id.startsWith("russian-house-6x9") && <HouseRussianGuide project={project} />}
+            {project.id.startsWith("russian-house-6x9") && <HouseRussianGuide project={project} />}
+          </details>
+        )}
         <ProjectOrderPreview grid={projectGrid} rows={project.rows} rowCount={project.rowCount} t={t} />
         <div className="space-y-2 p-3 pt-0">
           {project.ownerLogin ? null : (
-            <p className="rounded-[18px] bg-[#FFF7E8]/80 px-3 py-2 text-xs font-bold leading-4 text-[#3D2B1F]/65">
+            <p className="rounded-lg bg-[#f4f5f1]/80 px-3 py-2 text-xs font-bold leading-4 text-[#283732]/65">
               {t("projectDemoNotice")}
             </p>
           )}
@@ -88,7 +92,7 @@ export function ProjectsScreen({
             type="button"
             aria-label={`${t("loadProject")}: ${project.title[locale]}`}
             onClick={() => onLoad(project)}
-            className="min-h-13 w-full rounded-[20px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8] shadow-lg shadow-[#C1440E]/20"
+            className="studio-primary w-full"
           >
             {t("loadProject")}
           </button>
@@ -107,7 +111,7 @@ export function ProjectsScreen({
                 onClick={() => {
                   if (window.confirm(`${t("deleteProjectConfirm")} «${project.title[locale]}»`)) void onDelete(project);
                 }}
-                className="w-full rounded-[18px] px-4 py-2 text-xs font-black text-[#9b2c2c]/80 underline"
+                className="w-full rounded-lg px-4 py-2 text-xs font-semibold text-[#9b2c2c]/80 underline"
               >
                 {t("deleteProject")}
               </button>
@@ -119,14 +123,14 @@ export function ProjectsScreen({
   };
 
   return (
-    <main className="mt-4 space-y-3 xl:space-y-4">
+    <section className="project-catalog">
       {userLogin && (
         <>
           <SectionTitle title={t("accountProjectsTitle")} subtitle={t("myProjectsSubtitle")} />
           {mine.length ? (
-            <div className="space-y-3">{mine.map(renderCard)}</div>
+            <div className="project-grid">{mine.map(renderCard)}</div>
           ) : (
-            <p className="rounded-[20px] bg-[#F5E6C8] px-4 py-5 text-center text-sm font-bold text-[#3D2B1F]/70">
+            <p className="rounded-lg bg-[#ffffff] px-4 py-5 text-center text-sm font-bold text-[#283732]/70">
               {t("myProjectsEmpty")}
             </p>
           )}
@@ -138,8 +142,9 @@ export function ProjectsScreen({
       <label className="catalog-search">
         {t("findTemplate")} <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} />
       </label>
-      <div className="space-y-3">{templates.map(renderCard)}</div>
-    </main>
+      <div className="project-grid">{templates.map(renderCard)}</div>
+      {!templates.length && <output className="empty-state">{t("noTemplates")}</output>}
+    </section>
   );
 }
 
@@ -174,14 +179,14 @@ function PublishControls({
 
   if (project.showcase?.published) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-[18px] bg-[#5F7E4D]/15 px-3 py-2">
-        <span className="text-xs font-black text-[#5F7E4D]">✓ {t("publishedBadge")}</span>
+      <div className="flex items-center justify-between gap-2 rounded-lg bg-[#326856]/15 px-3 py-2">
+        <span className="text-xs font-semibold text-[#326856]">✓ {t("publishedBadge")}</span>
         <button
           type="button"
           aria-label={`${t("unpublishAction")}: ${title}`}
           onClick={() => run(() => onUnpublish(project))}
           disabled={busy}
-          className="rounded-full px-3 py-1.5 text-xs font-black text-[#3D2B1F]/60 underline disabled:opacity-50"
+          className="rounded-full px-3 py-1.5 text-xs font-semibold text-[#283732]/60 underline disabled:opacity-50"
         >
           {t("unpublishAction")}
         </button>
@@ -195,7 +200,7 @@ function PublishControls({
         type="button"
         aria-label={`${t("publishAction")}: ${title}`}
         onClick={() => setOpen(true)}
-        className="min-h-12 w-full rounded-[20px] border-2 border-[#C1440E]/40 px-4 text-sm font-black text-[#C1440E]"
+        className="min-h-12 w-full rounded-lg border border-[#326856]/40 px-4 text-sm font-semibold text-[#326856]"
       >
         {t("publishAction")}
       </button>
@@ -203,9 +208,9 @@ function PublishControls({
   }
 
   const inputClass =
-    "min-h-12 w-full rounded-[16px] border-2 border-[#3D2B1F]/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#C1440E]/60";
+    "min-h-12 w-full rounded-[16px] border border-[#283732]/10 bg-white px-3 text-sm font-bold outline-none focus:border-[#326856]/60";
   return (
-    <div className="space-y-2 rounded-[20px] bg-[#FFF7E8]/80 p-3">
+    <div className="space-y-2 rounded-lg bg-[#f4f5f1]/80 p-3">
       <label className="block text-sm font-bold">
         <span className="mb-1 block">{t("publishDescriptionPlaceholder")}</span>
         <textarea
@@ -248,7 +253,7 @@ function PublishControls({
             )
           }
           disabled={busy}
-          className="min-h-12 flex-1 rounded-[18px] bg-[#C1440E] px-4 text-sm font-black text-[#F5E6C8] disabled:opacity-60"
+          className="min-h-12 flex-1 rounded-lg bg-[#326856] px-4 text-sm font-semibold text-[#ffffff] disabled:opacity-60"
         >
           {t("publishSubmit")}
         </button>
@@ -256,7 +261,7 @@ function PublishControls({
           type="button"
           onClick={() => setOpen(false)}
           disabled={busy}
-          className="min-h-12 rounded-[18px] bg-[#3D2B1F]/10 px-4 text-sm font-black disabled:opacity-50"
+          className="min-h-12 rounded-lg bg-[#283732]/10 px-4 text-sm font-semibold disabled:opacity-50"
         >
           {t("cancel")}
         </button>
@@ -281,10 +286,10 @@ export function ProjectOrderPreview({
   // A saved project can lose rows while its existing card stays mounted.
   const page = Math.min(requestedPage, Math.max(0, Math.ceil(rowCount / 6) - 1));
   return (
-    <div className="border-y border-[#3D2B1F]/10 bg-[#FFF7E8] px-3 py-3">
+    <div className="border-y border-[#283732]/10 bg-[#f4f5f1] px-3 py-3">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-xs font-black uppercase tracking-wide text-[#3D2B1F]/55">{t("rowsRail")}</div>
-        <div className="text-[11px] font-black text-[#5F7E4D]">
+        <div className="text-xs font-semibold uppercase tracking-wide text-[#283732]/55">{t("rowsRail")}</div>
+        <div className="text-[11px] font-semibold text-[#326856]">
           {t("currentRow")} 1 → {rowCount}
         </div>
       </div>
@@ -302,15 +307,12 @@ export function ProjectOrderPreview({
             {Array.from({ length: Math.min(6, rowCount - page * 6) }).map((_, index) => {
               const row = page * 6 + index + 1;
               return (
-                <div
-                  key={row}
-                  className="w-[150px] shrink-0 rounded-[18px] border-2 border-[#3D2B1F]/10 bg-[#F5E6C8] p-2"
-                >
-                  <div className="mb-1 flex items-center justify-between text-[11px] font-black">
+                <div key={row} className="w-[150px] shrink-0 rounded-lg border border-[#283732]/10 bg-[#ffffff] p-2">
+                  <div className="mb-1 flex items-center justify-between text-[11px] font-semibold">
                     <span>
                       {t("currentRow")} {row}
                     </span>
-                    <span className="text-[#5F7E4D]">{rows[row]?.length ?? 0}</span>
+                    <span className="text-[#326856]">{rows[row]?.length ?? 0}</span>
                   </div>
                   <RowMap grid={grid} bricks={rows[row] ?? []} variant="screen" />
                 </div>

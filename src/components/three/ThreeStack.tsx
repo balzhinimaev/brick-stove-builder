@@ -42,6 +42,8 @@ export type ThreeStackProps = {
   houseContext?: boolean;
   highlightedIds?: string[];
   selectParts?: boolean;
+  interactionDisabled?: boolean;
+  placementRequest?: number;
   onSelectPart?: (id: string) => void;
   rowMode?: "through" | "row" | "all";
   ghostPrevious?: boolean;
@@ -64,6 +66,8 @@ export function ThreeStack({
   onExitSection,
   highlightedIds,
   selectParts = false,
+  interactionDisabled = false,
+  placementRequest = 0,
   onSelectPart,
   rowMode,
   ghostPrevious = false,
@@ -119,7 +123,14 @@ export function ThreeStack({
     () => (!selectParts && !assembly && !inspect && !sectionActive && point ? previewAt(point) : null),
     [selectParts, assembly, inspect, sectionActive, point, previewAt]
   );
-  const valid = !!preview && canConfirmPlacement(preview) && !locked && !inspect && !assembly && !sectionActive;
+  const valid =
+    !!preview &&
+    canConfirmPlacement(preview) &&
+    !interactionDisabled &&
+    !locked &&
+    !inspect &&
+    !assembly &&
+    !sectionActive;
   // Inspection is a render-only projection, before bounds and section calculations.
   const sceneBricks = useMemo(
     () => frame?.parts ?? withPlacementAdjustments(visible, valid ? preview : null),
@@ -203,12 +214,22 @@ export function ThreeStack({
     }
   }, [assembly]);
   useEffect(() => {
-    if (selectParts) {
+    if (selectParts || interactionDisabled) {
       setPoint(null);
       gesture.current.cancel();
       tap.current = false;
     }
-  }, [selectParts]);
+  }, [selectParts, interactionDisabled]);
+  useEffect(() => {
+    if (!placementRequest) return;
+    setArchName(null);
+    setArchStep(0);
+    setArchSelected(null);
+    setInspect(false);
+    setPoint(null);
+    gesture.current.cancel();
+    tap.current = false;
+  }, [placementRequest]);
   const previousHouse = useRef(false);
   useEffect(() => {
     if (houseContext || previousHouse.current) {
@@ -237,7 +258,16 @@ export function ThreeStack({
   }, [currentRow, grid, inspect]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.isComposing || assembly || inspect || sectionActive) return;
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        interactionDisabled ||
+        selectParts ||
+        assembly ||
+        inspect ||
+        sectionActive
+      )
+        return;
       const target = event.target as HTMLElement | null;
       if (target?.isContentEditable || target?.closest("input,textarea,select,button,dialog,[role=dialog]")) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -262,7 +292,17 @@ export function ThreeStack({
     return () => window.removeEventListener("keydown", onKey);
   });
   const select = (event: ThreeEvent<PointerEvent>) => {
-    if (selectParts || !tap.current || assembly || inspect || sectionActive || locked || event.button !== 0) return;
+    if (
+      interactionDisabled ||
+      selectParts ||
+      !tap.current ||
+      assembly ||
+      inspect ||
+      sectionActive ||
+      locked ||
+      event.button !== 0
+    )
+      return;
     event.stopPropagation();
     const hit = event.ray.intersectPlane(
       new Plane(new Vector3(0, 1, 0), -(currentRow - 1) * BRICK_LAYER_HEIGHT),
@@ -652,15 +692,19 @@ export function ThreeStack({
         <output className="scene-instruction" aria-live="polite">
           {assembly
             ? "Выбор номера подсвечивает ту же физическую деталь; редактирование в этой сцене выключено."
-            : inspect
-              ? t("inspectHint")
-              : locked
-                ? t("placementLocked")
-                : point
-                  ? `${t(statusKey)}${preview?.adjustments.length ? ` ${t("autoSeatHint")}` : ""}`
-                  : t("placeHint")}
+            : selectParts
+              ? t("selectPartHint")
+              : sectionActive
+                ? t("sectionView")
+                : inspect
+                  ? t("inspectHint")
+                  : locked
+                    ? t("placementLocked")
+                    : point
+                      ? `${t(statusKey)}${preview?.adjustments.length ? ` ${t("autoSeatHint")}` : ""}`
+                      : t("placeHint")}
         </output>
-        {!assembly && !inspect && !sectionActive && !locked && (
+        {!selectParts && !assembly && !inspect && !sectionActive && !locked && (
           <div className="placement-controls">
             <div className="placement-position">
               <button

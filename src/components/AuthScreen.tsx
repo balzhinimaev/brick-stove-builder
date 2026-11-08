@@ -1,3 +1,4 @@
+import { useId, useState } from "react";
 import type { Translate } from "../i18n";
 import type { AuthMode } from "../hooks/useSession";
 
@@ -9,7 +10,12 @@ export function AuthScreen({
   password,
   setPassword,
   onSubmit,
-  t
+  t,
+  busy = false,
+  error = "",
+  remember = true,
+  setRemember,
+  onContinue
 }: {
   mode: AuthMode;
   setMode: (mode: AuthMode) => void;
@@ -19,63 +25,175 @@ export function AuthScreen({
   setPassword: (value: string) => void;
   onSubmit: () => void;
   t: Translate;
+  busy?: boolean;
+  error?: string;
+  remember?: boolean;
+  setRemember?: (value: boolean) => void;
+  onContinue?: () => void;
 }) {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const [mismatch, setMismatch] = useState(false);
+  const message = mismatch ? t("authPasswordMismatch") : error;
   return (
-    <section className="mt-3 rounded-[24px] border-2 border-[#3D2B1F]/15 bg-[#F5E6C8] p-4">
-      <h2 className="text-lg font-black">{t("authTitle")}</h2>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => setMode("login")}
-          aria-pressed={mode === "login"}
-          className={`min-h-11 rounded-2xl border ${mode === "login" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#FFF7E8]"}`}
+    <main className="site-page auth-page">
+      <section className="auth-story">
+        <p className="eyebrow">{t("workspaceLabel")}</p>
+        <h1>{t(mode === "register" ? "authRegisterTitle" : "authIntro")}</h1>
+        <p className="auth-lead">{t("authSubtitle")}</p>
+        <div className="auth-benefit">
+          <span aria-hidden="true">01</span>
+          <div>
+            <h2>{t("continueEditing")}</h2>
+            <p>{t("authGuestHint")}</p>
+          </div>
+        </div>
+        <div className="auth-benefit">
+          <span aria-hidden="true">02</span>
+          <div>
+            <h2>{t("accountBenefit")}</h2>
+            <p>{t("accountStorageHint")}</p>
+          </div>
+        </div>
+        <details className="auth-library-note">
+          <summary>{t("libraryTitle")}</summary>
+          <p>{t("authWorkspaceHint")}</p>
+        </details>
+      </section>
+      <section className="auth-card" aria-label={t("authTitle")}>
+        <div className="auth-tabs">
+          {(["login", "register"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              disabled={busy}
+              aria-pressed={mode === item}
+              onClick={() => {
+                setMode(item);
+                setMismatch(false);
+                setConfirmation("");
+                setVisible(false);
+              }}
+            >
+              {t(item === "login" ? "authLogin" : "authRegister")}
+            </button>
+          ))}
+        </div>
+        <form
+          aria-busy={busy}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (busy) return;
+            if (mode === "register" && password !== confirmation) {
+              setMismatch(true);
+              return;
+            }
+            setMismatch(false);
+            onSubmit();
+          }}
         >
-          {t("authLogin")}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("register")}
-          aria-pressed={mode === "register"}
-          className={`min-h-11 rounded-2xl border ${mode === "register" ? "bg-[#3D2B1F] text-[#F5E6C8]" : "bg-[#FFF7E8]"}`}
-        >
-          {t("authRegister")}
-        </button>
-      </div>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit();
-        }}
-        className="mt-3 space-y-3"
-      >
-        <label className="block space-y-1 text-sm font-bold">
-          <span>{t("authLoginPlaceholder")}</span>
-          <input
-            value={login}
-            onChange={(event) => setLogin(event.target.value)}
-            placeholder={t("authLoginPlaceholder")}
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            className="min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3"
-          />
-        </label>
-        <label className="block space-y-1 text-sm font-bold">
-          <span>{t("authPasswordPlaceholder")}</span>
-          <input
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder={t("authPasswordPlaceholder")}
-            type="password"
-            autoComplete={mode === "register" ? "new-password" : "current-password"}
-            className="min-h-12 w-full rounded-2xl border border-[#3D2B1F]/20 bg-[#FFF7E8] px-3"
-          />
-        </label>
-        <button type="submit" className="min-h-12 w-full rounded-2xl bg-[#8FAF76] font-black">
-          {mode === "login" ? t("authLogin") : t("authCreate")}
-        </button>
-      </form>
-    </section>
+          <fieldset disabled={busy} className="auth-fields">
+            <label htmlFor={`${id}-login`}>{t("authLoginPlaceholder")}</label>
+            <input
+              id={`${id}-login`}
+              name="username"
+              value={login}
+              onChange={(event) => setLogin(event.target.value)}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              required
+              minLength={3}
+              maxLength={32}
+              aria-describedby={`${id}-login-help`}
+            />
+            <p id={`${id}-login-help`} className="field-help">
+              {t("authLoginHint")}
+            </p>
+            <label htmlFor={`${id}-password`}>{t("authPasswordPlaceholder")}</label>
+            <div className="password-field">
+              <input
+                id={`${id}-password`}
+                name="password"
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setMismatch(false);
+                }}
+                type={visible ? "text" : "password"}
+                autoComplete={mode === "register" ? "new-password" : "current-password"}
+                required
+                minLength={6}
+                maxLength={256}
+                aria-describedby={mode === "register" ? `${id}-password-help` : undefined}
+              />
+              <button
+                type="button"
+                aria-controls={`${id}-password`}
+                aria-pressed={visible}
+                onClick={() => setVisible(!visible)}
+              >
+                {t(visible ? "authHidePassword" : "authShowPassword")}
+              </button>
+            </div>
+            {mode === "register" && (
+              <>
+                <p id={`${id}-password-help`} className="field-help">
+                  {t("authPasswordHint")}
+                </p>
+                <label htmlFor={`${id}-confirmation`}>{t("authConfirmPassword")}</label>
+                <input
+                  id={`${id}-confirmation`}
+                  name="password-confirmation"
+                  type={visible ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={confirmation}
+                  onChange={(event) => {
+                    setConfirmation(event.target.value);
+                    setMismatch(false);
+                  }}
+                  required
+                  minLength={6}
+                  maxLength={256}
+                  aria-invalid={mismatch}
+                  aria-describedby={mismatch ? `${id}-error` : undefined}
+                />
+              </>
+            )}
+            {setRemember && (
+              <div className="remember-choice">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={(event) => setRemember(event.target.checked)}
+                    aria-describedby={`${id}-remember-help`}
+                  />
+                  {t("authRemember")}
+                </label>
+                <p id={`${id}-remember-help`} className="field-help">
+                  {t("authRememberHint")}
+                </p>
+              </div>
+            )}
+          </fieldset>
+          {message && (
+            <p id={`${id}-error`} role="alert" className="form-error">
+              {message}
+            </p>
+          )}
+          <button type="submit" disabled={busy} className="studio-primary auth-submit">
+            {t(busy ? "authSubmitting" : mode === "login" ? "authLogin" : "authCreateAccount")}
+          </button>
+        </form>
+        {onContinue && (
+          <button type="button" disabled={busy} className="auth-guest" onClick={onContinue}>
+            {t("continueEditing")} <span aria-hidden="true">↗</span>
+          </button>
+        )}
+      </section>
+    </main>
   );
 }

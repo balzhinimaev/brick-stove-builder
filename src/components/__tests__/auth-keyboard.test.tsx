@@ -26,3 +26,29 @@ it.each(["login", "register"] as const)("keeps username entry literal and autofi
     `autoComplete="${mode === "register" ? "new-password" : "current-password"}"`
   );
 });
+
+it("shows inline errors and disables submission while signing in", () => {
+  const html = renderToStaticMarkup(
+    <AuthScreen
+      mode="register"
+      setMode={() => {}}
+      login="tester"
+      setLogin={() => {}}
+      password=""
+      setPassword={() => {}}
+      onSubmit={() => {}}
+      t={(key) => translations.ru[key]}
+      busy
+      error="Сервис недоступен"
+      remember={false}
+      setRemember={() => {}}
+    />
+  );
+  expect(html).toContain('aria-busy="true"');
+  expect(html).toMatch(/<fieldset[^>]*disabled/);
+  expect(html).toContain('role="alert"');
+  expect(html).toContain("Сервис недоступен");
+  expect(html).toContain('name="password-confirmation"');
+  expect(html).toContain('type="checkbox"');
+  expect(html).toMatch(/<button[^>]*type="submit"[^>]*disabled/);
+});
